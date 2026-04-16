@@ -284,19 +284,19 @@ export default function CreateSplitEventScreen(): React.ReactElement {
           <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginRight: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
             <ArrowLeft size={18} color={colors.textPrimary} />
           </Pressable>
-          <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 20, fontWeight: '700', letterSpacing: -0.5 }}>New Split</Text>
+          <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 20, fontWeight: '700', letterSpacing: -0.5 }}>{ t('SPLIT_NEW')}</Text>
           <Pressable onPress={handleCreate} disabled={isPending} style={{ backgroundColor: colors.primaryDark, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 }}>
-            {isPending ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Create</Text>}
+            {isPending ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t('SPLIT_CREATE' as any)}</Text>}
           </Pressable>
         </View>
 
         <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
           {/* Event title */}
-          <Text style={{ color: colors.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, marginTop: 4 }}>EVENT NAME</Text>
+          <Text style={{ color: colors.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, marginTop: 4 }}>{t('SPLIT_EVENT_NAME' as any)}</Text>
           <TextInput
             value={title}
             onChangeText={setTitle}
-            placeholder="e.g. Dinner at Koshary El Tahrir"
+            placeholder={t('SPLIT_EVENT_PLACEHOLDER' as any)}
             placeholderTextColor={colors.textDim}
             style={{ backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: colors.textPrimary, marginBottom: 16 }}
           />
@@ -304,7 +304,7 @@ export default function CreateSplitEventScreen(): React.ReactElement {
           {/* People picker (standalone mode — no existing community) */}
           {isStandalone && (
             <>
-              <Text style={{ color: colors.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8 }}>SPLIT WITH</Text>
+              <Text style={{ color: colors.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8 }}>{t('SPLIT_WITH' as any)}</Text>
 
               {/* Selected people chips */}
               {selectedPeople.length > 0 && (
@@ -326,7 +326,7 @@ export default function CreateSplitEventScreen(): React.ReactElement {
                 <TextInput
                   value={peopleQuery}
                   onChangeText={setPeopleQuery}
-                  placeholder="Search by name or email…"
+                  placeholder={t('SPLIT_SEARCH_PEOPLE' as any)}
                   placeholderTextColor={colors.textDim}
                   style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 8, fontSize: 14, color: colors.textPrimary }}
                   autoCapitalize="none"
@@ -373,13 +373,13 @@ export default function CreateSplitEventScreen(): React.ReactElement {
               {isOcrLoading ? <ActivityIndicator color={colors.primary} size="small" /> : (
                 <>
                   <Camera size={16} color={colors.primary} />
-                  <Text style={{ marginLeft: 8, fontWeight: '600', color: colors.primary, fontSize: 13 }}>Scan Receipt</Text>
+                  <Text style={{ marginLeft: 8, fontWeight: '600', color: colors.primary, fontSize: 13 }}>{t('SPLIT_SCAN_RECEIPT' as any)}</Text>
                 </>
               )}
             </Pressable>
             <Pressable onPress={handlePickReceipt} disabled={isOcrLoading} style={{ flex: 1, borderRadius: 10, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.borderLight }}>
               <Receipt size={16} color={colors.textTertiary} />
-              <Text style={{ marginLeft: 8, fontWeight: '600', color: colors.textTertiary, fontSize: 13 }}>From Gallery</Text>
+              <Text style={{ marginLeft: 8, fontWeight: '600', color: colors.textTertiary, fontSize: 13 }}>{t('SPLIT_FROM_GALLERY' as any)}</Text>
             </Pressable>
           </View>
 
@@ -389,10 +389,10 @@ export default function CreateSplitEventScreen(): React.ReactElement {
 
           {/* Items */}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <Text style={{ color: colors.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase' }}>ITEMS</Text>
+            <Text style={{ color: colors.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase' }}>{t('SPLIT_ITEMS' as any)}</Text>
             <Pressable onPress={addItem} style={{ flexDirection: 'row', alignItems: 'center' }}>
               <Plus size={14} color={colors.primary} />
-              <Text style={{ fontSize: 13, fontWeight: '600', marginLeft: 4, color: colors.primary }}>Add Item</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', marginLeft: 4, color: colors.primary }}>{t('SPLIT_ADD_ITEM' as any)}</Text>
             </Pressable>
           </View>
 
@@ -412,11 +412,11 @@ export default function CreateSplitEventScreen(): React.ReactElement {
               </View>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6 }}>
-                  <Text style={{ color: colors.textDim, fontSize: 11, marginRight: 4 }}>Qty</Text>
+                  <Text style={{ color: colors.textDim, fontSize: 11, marginRight: 4 }}>{t('SPLIT_QTY' as any)}</Text>
                   <TextInput value={item.quantity} onChangeText={(v) => updateItem(item.id, 'quantity', v)} keyboardType="numeric" style={{ width: 36, fontSize: 14, color: colors.textPrimary, textAlign: 'center' }} />
                 </View>
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6 }}>
-                  <Text style={{ color: colors.textDim, fontSize: 11, marginRight: 4 }}>Price</Text>
+                  <Text style={{ color: colors.textDim, fontSize: 11, marginRight: 4 }}>{t('SPLIT_PRICE' as any)}</Text>
                   <TextInput value={item.unit_price} onChangeText={(v) => updateItem(item.id, 'unit_price', v)} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={colors.textDim} style={{ flex: 1, fontSize: 14, color: colors.textPrimary }} />
                 </View>
                 <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, borderRadius: 8, backgroundColor: colors.surfaceSecondary }}>
@@ -427,12 +427,12 @@ export default function CreateSplitEventScreen(): React.ReactElement {
           ))}
 
           {/* Extras */}
-          <Text style={{ color: colors.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 16, marginBottom: 12 }}>EXTRAS</Text>
+          <Text style={{ color: colors.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 16, marginBottom: 12 }}>{t('SPLIT_EXTRAS' as any)}</Text>
           <View style={{ backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 12, padding: 16, marginBottom: 24 }}>
             {[
-              { label: 'Tax', value: tax, setValue: setTax },
-              { label: 'Service Fee / Tip', value: serviceFee, setValue: setServiceFee },
-              { label: 'Discount', value: discount, setValue: setDiscount },
+              { label: t('SPLIT_TAX' as any), value: tax, setValue: setTax },
+              { label: t('SPLIT_SERVICE_FEE' as any), value: serviceFee, setValue: setServiceFee },
+              { label: t('SPLIT_DISCOUNT' as any), value: discount, setValue: setDiscount },
             ].map(({ label, value, setValue }, i) => (
               <View key={label} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: i < 2 ? 1 : 0, borderBottomColor: colors.borderLight }}>
                 <Text style={{ color: colors.textTertiary, fontSize: 14 }}>{label}</Text>
@@ -440,7 +440,7 @@ export default function CreateSplitEventScreen(): React.ReactElement {
               </View>
             ))}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 14, marginTop: 6, borderTopWidth: 1, borderTopColor: colors.border }}>
-              <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 15 }}>Total</Text>
+              <Text style={{ color: colors.textPrimary, fontWeight: '700', fontSize: 15 }}>{t('SPLIT_TOTAL')}</Text>
               <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 15 }}>{total.toFixed(2)} {currency}</Text>
             </View>
           </View>

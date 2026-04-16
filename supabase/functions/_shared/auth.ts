@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -25,6 +25,7 @@ export async function verifyAuth(
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: `Bearer ${jwt}` } } },
   );
 
   // Pass JWT directly — more reliable than global headers

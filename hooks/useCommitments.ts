@@ -33,7 +33,7 @@ export function useCommitments(): {
 
 // ─── Commitments due for a specific month ────────────────────────────
 
-export function useCommitmentsDue(month?: string): {
+export function useCommitmentsDue(month?: string, enabled = true): {
   data: CommitmentsDueSummary | undefined;
   isLoading: boolean;
   isError: boolean;
@@ -45,6 +45,7 @@ export function useCommitmentsDue(month?: string): {
     queryKey: QUERY_KEYS.commitmentsDue(resolvedMonth),
     queryFn: () => fetchCommitmentsDue(resolvedMonth),
     staleTime: 1000 * 60 * 5,
+    enabled,
   });
 
   return { data, isLoading, isError, error };

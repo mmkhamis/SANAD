@@ -1,6 +1,7 @@
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear } from 'date-fns';
 
 import { supabase } from '../lib/supabase';
+import { translateCategory, t } from '../lib/i18n';
 import { fetchActiveBudgets } from './budget-service';
 import { fetchCategories, fetchCategoryGroups } from './category-service';
 import type { Budget, BudgetGoal, GoalsSummary, GoalStatus } from '../types/index';
@@ -139,18 +140,32 @@ export async function fetchGoalsSummary(month?: string): Promise<GoalsSummary> {
   for (const g of goals) {
     if (g.status === 'exceeded') {
       const over = g.actual_spent - g.budget.amount;
-      insights.push(`${g.budget.category_name} exceeded target by ${formatAmount(over)}`);
+      insights.push(
+        t('INSIGHT_EXCEEDED' as any)
+          .replace('{name}', translateCategory(g.budget.category_name))
+          .replace('{amount}', formatAmount(over)),
+      );
     } else if (g.status === 'near_limit') {
-      insights.push(`${g.budget.category_name} is at ${Math.round(g.percent_used)}% of target`);
+      insights.push(
+        t('INSIGHT_NEAR_LIMIT' as any)
+          .replace('{name}', translateCategory(g.budget.category_name))
+          .replace('{percent}', String(Math.round(g.percent_used))),
+      );
     }
   }
   const onTrack = goals.filter((g) => g.status === 'on_track');
   if (onTrack.length > 0 && onTrack.length <= 3) {
     for (const g of onTrack) {
-      insights.push(`${g.budget.category_name} remains within budget`);
+      insights.push(
+        t('INSIGHT_WITHIN_BUDGET' as any)
+          .replace('{name}', translateCategory(g.budget.category_name)),
+      );
     }
   } else if (onTrack.length > 3) {
-    insights.push(`${onTrack.length} categories remain within budget`);
+    insights.push(
+      t('INSIGHT_CATEGORIES_ON_TRACK' as any)
+        .replace('{count}', String(onTrack.length)),
+    );
   }
 
   return {

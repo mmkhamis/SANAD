@@ -3,6 +3,7 @@ import { View, Text, Pressable, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { parseISO } from 'date-fns';
 import { Pencil, Users } from 'lucide-react-native';
+import { CategoryIcon } from '../ui/CategoryIcon';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { formatAmount } from '../../utils/currency';
@@ -133,7 +134,11 @@ export const TransactionCard = React.memo(function TransactionCard({
               backgroundColor: (transaction.category_color ?? colors.textTertiary) + '15',
             }}
           >
-            <Text style={{ fontSize: 18 }}>{transaction.category_icon ?? '📱'}</Text>
+            <CategoryIcon
+              name={transaction.category_icon ?? 'smartphone'}
+              size={20}
+              color={transaction.category_color ?? colors.textSecondary}
+            />
           </View>
           {/* Description + date */}
           <View style={{ flex: 1, marginRight: 10 }}>

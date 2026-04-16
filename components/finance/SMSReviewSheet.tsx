@@ -11,6 +11,7 @@ import { AccountPicker } from './AccountPicker';
 import { useReviewTransaction } from '../../hooks/useReviewTransactions';
 import { useCategories } from '../../hooks/useCategories';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useT } from '../../lib/i18n';
 import type { Transaction, Category, Account } from '../../types/index';
 
 interface SMSReviewSheetProps {
@@ -25,6 +26,7 @@ export function SMSReviewSheet({
   onClose,
 }: SMSReviewSheetProps): React.ReactElement {
   const colors = useThemeColors();
+  const t = useT();
   const insets = useSafeAreaInsets();
   const { mutateAsync: reviewAsync, isPending } = useReviewTransaction();
   const { data: allCategories } = useCategories();
@@ -122,7 +124,7 @@ export function SMSReviewSheet({
             <X size={22} color={colors.textSecondary} strokeWidth={2} />
           </Pressable>
           <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
-            Review ({currentIndex + 1} / {total})
+            {t('SMS_REVIEW_HEADER' as any)} ({currentIndex + 1} / {total})
           </Text>
           <View style={{ width: 30 }} />
         </View>
@@ -169,7 +171,7 @@ export function SMSReviewSheet({
                 style={{ backgroundColor: colors.surfaceSecondary }}
               >
                 <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textTertiary, marginBottom: 2 }}>
-                  ORIGINAL SMS
+                  {t('SMS_ORIGINAL' as any)}
                 </Text>
                 <Text style={{ fontSize: 12, color: colors.textSecondary }} numberOfLines={4}>
                   {tx.notes}
@@ -212,10 +214,10 @@ export function SMSReviewSheet({
               style={{ opacity: currentIndex === 0 ? 0.3 : 1 }}
             >
               <ChevronLeft size={18} color={colors.textSecondary} />
-              <Text style={{ fontSize: 14, color: colors.textSecondary }}>Back</Text>
+              <Text style={{ fontSize: 14, color: colors.textSecondary }}>{t('SMS_BACK' as any)}</Text>
             </Pressable>
             <Pressable onPress={skip} className="flex-row items-center">
-              <Text style={{ fontSize: 14, color: colors.textSecondary }}>Skip</Text>
+              <Text style={{ fontSize: 14, color: colors.textSecondary }}>{t('SMS_SKIP' as any)}</Text>
               <ChevronRight size={18} color={colors.textSecondary} />
             </Pressable>
           </View>
@@ -244,7 +246,7 @@ export function SMSReviewSheet({
                     marginLeft: 6,
                   }}
                 >
-                  Save & {currentIndex < total - 1 ? 'Next' : 'Done'}
+                  {currentIndex < total - 1 ? t('SMS_SAVE_NEXT' as any) : t('SMS_SAVE_DONE' as any)}
                 </Text>
               </>
             )}

@@ -26,7 +26,8 @@ export function useCompleteOnboarding(): UseCompleteOnboardingResult {
       }
       const profile = await completeOnboarding(user.id, data);
       // Seed default categories and accounts for the new user (idempotent)
-      await seedDefaultCategories();
+      // Pass country_code so region-specific categories are filtered
+      await seedDefaultCategories(data.country_code);
       await seedDefaultAccounts();
       return profile;
     },

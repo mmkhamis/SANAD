@@ -1,12 +1,13 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Dimensions } from 'react-native';
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
   withRepeat,
-  withTiming,
   withSequence,
+  withTiming,
   Easing,
+  makeMutable,
+  interpolate,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -15,62 +16,71 @@ interface MetallicShineProps {
   width?: number;
   /** Border radius of the parent card */
   borderRadius?: number;
-  /** How long one breathe cycle takes (ms). Default: 3500 */
+  /**
+   * @deprecated Kept for API compatibility. All instances now share a single
+   * global animation driver so per-instance duration is ignored.
+   */
   duration?: number;
   /** Base opacity of the shine (0–1). Default: 0.35 */
   intensity?: number;
 }
 
+// ─── Module-level global animation driver ────────────────────────────────────
+// Instead of each instance running its own withRepeat loops (N×2 concurrent
+// Reanimated animations), all MetallicShine components share ONE pair of
+// shared values. Each instance derives its style via interpolation.
+const _breathProgress = makeMutable(0);  // 0 → 1 → 0 (breathing)
+const _sweepProgress  = makeMutable(0);  // 0 → 1 → 0 (sweep back-and-forth)
+let _animStarted = false;
+
+function ensureGlobalAnim(): void {
+  if (_animStarted) return;
+  _animStarted = true;
+  // Breathing cycle: ~7 s full cycle (3.5 s up + 3.5 s down)
+  _breathProgress.value = withRepeat(
+    withSequence(
+      withTiming(1, { duration: 3500, easing: Easing.inOut(Easing.ease) }),
+      withTiming(0, { duration: 3500, easing: Easing.inOut(Easing.ease) }),
+    ),
+    -1,
+    false,
+  );
+  // Sweep cycle: 14 s one-way with reverse (ping-pong)
+  _sweepProgress.value = withRepeat(
+    withTiming(1, { duration: 14000, easing: Easing.inOut(Easing.ease) }),
+    -1,
+    true,
+  );
+}
+
 /**
  * Animated metallic breathing shine effect.
- * The entire card surface gets a soft white glow that pulses (breathes)
- * while a metallic band slowly sweeps across horizontally.
+ * Shares a single global animation driver across all instances — zero per-card
+ * animation overhead after the first mount.
  *
  * Must be placed INSIDE a parent with overflow: 'hidden'.
  */
 export const MetallicShine = React.memo(function MetallicShine({
   width = Dimensions.get('window').width,
   borderRadius = 16,
-  duration = 3500,
   intensity = 0.35,
 }: MetallicShineProps): React.ReactElement {
-  const breatheOpacity = useSharedValue(intensity);
-  const translateX = useSharedValue(-width * 0.5);
+  // Start the single global animation on first mount (no-op on subsequent mounts)
+  React.useEffect(() => {
+    ensureGlobalAnim();
+  }, []);
 
-  useEffect(() => {
-    // Breathing: pulse between full intensity and half intensity
-    const low = intensity * 0.4;
-    breatheOpacity.value = withRepeat(
-      withSequence(
-        withTiming(low, { duration, easing: Easing.inOut(Easing.ease) }),
-        withTiming(intensity, { duration, easing: Easing.inOut(Easing.ease) }),
-        withTiming(low, { duration, easing: Easing.inOut(Easing.ease) }),
-        withTiming(intensity, { duration, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      false,
-    );
-
-    // Slow horizontal sweep back and forth
-    translateX.value = withRepeat(
-      withTiming(width, {
-        duration: duration * 4,
-        easing: Easing.inOut(Easing.ease),
-      }),
-      -1,
-      true,
-    );
-  }, [breatheOpacity, translateX, width, duration, intensity]);
+  const bandWidth = width * 0.4;
 
   const breatheStyle = useAnimatedStyle(() => ({
-    opacity: breatheOpacity.value,
+    opacity: interpolate(_breathProgress.value, [0, 1], [intensity * 0.4, intensity]),
   }));
 
   const sweepStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
+    transform: [
+      { translateX: interpolate(_sweepProgress.value, [0, 1], [-bandWidth, width]) },
+    ],
   }));
-
-  const bandWidth = width * 0.4;
 
   return (
     <Animated.View

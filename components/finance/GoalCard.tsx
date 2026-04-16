@@ -6,8 +6,9 @@ import { formatAmount } from '../../utils/currency';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { COLORS } from '../../constants/colors';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { useT } from '../../lib/i18n';
+import { useT, useTranslateCategory } from '../../lib/i18n';
 import { impactLight } from '../../utils/haptics';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import type { BudgetGoal } from '../../types/index';
 
 function useStatusConfig(): Record<string, { label: string; color: string; bg: string }> {
@@ -27,6 +28,7 @@ interface GoalCardProps {
 export function GoalCard({ goal, onPress }: GoalCardProps): React.ReactElement {
   const colors = useThemeColors();
   const hidden = usePrivacyStore((s) => s.hidden);
+  const tc = useTranslateCategory();
   const statusConfig = useStatusConfig();
   const config = statusConfig[goal.status];
   const clampedPercent = Math.min(goal.percent_used, 100);
@@ -71,14 +73,18 @@ export function GoalCard({ goal, onPress }: GoalCardProps): React.ReactElement {
                 marginRight: 12,
               }}
             >
-              <Text style={{ fontSize: 20 }}>{goal.category_icon}</Text>
+              <CategoryIcon
+                name={goal.category_icon ?? 'piggy-bank'}
+                size={20}
+                color={goal.category_color ?? colors.primary}
+              />
             </View>
             <View className="flex-1">
               <Text
                 numberOfLines={1}
                 style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}
               >
-                {goal.budget.category_name}
+                {tc(goal.budget.category_name)}
               </Text>
               {goal.group_name ? (
                 <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 1 }}>{goal.group_name}</Text>

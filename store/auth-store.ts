@@ -31,6 +31,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
   setUser: (user: UserProfile): void => {
     setActiveCurrency(user.currency, user.locale);
     useSettingsStore.getState().setCurrency(user.currency, user.locale);
+    if (user.country_code) {
+      useSettingsStore.getState().setCountryCode(user.country_code);
+    }
     set({
       user,
       isAuthenticated: true,
@@ -49,6 +52,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
         const locale = partial.locale ?? state.user.locale;
         setActiveCurrency(currency, locale);
         useSettingsStore.getState().setCurrency(currency, locale);
+      }
+      if (partial.country_code) {
+        useSettingsStore.getState().setCountryCode(partial.country_code);
       }
       return {
         ...state,

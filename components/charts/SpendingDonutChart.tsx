@@ -3,6 +3,8 @@ import { View, Text } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useTranslateCategory } from '../../lib/i18n';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { STRINGS } from '../../constants/strings';
 import { formatAmount } from '../../utils/currency';
 import { formatPercentage } from '../../utils/currency';
@@ -25,6 +27,7 @@ export function SpendingDonutChart({
   totalExpense,
 }: SpendingDonutChartProps): React.ReactElement {
   const colors = useThemeColors();
+  const tc = useTranslateCategory();
   if (data.length === 0) {
     return (
       <View className="mx-4 mb-4 rounded-2xl p-4" style={{ backgroundColor: colors.surface }}>
@@ -98,11 +101,16 @@ export function SpendingDonutChart({
                 className="h-3 w-3 rounded-full"
                 style={{ backgroundColor: item.category_color }}
               />
+              <CategoryIcon
+                name={item.category_icon ?? 'circle-help'}
+                size={14}
+                color={item.category_color ?? colors.textSecondary}
+              />
               <Text
                 numberOfLines={1}
                 style={{ fontSize: 14, color: colors.textPrimary, flex: 1 }}
               >
-                {item.category_icon} {item.category_name}
+                {tc(item.category_name)}
               </Text>
             </View>
             <View className="flex-row items-center gap-3">

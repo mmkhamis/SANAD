@@ -14,7 +14,7 @@ import {
 
 // ─── Fetch all subscriptions ─────────────────────────────────────────
 
-export function useSubscriptions(): {
+export function useSubscriptions(enabled = true): {
   data: Subscription[] | undefined;
   isLoading: boolean;
   isError: boolean;
@@ -24,7 +24,7 @@ export function useSubscriptions(): {
   const { data, isLoading, isError, error, refetch } = useQuery<Subscription[], Error>({
     queryKey: QUERY_KEYS.subscriptions,
     queryFn: fetchSubscriptions,
-    enabled: useAuthStore.getState().isAuthenticated,
+    enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 
   return { data, isLoading, isError, error, refetch };

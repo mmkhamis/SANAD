@@ -14,14 +14,14 @@ interface UseGoalsResult {
   refetch: () => void;
 }
 
-export function useGoals(month?: string): UseGoalsResult {
+export function useGoals(month?: string, enabled = true): UseGoalsResult {
   const resolvedMonth = month ?? format(new Date(), 'yyyy-MM');
 
   const { data, isLoading, isError, error, refetch } = useQuery<GoalsSummary, Error>({
     queryKey: [...QUERY_KEYS.budgets, 'goals', resolvedMonth],
     queryFn: () => fetchGoalsSummary(resolvedMonth),
     staleTime: 1000 * 60 * 2,
-    enabled: useAuthStore.getState().isAuthenticated,
+    enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 
   return { data, isLoading, isError, error, refetch };

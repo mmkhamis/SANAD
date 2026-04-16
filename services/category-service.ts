@@ -4,6 +4,7 @@ import {
   CATEGORY_TAXONOMY,
   CATEGORY_TAXONOMY_BY_KEY,
   SUBCATEGORY_TAXONOMY_BY_KEY,
+  isSubcategoryVisibleForCountry,
   type CategoryTaxonomyCategory,
   type FlattenedTaxonomySubcategory,
 } from '../constants/category-taxonomy';
@@ -232,103 +233,6 @@ export async function deleteCategory(id: string): Promise<void> {
   }
 }
 
-// ─── Taxonomy → Emoji icon map for DB storage ───────────────────────
-
-const GROUP_EMOJI: Record<string, string> = {
-  income: '💰', bills_utilities: '🧾', housing_home: '🏠',
-  food_dining: '🍽️', transport: '🚗', shopping: '🛍️',
-  health_medical: '🏥', education: '🎓', family_children: '👨‍👩‍👧‍👦',
-  entertainment_lifestyle: '🎬', subscriptions_digital: '🔄',
-  savings_goals: '🏦', investments: '📈', debt_obligations: '💳',
-  travel: '✈️', religion_charity_social: '🕌',
-  business_work_expenses: '💼', luxury_status: '👑',
-  pets: '🐾', miscellaneous: '📦', transfers: '↔️',
-};
-
-const SUB_EMOJI: Record<string, string> = {
-  // Income
-  salary: '💰', bonus: '🎁', freelance: '💻', business_profit: '🏢',
-  rental_income: '🏠', investment_income: '📈', family_support_in: '🤝',
-  gift_received: '🎀', refund_rebate: '🔄', other_income: '💵',
-  // Bills
-  electricity: '⚡', water: '💧', gas: '🔥', internet: '🌐',
-  mobile: '📱', landline: '☎️', tv_satellite: '📡', building_fees: '🏢',
-  // Housing
-  rent: '🏠', mortgage: '🏦', home_maintenance: '🔧', furniture: '🛋️',
-  home_appliances: '🏠', cleaning_supplies: '🧹', home_decor: '🖼️',
-  security_services: '🔒',
-  // Food & Dining
-  groceries: '🛒', bakery: '🍞', meat_seafood: '🥩', restaurants: '🍽️',
-  cafes_coffee: '☕', food_delivery: '🛵', snacks_sweets: '🍰',
-  water_beverages: '🥤',
-  // Transport
-  fuel: '⛽', uber_taxi: '🚕', public_transport: '🚌', parking: '🅿️',
-  tolls: '🛣️', car_maintenance: '🔧', car_insurance: '🛡️',
-  registration_licensing: '📋',
-  // Shopping
-  fashion: '👕', shoes: '👟', bags_accessories: '👜', jewelry: '💎',
-  watches: '⌚', electronics: '📱', general_shopping: '📦', gifts: '🎁',
-  // Health
-  doctor_visits: '🩺', medicines: '💊', lab_tests: '🧪', hospital: '🏥',
-  dental: '🦷', vision: '👓', therapy_fitness: '🏋️', health_insurance: '🛡️',
-  // Education
-  school_fees: '🎓', university: '🏫', courses_training: '💻',
-  books_supplies: '📖', tutoring: '👨‍🏫', exam_fees: '📝',
-  school_transport: '🚌', language_learning: '🗣️',
-  // Family
-  childcare: '👶', baby_supplies: '🍼', kids_clothing: '👗',
-  allowances: '💵', family_support_out: '🤝', school_needs: '🎒',
-  kids_activities: '🎪', maternity: '❤️',
-  // Entertainment
-  cinema_events: '🎬', gaming: '🎮', hobbies: '🎨',
-  beauty_grooming: '💇', sports_clubs: '🏋️', social_outings: '🎉',
-  smoking_shisha: '💨', personal_care: '💆',
-  // Subscriptions
-  netflix: '📺', shahid_vip: '📺', disney_plus: '🎬', spotify: '🎵',
-  youtube_premium: '▶️', anghami: '🎶', icloud_storage: '☁️',
-  adobe: '🎨', microsoft: '💻', chatgpt_ai_tools: '🤖',
-  vpn_security: '🔐', other_digital: '🌐',
-  // Savings
-  emergency_fund: '🆘', general_savings: '🏦', home_goal: '🏠',
-  car_goal: '🚗', wedding_goal: '💍', education_goal: '🎓',
-  travel_goal: '✈️', hajj_umrah_goal: '🕋',
-  // Investments
-  stocks: '📈', etfs_funds: '📊', crypto: '₿', gold_silver: '🪙',
-  real_estate_investment: '🏗️', private_business: '🏢',
-  retirement: '🏖️', investment_fees: '📄',
-  // Debt
-  credit_card_payment: '💳', personal_loan: '🏦', mortgage_payment: '🏠',
-  car_loan: '🚗', installments_bnpl: '🛒', taxes_fees: '🏛️',
-  legal_support: '⚖️', alimony_support: '🤝',
-  // Travel
-  flights: '✈️', hotels: '🏨', visa_fees: '🛂', travel_transport: '🚐',
-  travel_food: '🍜', travel_shopping: '🎒', travel_insurance: '🛡️',
-  hajj_umrah_trip: '🕋',
-  // Religion / Charity
-  zakat: '🤲', sadaqah: '💚', mosque_community: '🕌',
-  eid_social_giving: '🌙', family_occasions: '🎊', funeral_support: '🌸',
-  religious_courses: '📕', qurbani: '🐑',
-  // Business
-  office_supplies: '📎', software_tools: '💿', business_travel: '✈️',
-  marketing_ads: '📣', shipping_logistics: '📮',
-  professional_services: '🤝', coworking_office_rent: '🏢',
-  internet_phone_work: '📱',
-  // Luxury
-  designer_fashion: '✨', luxury_bags: '👜', watches_premium: '⌚',
-  fine_dining: '🍷', premium_travel: '✈️', vip_events: '⭐',
-  collectibles: '💎', luxury_home: '🏠',
-  // Pets
-  pet_food: '🦴', vet: '🩺', pet_supplies: '📦', grooming: '✂️',
-  boarding: '🏠', pet_toys: '🧸',
-  // Miscellaneous
-  cash_withdrawal: '💵', bank_fees: '🏛️', fines_penalties: '⚠️',
-  unexpected_expense: '⚡', uncategorized: '❓', fees_commissions: '🧾',
-  loss_damage: '🛡️', other_misc: '📦',
-  // Transfers
-  between_accounts: '🔄', cash_to_bank: '🏦', bank_to_cash: '💵',
-  wallet_top_up: '📱', savings_transfer: '🏦', investment_transfer: '📈',
-};
-
 // ─── Taxonomy lookup helpers ─────────────────────────────────────────
 
 export function getTaxonomyCategory(key: string): CategoryTaxonomyCategory | undefined {
@@ -379,35 +283,40 @@ interface DefaultGroup {
   categories: { name: string; icon: string; color: string; taxonomyKey: string }[];
 }
 
-function buildDefaultGroups(): DefaultGroup[] {
+function buildDefaultGroups(countryCode: string | null = null): DefaultGroup[] {
   let sortOrder = 0;
   return CATEGORY_TAXONOMY
     .filter((cat) => cat.type === 'income' || cat.type === 'expense' || cat.type === 'savings')
     .map((cat) => {
+      const filteredSubs = cat.subcategories.filter((sub) =>
+        isSubcategoryVisibleForCountry(sub, countryCode),
+      );
       sortOrder += 1;
       return {
         name: cat.label,
-        icon: GROUP_EMOJI[cat.key] ?? '📁',
+        icon: cat.icon ?? 'circle',
         color: cat.color,
         type: (cat.type === 'savings' ? 'expense' : cat.type) as 'expense' | 'income',
         sortOrder,
         taxonomyKey: cat.key,
-        categories: cat.subcategories.map((sub) => ({
+        categories: filteredSubs.map((sub) => ({
           name: sub.label,
-          icon: SUB_EMOJI[sub.key] ?? '📝',
+          icon: sub.icon ?? cat.icon ?? 'circle',
           color: cat.color,
           taxonomyKey: sub.key,
         })),
       };
-    });
+    })
+    .filter((g) => g.categories.length > 0);
 }
 
 /**
  * Seeds default category groups and categories for a new user.
  * Source of truth: constants/category-taxonomy.ts
  * Safe to call multiple times — skips if user already has categories.
+ * @param countryCode ISO country code (e.g. 'SA', 'EG') to filter region-specific categories
  */
-export async function seedDefaultCategories(): Promise<void> {
+export async function seedDefaultCategories(countryCode: string | null = null): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user?.id) return;
 
@@ -416,7 +325,7 @@ export async function seedDefaultCategories(): Promise<void> {
   const existing = await fetchCategories();
   if (existing.length > 0) return;
 
-  const groups = buildDefaultGroups();
+  const groups = buildDefaultGroups(countryCode);
 
   for (const group of groups) {
     const { data: groupRow, error: gErr } = await supabase

@@ -1,10 +1,13 @@
 export type TaxonomyCategoryType = 'income' | 'expense' | 'savings' | 'transfer';
 
+export type RegionTag = 'all' | 'gulf' | 'egypt' | 'ksa' | 'uae';
+
 export interface CategoryTaxonomySubcategory {
   key: string;
   label: string;
   icon?: string;
   aliases?: readonly string[];
+  regionTags?: readonly RegionTag[];
 }
 
 export interface CategoryTaxonomyCategory {
@@ -43,7 +46,7 @@ export const CATEGORY_TAXONOMY = [
       { key: 'business_profit', label: 'Business Profit', icon: 'store', aliases: ['business income', 'profit', 'revenue', 'ربح', 'دخل مشروع'] },
       { key: 'rental_income', label: 'Rental Income', icon: 'building-2', aliases: ['rent received', 'rental income', 'إيجار وارد', 'دخل إيجار'] },
       { key: 'investment_income', label: 'Investment Income', icon: 'chart-column', aliases: ['dividend', 'yield', 'coupon', 'أرباح استثمار', 'توزيعات'] },
-      { key: 'family_support_in', label: 'Family Support', icon: 'hand-coins', aliases: ['family support', 'allowance received', 'مصروف', 'مساعدة من الأسرة'] },
+      { key: 'family_support_in', label: 'Support Received', icon: 'hand-coins', aliases: ['family support', 'allowance received', 'مصروف', 'مساعدة من الأسرة'] },
       { key: 'gift_received', label: 'Gift Received', icon: 'gift', aliases: ['gift', 'cash gift', 'هدية', 'عيدية'] },
       { key: 'refund_rebate', label: 'Refund / Rebate', icon: 'rotate-ccw', aliases: ['refund', 'cashback', 'rebate', 'استرداد', 'كاش باك'] },
       { key: 'other_income', label: 'Other Income', icon: 'plus-circle', aliases: ['other income', 'misc income', 'دخل آخر'] },
@@ -61,12 +64,15 @@ export const CATEGORY_TAXONOMY = [
     subcategories: [
       { key: 'electricity', label: 'Electricity', icon: 'zap', aliases: ['electricity', 'power bill', 'كهرباء'] },
       { key: 'water', label: 'Water', icon: 'droplets', aliases: ['water', 'water bill', 'مياه'] },
-      { key: 'gas', label: 'Gas', icon: 'flame', aliases: ['gas', 'cooking gas', 'غاز'] },
+      { key: 'gas', label: 'Gas', icon: 'flame', aliases: ['gas', 'cooking gas', 'غاز'], regionTags: ['egypt'] },
       { key: 'internet', label: 'Internet', icon: 'wifi', aliases: ['internet', 'broadband', 'fiber', 'انترنت', 'نت'] },
-      { key: 'mobile', label: 'Mobile', icon: 'smartphone', aliases: ['mobile bill', 'phone bill', 'recharge', 'موبايل', 'هاتف'] },
-      { key: 'landline', label: 'Landline', icon: 'phone', aliases: ['landline', 'home phone', 'تليفون أرضي'] },
+      { key: 'mobile', label: 'Mobile', icon: 'smartphone', aliases: ['mobile bill', 'phone bill', 'recharge', 'sim', 'موبايل', 'هاتف', 'شحن رصيد', 'landline', 'home phone', 'تليفون أرضي'] },
       { key: 'tv_satellite', label: 'TV / Satellite', icon: 'tv', aliases: ['satellite', 'tv', 'dish', 'قنوات', 'دش'] },
-      { key: 'building_fees', label: 'Building Fees', icon: 'building', aliases: ['building fees', 'maintenance fee', 'service charge', 'رسوم عمارة', 'اتحاد ملاك'] },
+      { key: 'building_fees', label: 'Building Fees', icon: 'building', aliases: ['building fees', 'maintenance fee', 'service charge', 'رسوم عمارة', 'اتحاد ملاك'], regionTags: ['gulf'] },
+      { key: 'government_services', label: 'Government Services', icon: 'landmark', aliases: ['government fee', 'government service', 'خدمات حكومية', 'رسوم حكومية'] },
+      { key: 'absher', label: 'Absher / Gov Apps', icon: 'smartphone', aliases: ['absher', 'nafath', 'qiwa', 'mudad', 'muqeem', 'musaned', 'baladiya', 'tawakkalna', 'أبشر', 'نفاذ', 'قوى', 'مدد', 'مقيم', 'مساند', 'بلدية', 'توكلنا'], regionTags: ['ksa'] },
+      { key: 'fawry', label: 'Fawry', icon: 'receipt', aliases: ['fawry', 'فوري'], regionTags: ['egypt'] },
+      { key: 'e_gov_egypt', label: 'Digital Egypt', icon: 'landmark', aliases: ['sahel', 'ساهل', 'بوابة الحكومة', 'نافذة'], regionTags: ['egypt'] },
     ],
   },
   {
@@ -86,7 +92,8 @@ export const CATEGORY_TAXONOMY = [
       { key: 'home_appliances', label: 'Home Appliances', icon: 'refrigerator', aliases: ['appliances', 'home appliances', 'أجهزة منزلية'] },
       { key: 'cleaning_supplies', label: 'Cleaning Supplies', icon: 'spray-can', aliases: ['cleaning supplies', 'منظفات'] },
       { key: 'home_decor', label: 'Home Decor', icon: 'lamp', aliases: ['decor', 'home decor', 'ديكور'] },
-      { key: 'security_services', label: 'Security Services', icon: 'shield', aliases: ['security', 'cctv', 'أمن', 'كاميرات'] },
+      { key: 'security_services', label: 'Security Services', icon: 'shield', aliases: ['security', 'cctv', 'أمن', 'كاميرات'], regionTags: ['gulf'] },
+      { key: 'domestic_worker', label: 'Domestic Worker', icon: 'user-round', aliases: ['maid', 'housekeeper', 'driver', 'nanny', 'domestic worker', 'عمالة منزلية', 'خادمة', 'شغالة', 'عامل منزل', 'سائق منزلي', 'مربية', 'مدام'], regionTags: ['gulf'] },
     ],
   },
   {
@@ -104,9 +111,14 @@ export const CATEGORY_TAXONOMY = [
       { key: 'meat_seafood', label: 'Meat & Seafood', icon: 'fish', aliases: ['meat', 'seafood', 'لحوم', 'فراخ', 'سمك'] },
       { key: 'restaurants', label: 'Restaurants', icon: 'chef-hat', aliases: ['restaurant', 'dining out', 'مطعم'] },
       { key: 'cafes_coffee', label: 'Cafes & Coffee', icon: 'coffee', aliases: ['coffee', 'cafe', 'latte', 'قهوة', 'كافيه'] },
-      { key: 'food_delivery', label: 'Food Delivery', icon: 'bike', aliases: ['talabat', 'hungerstation', 'deliveroo', 'طلبات', 'توصيل'] },
+      { key: 'food_delivery', label: 'Food Delivery', icon: 'bike', aliases: ['delivery', 'deliveroo', 'توصيل'] },
+      { key: 'hungerstation', label: 'HungerStation', icon: 'smartphone', aliases: ['hungerstation', 'hunger station', 'هنقرستيشن'], regionTags: ['ksa'] },
+      { key: 'jahez', label: 'Jahez', icon: 'bike', aliases: ['jahez', 'جاهز'], regionTags: ['ksa'] },
+      { key: 'marsool', label: 'Marsool', icon: 'package', aliases: ['marsool', 'مرسول'], regionTags: ['ksa'] },
+      { key: 'talabat', label: 'Talabat', icon: 'shopping-bag', aliases: ['talabat', 'طلبات'], regionTags: ['gulf', 'egypt'] },
+      { key: 'elmenus', label: 'elmenus', icon: 'utensils', aliases: ['elmenus', 'المنيوز'], regionTags: ['egypt'] },
       { key: 'snacks_sweets', label: 'Snacks & Sweets', icon: 'ice-cream-cone', aliases: ['snacks', 'dessert', 'حلويات', 'سناك'] },
-      { key: 'water_beverages', label: 'Water & Beverages', icon: 'cup-soda', aliases: ['water', 'juice', 'drinks', 'مياه', 'مشروبات'] },
+      { key: 'water_beverages', label: 'Water & Beverages', icon: 'cup-soda', aliases: ['water', 'juice', 'drinks', 'water delivery', 'gallon', 'مياه', 'مشروبات', 'شاملة', 'قلون', 'توصيل مياه'] },
     ],
   },
   {
@@ -120,13 +132,15 @@ export const CATEGORY_TAXONOMY = [
     goalEligible: false,
     subcategories: [
       { key: 'fuel', label: 'Fuel', icon: 'fuel', aliases: ['fuel', 'petrol', 'diesel', 'بنزين', 'وقود'] },
-      { key: 'uber_taxi', label: 'Uber / Taxi', icon: 'car-taxi-front', aliases: ['uber', 'careem', 'taxi', 'اوبر', 'كريم', 'تاكسي'] },
+      { key: 'uber_taxi', label: 'Uber / Taxi', icon: 'car-taxi-front', aliases: ['uber', 'taxi', 'اوبر', 'تاكسي'] },
+      { key: 'careem', label: 'Careem', icon: 'car-taxi-front', aliases: ['careem', 'كريم'], regionTags: ['gulf', 'egypt'] },
       { key: 'public_transport', label: 'Public Transport', icon: 'bus', aliases: ['bus', 'metro', 'tram', 'public transport', 'مواصلات', 'مترو'] },
       { key: 'parking', label: 'Parking', icon: 'parking-circle', aliases: ['parking', 'ركنة', 'انتظار'] },
       { key: 'tolls', label: 'Tolls', icon: 'road', aliases: ['toll', 'salik', 'رسوم طريق', 'سالك'] },
       { key: 'car_maintenance', label: 'Car Maintenance', icon: 'wrench', aliases: ['car maintenance', 'oil', 'service', 'صيانة سيارة'] },
       { key: 'car_insurance', label: 'Car Insurance', icon: 'shield-check', aliases: ['car insurance', 'vehicle insurance', 'تأمين سيارة'] },
       { key: 'registration_licensing', label: 'Registration & Licensing', icon: 'file-badge', aliases: ['registration', 'license renewal', 'ترخيص', 'تجديد'] },
+      { key: 'car_rental', label: 'Car Rental', icon: 'car-front', aliases: ['car rental', 'car hire', 'rent a car', 'vehicle rental', 'udrive', 'ekar', 'theeb', 'تأجير سيارة', 'ايجار سيارة'] },
     ],
   },
   {
@@ -159,13 +173,12 @@ export const CATEGORY_TAXONOMY = [
     budgetable: true,
     goalEligible: true,
     subcategories: [
-      { key: 'doctor_visits', label: 'Doctor Visits', icon: 'stethoscope', aliases: ['doctor', 'clinic', 'كشف', 'دكتور'] },
+      { key: 'doctor_visits', label: 'Doctor Visits', icon: 'stethoscope', aliases: ['doctor', 'clinic', 'كشف', 'دكتور', 'glasses', 'optician', 'optometrist', 'eye doctor', 'نظارة', 'عيون', 'بصريات'] },
       { key: 'medicines', label: 'Medicines', icon: 'pill', aliases: ['medicine', 'pharmacy', 'دواء', 'صيدلية'] },
       { key: 'lab_tests', label: 'Lab Tests', icon: 'flask-conical', aliases: ['lab', 'analysis', 'تحاليل', 'مختبر'] },
       { key: 'hospital', label: 'Hospital', icon: 'hospital', aliases: ['hospital', 'emergency', 'مستشفى'] },
       { key: 'dental', label: 'Dental', icon: 'smile-plus', aliases: ['dentist', 'dental', 'أسنان'] },
-      { key: 'vision', label: 'Vision & Glasses', icon: 'glasses', aliases: ['glasses', 'eye doctor', 'نظارة', 'عيون'] },
-      { key: 'therapy_fitness', label: 'Therapy & Fitness', icon: 'dumbbell', aliases: ['therapy', 'physio', 'gym', 'علاج طبيعي', 'جيم'] },
+      { key: 'therapy_fitness', label: 'Therapy & Fitness', icon: 'activity', aliases: ['therapy', 'physio', 'physical therapy', 'علاج طبيعي', 'فيزيوثيرابي'] },
       { key: 'health_insurance', label: 'Health Insurance', icon: 'shield-plus', aliases: ['health insurance', 'medical insurance', 'تأمين صحي'] },
     ],
   },
@@ -207,6 +220,7 @@ export const CATEGORY_TAXONOMY = [
       { key: 'school_needs', label: 'School Needs', icon: 'backpack', aliases: ['school needs', 'school items', 'مستلزمات مدرسة'] },
       { key: 'kids_activities', label: 'Kids Activities', icon: 'toy-brick', aliases: ['kids activity', 'club', 'نشاط أطفال'] },
       { key: 'maternity', label: 'Maternity', icon: 'heart', aliases: ['maternity', 'pregnancy', 'حمل', 'ولادة'] },
+      { key: 'elderly_care', label: 'Elderly Care', icon: 'heart-handshake', aliases: ['elderly care', 'senior care', 'parent care', 'nurse', 'رعاية كبار السن', 'رعاية والدين', 'ممرض'] },
     ],
   },
   {
@@ -222,11 +236,11 @@ export const CATEGORY_TAXONOMY = [
       { key: 'cinema_events', label: 'Cinema & Events', icon: 'ticket', aliases: ['cinema', 'movie', 'concert', 'سينما', 'حفلة'] },
       { key: 'gaming', label: 'Gaming', icon: 'gamepad-2', aliases: ['gaming', 'playstation', 'xbox', 'ألعاب'] },
       { key: 'hobbies', label: 'Hobbies', icon: 'palette', aliases: ['hobby', 'crafts', 'هوايات'] },
-      { key: 'beauty_grooming', label: 'Beauty & Grooming', icon: 'sparkles', aliases: ['salon', 'barber', 'beauty', 'صالون', 'حلاقة'] },
-      { key: 'sports_clubs', label: 'Sports Clubs', icon: 'dumbbell', aliases: ['gym', 'club', 'sports club', 'نادي', 'جيم'] },
-      { key: 'social_outings', label: 'Social Outings', icon: 'party-popper', aliases: ['outing', 'hangout', 'خروجة', 'فسحة'] },
+      { key: 'beauty_grooming', label: 'Beauty & Grooming', icon: 'sparkles', aliases: ['salon', 'barber', 'beauty', 'صالون', 'حلاقة', 'كوافير', 'spa', 'skincare', 'nail', 'manicure', 'pedicure', 'toiletries', 'personal care', 'عناية شخصية', 'مساج', 'تجميل'] },
+      { key: 'sports_clubs', label: 'Sports Clubs', icon: 'dumbbell', aliases: ['gym', 'club', 'sports club', 'fitness first', 'gold gym', 'نادي', 'جيم', 'فتنس فرست', 'نادي رياضي'] },
+      { key: 'social_outings', label: 'Social Outings', icon: 'party-popper', aliases: ['outing', 'hangout', 'طلعة', 'خروجة', 'فسحة', 'نزهة'] },
       { key: 'smoking_shisha', label: 'Smoking & Shisha', icon: 'cigarette', aliases: ['cigarettes', 'shisha', 'دخان', 'شيشة'] },
-      { key: 'personal_care', label: 'Personal Care', icon: 'bath', aliases: ['toiletries', 'personal care', 'عناية شخصية'] },
+      { key: 'laundry', label: 'Laundry & Dry Clean', icon: 'washing-machine', aliases: ['laundry', 'dry clean', 'dry cleaning', 'ironing', 'مصبغة', 'مغسلة', 'غسيل', 'كي', 'تنظيف ملابس', 'أوتوماتيك'], regionTags: ['gulf'] },
     ],
   },
   {
@@ -245,12 +259,10 @@ export const CATEGORY_TAXONOMY = [
       { key: 'spotify', label: 'Spotify', icon: 'music-4', aliases: ['spotify'] },
       { key: 'youtube_premium', label: 'YouTube Premium', icon: 'youtube', aliases: ['youtube premium'] },
       { key: 'anghami', label: 'Anghami', icon: 'music', aliases: ['anghami', 'أنغامي'] },
-      { key: 'icloud_storage', label: 'iCloud / Storage', icon: 'cloud', aliases: ['icloud', 'google one', 'storage', 'مساحة تخزين'] },
-      { key: 'adobe', label: 'Adobe', icon: 'pen-tool', aliases: ['adobe', 'creative cloud'] },
-      { key: 'microsoft', label: 'Microsoft', icon: 'app-window', aliases: ['microsoft', 'office 365'] },
+      { key: 'icloud_storage', label: 'iCloud / Storage', icon: 'cloud', aliases: ['icloud', 'google one', 'storage', 'مساحة تخزين', 'dropbox', 'onedrive'] },
       { key: 'chatgpt_ai_tools', label: 'ChatGPT / AI Tools', icon: 'bot', aliases: ['chatgpt', 'openai', 'claude', 'gemini', 'ai tools', 'ذكاء اصطناعي'] },
       { key: 'vpn_security', label: 'VPN', icon: 'shield-ellipsis', aliases: ['vpn', 'nordvpn', 'expressvpn'] },
-      { key: 'other_digital', label: 'Other Digital', icon: 'globe', aliases: ['digital subscription', 'online subscription', 'اشتراك رقمي'] },
+      { key: 'other_digital', label: 'Other Digital', icon: 'globe', aliases: ['digital subscription', 'online subscription', 'اشتراك رقمي', 'app subscription'] },
     ],
   },
   {
@@ -284,13 +296,12 @@ export const CATEGORY_TAXONOMY = [
     goalEligible: true,
     subcategories: [
       { key: 'stocks', label: 'Stocks', icon: 'chart-line', aliases: ['stocks', 'shares', 'أسهم'] },
-      { key: 'etfs_funds', label: 'ETFs & Funds', icon: 'chart-pie', aliases: ['etf', 'fund', 'mutual fund', 'صناديق'] },
+      { key: 'etfs_funds', label: 'ETFs & Funds', icon: 'chart-pie', aliases: ['etf', 'fund', 'mutual fund', 'صناديق', 'broker fee', 'trading fee', 'investment fee', 'رسوم استثمار', 'رسوم وساطة'] },
       { key: 'crypto', label: 'Crypto', icon: 'bitcoin', aliases: ['crypto', 'bitcoin', 'usdt', 'كريبتو', 'بيتكوين'] },
       { key: 'gold_silver', label: 'Gold & Silver', icon: 'coins', aliases: ['gold', 'silver', 'ذهب', 'فضة'] },
       { key: 'real_estate_investment', label: 'Real Estate Investment', icon: 'building-2', aliases: ['real estate', 'property investment', 'استثمار عقاري'] },
       { key: 'private_business', label: 'Private Business', icon: 'store', aliases: ['business investment', 'partnership', 'شراكة', 'استثمار مشروع'] },
-      { key: 'retirement', label: 'Retirement', icon: 'hourglass', aliases: ['retirement', 'pension', 'تقاعد'] },
-      { key: 'investment_fees', label: 'Investment Fees', icon: 'badge-percent', aliases: ['broker fee', 'trading fee', 'رسوم استثمار'] },
+      { key: 'retirement', label: 'Retirement', icon: 'hourglass', aliases: ['retirement', 'pension', 'gosi', 'تقاعد', 'جوسي', 'معاش', 'تأمينات اجتماعية'] },
     ],
   },
   {
@@ -307,7 +318,9 @@ export const CATEGORY_TAXONOMY = [
       { key: 'personal_loan', label: 'Personal Loan', icon: 'hand-coins', aliases: ['personal loan', 'loan installment', 'قرض شخصي'] },
       { key: 'mortgage_payment', label: 'Mortgage Payment', icon: 'house-plus', aliases: ['mortgage payment', 'home installment', 'قسط عقار'] },
       { key: 'car_loan', label: 'Car Loan', icon: 'car-front', aliases: ['car loan', 'vehicle installment', 'قسط سيارة'] },
-      { key: 'installments_bnpl', label: 'Installments / BNPL', icon: 'calendar-sync', aliases: ['installment', 'tabby', 'tamara', 'تقسيط', 'تمارا', 'تابي'] },
+      { key: 'installments_bnpl', label: 'Installments / BNPL', icon: 'calendar-sync', aliases: ['installment', 'تقسيط', 'أقساط'] },
+      { key: 'tabby', label: 'Tabby', icon: 'smartphone-nfc', aliases: ['tabby', 'تابي'], regionTags: ['gulf'] },
+      { key: 'tamara', label: 'Tamara', icon: 'smartphone-nfc', aliases: ['tamara', 'تمارا'], regionTags: ['gulf'] },
       { key: 'taxes_fees', label: 'Taxes & Government Fees', icon: 'receipt-text', aliases: ['tax', 'government fee', 'رسوم حكومية', 'ضريبة'] },
       { key: 'legal_support', label: 'Legal Support', icon: 'scale', aliases: ['legal fee', 'court', 'محامي', 'قانوني'] },
       { key: 'alimony_support', label: 'Alimony / Support', icon: 'hand-heart', aliases: ['alimony', 'support payment', 'نفقة'] },
@@ -351,6 +364,7 @@ export const CATEGORY_TAXONOMY = [
       { key: 'funeral_support', label: 'Funeral Support', icon: 'flower-2', aliases: ['funeral support', 'عزاء'] },
       { key: 'religious_courses', label: 'Religious Courses', icon: 'book-heart', aliases: ['quran course', 'religious class', 'تحفيظ', 'درس ديني'] },
       { key: 'qurbani', label: 'Qurbani / Sacrifice', icon: 'beef', aliases: ['qurbani', 'udhiya', 'أضحية'] },
+      { key: 'ramadan_supplies', label: 'Ramadan Supplies', icon: 'moon-star', aliases: ['ramadan', 'ramadan supplies', 'suhoor', 'iftar', 'مستلزمات رمضان', 'رمضان', 'إفطار', 'سحور', 'فانوس'] },
     ],
   },
   {
@@ -364,33 +378,13 @@ export const CATEGORY_TAXONOMY = [
     goalEligible: false,
     subcategories: [
       { key: 'office_supplies', label: 'Office Supplies', icon: 'paperclip', aliases: ['office supplies', 'stationery', 'مستلزمات مكتب'] },
-      { key: 'software_tools', label: 'Software & Tools', icon: 'monitor-cog', aliases: ['software', 'saas', 'tool subscription', 'برامج'] },
+      { key: 'software_tools', label: 'Software & Tools', icon: 'monitor-cog', aliases: ['software', 'saas', 'tool subscription', 'برامج', 'adobe', 'creative cloud', 'photoshop', 'illustrator', 'microsoft', 'office 365', 'microsoft 365', 'أدوبي', 'مايكروسوفت'] },
       { key: 'business_travel', label: 'Business Travel', icon: 'plane', aliases: ['business travel', 'سفر عمل'] },
       { key: 'marketing_ads', label: 'Marketing & Ads', icon: 'megaphone', aliases: ['ads', 'marketing', 'إعلانات', 'تسويق'] },
       { key: 'shipping_logistics', label: 'Shipping & Logistics', icon: 'truck', aliases: ['shipping', 'courier', 'شحن'] },
       { key: 'professional_services', label: 'Professional Services', icon: 'users-round', aliases: ['accountant', 'designer', 'consultant', 'خدمات مهنية'] },
       { key: 'coworking_office_rent', label: 'Coworking / Office Rent', icon: 'building', aliases: ['office rent', 'coworking', 'مكتب'] },
       { key: 'internet_phone_work', label: 'Work Internet & Phone', icon: 'smartphone', aliases: ['business phone', 'work internet', 'خط شغل'] },
-    ],
-  },
-  {
-    key: 'luxury_status',
-    label: 'Luxury & Status',
-    type: 'expense',
-    icon: 'crown',
-    color: '#B45309',
-    analyticsGroup: 'luxury',
-    budgetable: true,
-    goalEligible: false,
-    subcategories: [
-      { key: 'designer_fashion', label: 'Designer Fashion', icon: 'sparkles', aliases: ['designer', 'luxury fashion', 'ماركات'] },
-      { key: 'luxury_bags', label: 'Luxury Bags', icon: 'briefcase', aliases: ['luxury bag', 'designer bag', 'شنط ماركات'] },
-      { key: 'watches_premium', label: 'Premium Watches', icon: 'watch', aliases: ['luxury watch', 'premium watch', 'ساعة فاخرة'] },
-      { key: 'fine_dining', label: 'Fine Dining', icon: 'wine', aliases: ['fine dining', 'premium restaurant', 'مطعم فاخر'] },
-      { key: 'premium_travel', label: 'Premium Travel', icon: 'plane', aliases: ['business class', 'luxury travel', 'سفر فاخر'] },
-      { key: 'vip_events', label: 'VIP Events', icon: 'star', aliases: ['vip', 'premium event', 'حدث فاخر'] },
-      { key: 'collectibles', label: 'Collectibles', icon: 'diamond', aliases: ['collectibles', 'art', 'مقتنيات'] },
-      { key: 'luxury_home', label: 'Luxury Home', icon: 'house-plus', aliases: ['luxury decor', 'premium furniture', 'منزل فاخر'] },
     ],
   },
   {
@@ -422,13 +416,10 @@ export const CATEGORY_TAXONOMY = [
     goalEligible: false,
     subcategories: [
       { key: 'cash_withdrawal', label: 'Cash Withdrawal', icon: 'banknote', aliases: ['cash withdrawal', 'atm', 'سحب نقدي', 'atm withdrawal'] },
-      { key: 'bank_fees', label: 'Bank Fees', icon: 'badge-percent', aliases: ['bank fee', 'atm fee', 'رسوم بنكية'] },
+      { key: 'fees_commissions', label: 'Fees & Commissions', icon: 'receipt', aliases: ['fee', 'commission', 'رسوم', 'عمولة', 'bank fee', 'atm fee', 'رسوم بنكية'] },
       { key: 'fines_penalties', label: 'Fines & Penalties', icon: 'octagon-alert', aliases: ['fine', 'penalty', 'مخالفة', 'غرامة'] },
-      { key: 'unexpected_expense', label: 'Unexpected Expense', icon: 'triangle-alert', aliases: ['unexpected', 'misc expense', 'مصروف مفاجئ'] },
-      { key: 'uncategorized', label: 'Uncategorized', icon: 'circle-help', aliases: ['uncategorized', 'other', 'أخرى', 'غير مصنف'] },
-      { key: 'fees_commissions', label: 'Fees & Commissions', icon: 'receipt', aliases: ['fee', 'commission', 'رسوم', 'عمولة'] },
-      { key: 'loss_damage', label: 'Loss / Damage', icon: 'shield-x', aliases: ['loss', 'damage', 'تلف', 'خسارة'] },
-      { key: 'other_misc', label: 'Other Miscellaneous', icon: 'more-horizontal', aliases: ['miscellaneous', 'general', 'متفرقات'] },
+      { key: 'unexpected_expense', label: 'Unexpected Expense', icon: 'triangle-alert', aliases: ['unexpected', 'misc expense', 'مصروف مفاجئ', 'loss', 'damage', 'تلف', 'خسارة'] },
+      { key: 'uncategorized', label: 'Uncategorized', icon: 'circle-help', aliases: ['uncategorized', 'other', 'أخرى', 'غير مصنف', 'miscellaneous', 'general', 'متفرقات'] },
     ],
   },
   {
@@ -488,3 +479,51 @@ export const SUBCATEGORY_ALIAS_MAP: Readonly<Record<string, readonly string[]>> 
     ]),
   ),
 );
+
+// ─── Country → Region mapping ────────────────────────────────────────
+
+const GULF_COUNTRIES = ['SA', 'AE', 'KW', 'QA', 'BH', 'OM'] as const;
+
+/** Resolve which region tags apply for a given ISO country code */
+export function getRegionTagsForCountry(countryCode: string | null): readonly RegionTag[] {
+  if (!countryCode) return ['all', 'gulf']; // Default to gulf (KSA-first)
+  const cc = countryCode.toUpperCase();
+  const tags: RegionTag[] = ['all'];
+  if (GULF_COUNTRIES.includes(cc as typeof GULF_COUNTRIES[number])) tags.push('gulf');
+  if (cc === 'SA') tags.push('ksa');
+  if (cc === 'AE') tags.push('uae');
+  if (cc === 'EG') tags.push('egypt');
+  return tags;
+}
+
+/** Check if a subcategory should be visible for a user's country */
+export function isSubcategoryVisibleForCountry(
+  sub: CategoryTaxonomySubcategory,
+  countryCode: string | null,
+): boolean {
+  const subTags = sub.regionTags;
+  if (!subTags || subTags.length === 0 || subTags.includes('all')) return true;
+  const userTags = getRegionTagsForCountry(countryCode);
+  return subTags.some((tag) => userTags.includes(tag));
+}
+
+/** Filter the full taxonomy for a specific country */
+export function getFilteredTaxonomy(
+  countryCode: string | null,
+): readonly CategoryTaxonomyCategory[] {
+  return CATEGORY_TAXONOMY.map((cat) => ({
+    ...cat,
+    subcategories: cat.subcategories.filter((sub) =>
+      isSubcategoryVisibleForCountry(sub, countryCode),
+    ),
+  })).filter((cat) => cat.subcategories.length > 0);
+}
+
+/** Filter flattened subcategories for a specific country */
+export function getFilteredSubcategories(
+  countryCode: string | null,
+): readonly FlattenedTaxonomySubcategory[] {
+  return FLATTENED_SUBCATEGORIES.filter((sub) =>
+    isSubcategoryVisibleForCountry(sub, countryCode),
+  );
+}

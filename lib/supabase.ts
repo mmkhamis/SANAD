@@ -74,18 +74,43 @@ export async function invokeWithRetry<T = unknown>(
       },
     });
     if (error) {
-      // In supabase-js v2.45+, FunctionsHttpError.context is already the
-      // parsed JSON response body (plain object), NOT a Response object.
-      const err = error as { message?: string; name?: string; context?: Record<string, unknown> };
+      // In supabase-js v2.101+, FunctionsHttpError.context is the raw
+      // Response object. We need to parse it to get the actual error body.
+      const err = error as { message?: string; name?: string; context?: unknown };
       let msg = err.message ?? '';
+      let httpStatus = 0;
+
       const ctx = err.context;
       if (ctx && typeof ctx === 'object') {
-        const body = ctx as { error?: string; message?: string };
-        msg = body.error ?? body.message ?? msg;
+        // ctx might be a Response object (has .status and .json/text) or a plain object
+        const maybeResponse = ctx as { status?: number; json?: () => Promise<unknown>; text?: () => Promise<string> };
+        if (typeof maybeResponse.status === 'number') {
+          httpStatus = maybeResponse.status;
+        }
+        if (typeof maybeResponse.json === 'function') {
+          try {
+            const body = await maybeResponse.json() as { error?: string; message?: string };
+            msg = body.error ?? body.message ?? msg;
+          } catch {
+            // If JSON parsing fails, try text
+            try {
+              if (typeof maybeResponse.text === 'function') {
+                msg = await maybeResponse.text() || msg;
+              }
+            } catch {
+              // ignore
+            }
+          }
+        } else {
+          // Plain object (older supabase-js behavior)
+          const body = ctx as { error?: string; message?: string };
+          msg = body.error ?? body.message ?? msg;
+        }
       }
-      // Tag the error name so retry logic can detect auth failures
+
       const wrapped = new Error(msg || 'Edge function error');
       if (err.name) (wrapped as { name: string }).name = err.name;
+      (wrapped as { httpStatus?: number }).httpStatus = httpStatus;
       throw wrapped;
     }
     return data as T;
@@ -96,10 +121,13 @@ export async function invokeWithRetry<T = unknown>(
     return await attempt(accessToken);
   } catch (err) {
     const msg = err instanceof Error ? err.message : '';
-    const name = err instanceof Error ? err.name : '';
+    const httpStatus = (err as { httpStatus?: number }).httpStatus ?? 0;
+
+    // Only treat as auth error if it's specifically a 401 or auth-related message.
+    // Do NOT treat all FunctionsHttpError as auth errors.
     const isAuthError =
-      /invalid jwt|invalid.*token|unauthorized|401|expired/i.test(msg) ||
-      name === 'FunctionsHttpError';
+      httpStatus === 401 ||
+      /invalid jwt|invalid.*token|unauthorized|expired.*token|token.*expired/i.test(msg);
     if (!isAuthError) throw err;
 
     // Auth error → force a hard refresh and retry once

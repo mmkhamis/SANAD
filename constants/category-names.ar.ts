@@ -22,9 +22,9 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Investments': 'الاستثمارات',
   'Debt & Obligations': 'الديون والالتزامات',
   'Travel': 'السفر',
-  'Religion / Charity / Social Duties': 'الدين والصدقات',
-  'Business / Work Expenses': 'مصاريف العمل',
-  'Luxury & Status': 'الكماليات',
+  'Religion / Charity / Social Duties': 'الدين والصدقات والمناسبات',
+  'Business / Work Expenses': 'مصروفات العمل',
+  'Luxury & Status': 'الكماليات', // legacy compat
   'Pets': 'حيوانات أليفة',
   'Miscellaneous': 'متفرقات',
   'Transfers': 'التحويلات',
@@ -38,7 +38,8 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Business Profit': 'ربح مشروع',
   'Rental Income': 'دخل إيجار',
   'Investment Income': 'أرباح استثمار',
-  'Family Support': 'مساعدة من الأهل',
+  'Family Support': 'مساعدة الأهل',
+  'Support Received': 'مساعدة من الأهل',
   'Gift Received': 'هدية',
   'Refund / Rebate': 'استرداد',
   'Other Income': 'دخل آخر',
@@ -49,9 +50,8 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Gas': 'غاز',
   'Internet': 'إنترنت',
   'Mobile': 'جوال',
-  'Landline': 'هاتف ثابت',
   'TV / Satellite': 'قنوات / دش',
-  'Building Fees': 'رسوم العمارة',
+  'Building Fees': 'رسوم الخدمات',
 
   // ─── Housing & Home ─────────────────────────────────────
   'Rent': 'إيجار',
@@ -87,7 +87,7 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Fashion': 'ملابس وأزياء',
   'Shoes': 'أحذية',
   'Bags & Accessories': 'شنط واكسسوارات',
-  'Jewelry': 'مجوهرات',
+  'Jewelry': 'مجوهرات وذهب',
   'Watches': 'ساعات',
   'Electronics': 'إلكترونيات',
   'General Shopping': 'مشتريات عامة',
@@ -99,8 +99,7 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Lab Tests': 'تحاليل',
   'Hospital': 'مستشفى',
   'Dental': 'أسنان',
-  'Vision & Glasses': 'نظارات',
-  'Therapy & Fitness': 'علاج طبيعي وجيم',
+  'Therapy & Fitness': 'علاج طبيعي',
   'Health Insurance': 'تأمين صحي',
 
   // ─── Education ──────────────────────────────────────────
@@ -115,7 +114,7 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
 
   // ─── Family & Children ──────────────────────────────────
   'Childcare': 'حضانة',
-  'Baby Supplies': 'مستلزمات أطفال',
+  'Baby Supplies': 'مستلزمات رضيع',
   'Kids Clothing': 'ملابس أطفال',
   'Allowances': 'مصروف العيال',
   'School Needs': 'مستلزمات المدرسة',
@@ -130,7 +129,6 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Sports Clubs': 'نادي ورياضة',
   'Social Outings': 'طلعات',
   'Smoking & Shisha': 'تدخين وشيشة',
-  'Personal Care': 'عناية شخصية',
 
   // ─── Subscriptions & Digital ────────────────────────────
   'Netflix': 'نتفلكس',
@@ -140,8 +138,6 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'YouTube Premium': 'يوتيوب بريميوم',
   'Anghami': 'أنغامي',
   'iCloud / Storage': 'مساحة تخزين',
-  'Adobe': 'أدوبي',
-  'Microsoft': 'مايكروسوفت',
   'ChatGPT / AI Tools': 'ذكاء اصطناعي',
   'VPN': 'VPN',
   'Other Digital': 'اشتراكات أخرى',
@@ -151,7 +147,7 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'General Savings': 'ادخار عام',
   'Home Goal': 'ادخار بيت',
   'Car Goal': 'ادخار سيارة',
-  'Wedding Goal': 'ادخار زواج',
+  'Wedding Goal': 'ادخار زواج / جهاز',
   'Education Goal': 'ادخار تعليم',
   'Travel Goal': 'ادخار سفر',
   'Hajj / Umrah Goal': 'ادخار حج وعمرة',
@@ -164,7 +160,6 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Real Estate Investment': 'استثمار عقاري',
   'Private Business': 'استثمار مشروع',
   'Retirement': 'تقاعد',
-  'Investment Fees': 'رسوم استثمار',
 
   // ─── Debt & Obligations ─────────────────────────────────
   'Credit Card Payment': 'سداد بطاقة',
@@ -173,7 +168,7 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Car Loan': 'قسط سيارة',
   'Installments / BNPL': 'تقسيط',
   'Taxes & Government Fees': 'ضرائب ورسوم',
-  'Legal Support': 'محامي',
+  'Legal Support': 'رسوم قانونية',
   'Alimony / Support': 'نفقة',
 
   // ─── Travel ─────────────────────────────────────────────
@@ -193,7 +188,7 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Eid / Social Giving': 'عيدية',
   'Family Occasions': 'مناسبات',
   'Funeral Support': 'عزاء',
-  'Religious Courses': 'دروس دينية',
+  'Religious Courses': 'تحفيظ ودروس دينية',
   'Qurbani / Sacrifice': 'أضحية',
 
   // ─── Business / Work Expenses ───────────────────────────
@@ -220,18 +215,15 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Pet Food': 'أكل حيوانات',
   'Vet': 'بيطري',
   'Pet Supplies': 'لوازم حيوانات',
-  'Grooming': 'تنظيف حيوانات',
+  'Grooming': 'تجميل الحيوان',
   'Boarding / Sitting': 'إقامة حيوانات',
   'Pet Toys': 'ألعاب حيوانات',
 
   // ─── Miscellaneous ──────────────────────────────────────
   'Cash Withdrawal': 'سحب نقدي',
-  'Bank Fees': 'رسوم بنكية',
   'Fines & Penalties': 'مخالفات وغرامات',
   'Unexpected Expense': 'مصروف مفاجئ',
   'Fees & Commissions': 'رسوم وعمولات',
-  'Loss / Damage': 'خسارة وتلف',
-  'Other Miscellaneous': 'متفرقات',
 
   // ─── Transfers ──────────────────────────────────────────
   'Between Accounts': 'تحويل بين الحسابات',
@@ -240,6 +232,27 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Wallet Top-up': 'شحن محفظة',
   'Move to Savings': 'تحويل للادخار',
   'Move to Investment': 'تحويل للاستثمار',
+
+  // ─── New MENA categories (migration 029) ────────────────────────────
+  'Government Services': 'خدمات حكومية',
+  'Domestic Worker': 'عمالة منزلية',
+  'Car Rental': 'تأجير سيارة',
+  'Elderly Care': 'رعاية الوالدين',
+  'Laundry & Dry Clean': 'غسيل وكي',
+  'Ramadan Supplies': 'مستلزمات رمضان',
+
+  // ─── Region-specific app categories ─────────────────────────────────
+  'HungerStation': 'هنقرستيشن',
+  'Jahez': 'جاهز',
+  'Marsool': 'مرسول',
+  'Talabat': 'طلبات',
+  'elmenus': 'المنيوز',
+  'Careem': 'كريم',
+  'Absher / Gov Apps': 'أبشر وتطبيقات حكومية',
+  'Fawry': 'فوري',
+  'Digital Egypt': 'مصر الرقمية',
+  'Tabby': 'تابي',
+  'Tamara': 'تمارا',
 
   // ─── Legacy labels (backward compat) ────────────────────
   'Family & Kids': 'العيال',

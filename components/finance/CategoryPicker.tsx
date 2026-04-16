@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { Check, ChevronLeft, Plus } from 'lucide-react-native';
+import { CategoryIcon } from '../ui/CategoryIcon';
 
 import { impactLight } from '../../utils/haptics';
 import { useTranslateCategory } from '../../lib/i18n';
@@ -51,7 +52,7 @@ function FlatCategoryList({
               borderColor: isSelected ? category.color : colors.borderLight,
             }}
           >
-            <Text style={{ fontSize: 18, marginRight: 6 }}>{category.icon}</Text>
+            <View style={{ marginRight: 6 }}><CategoryIcon name={category.icon} size={18} color={isSelected ? category.color : colors.textSecondary} /></View>
             <Text
               style={{
                 fontSize: 14,
@@ -107,7 +108,7 @@ function GroupGrid({
               borderColor: isActive ? g.group.color : 'transparent',
             }}
           >
-            <Text style={{ fontSize: 24 }}>{g.group.icon}</Text>
+            <CategoryIcon name={g.group.icon} size={24} color={isActive ? g.group.color : colors.textSecondary} />
             <Text
               numberOfLines={1}
               style={{
@@ -191,7 +192,7 @@ function SubcategoryList({
         onPress={() => { impactLight(); onBack(); }}
       >
         <ChevronLeft size={18} color={group.group.color} strokeWidth={2.5} />
-        <Text style={{ fontSize: 22, marginLeft: 4, marginRight: 6 }}>{group.group.icon}</Text>
+        <View style={{ marginLeft: 4, marginRight: 6 }}><CategoryIcon name={group.group.icon} size={22} color={group.group.color} /></View>
         <Text
           style={{
             fontSize: 16,
@@ -219,7 +220,7 @@ function SubcategoryList({
                 borderColor: isSelected ? group.group.color : 'transparent',
               }}
             >
-              <Text style={{ fontSize: 17, marginRight: 6 }}>{category.icon}</Text>
+              <View style={{ marginRight: 6 }}><CategoryIcon name={category.icon} size={17} color={isSelected ? group.group.color : colors.textSecondary} /></View>
               <Text
                 style={{
                   fontSize: 14,

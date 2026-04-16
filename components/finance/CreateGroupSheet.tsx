@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Plus, Trash2, ArrowRight, Check } from 'lucide-react-native';
+import { CategoryIcon } from '../ui/CategoryIcon';
 
 import { impactLight, impactMedium, notifySuccess, notifyError } from '../../utils/haptics';
 import { useCreateCategoryGroup } from '../../hooks/useCategories';
@@ -264,7 +265,7 @@ export function CreateGroupSheet({
                   borderColor: color + '25',
                 }}
               >
-                <Text style={{ fontSize: 18, marginRight: 8 }}>{s.icon}</Text>
+                <View style={{ marginRight: 8 }}><CategoryIcon name={s.icon} size={18} color={color} /></View>
                 <Text style={{ flex: 1, fontSize: 14, fontWeight: '500', color: colors.textPrimary }}>
                   {s.name}
                 </Text>

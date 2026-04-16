@@ -124,18 +124,18 @@ function AddMemberModal({ visible, communityId, existingUserIds, onClose }: { vi
                 </View>
                 {already ? (
                   <View style={{ backgroundColor: colors.income + '18', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5 }}>
-                    <Text style={{ color: colors.income, fontSize: 12, fontWeight: '600' }}>Added</Text>
+                    <Text style={{ color: colors.income, fontSize: 12, fontWeight: '600' }}>{t('ADDED_BADGE' as any)}</Text>
                   </View>
                 ) : (
                   <Pressable onPress={() => handleAdd(user.id)} disabled={isPending} style={{ backgroundColor: colors.primaryDark, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 }}>
-                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Add</Text>
+                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>{t('ADD')}</Text>
                   </Pressable>
                 )}
               </View>
             );
           })}
           {query.trim().length >= 2 && !isFetching && (results ?? []).length === 0 && (
-            <Text style={{ color: colors.textDim, textAlign: 'center', paddingVertical: 32, fontSize: 14 }}>No users found for "{query}"</Text>
+            <Text style={{ color: colors.textDim, textAlign: 'center', paddingVertical: 32, fontSize: 14 }}>{t('NO_USERS_FOUND' as any)} "{query}"</Text>
           )}
         </ScrollView>
       </SafeAreaView>

@@ -66,13 +66,13 @@ interface UsePortfolioSummaryResult {
   refetch: () => void;
 }
 
-export function usePortfolioSummary(): UsePortfolioSummaryResult {
+export function usePortfolioSummary(enabled = true): UsePortfolioSummaryResult {
   const currency = useSettingsStore((s) => s.activeCurrency);
   const { data, isLoading, isError, error, refetch } = useQuery<PortfolioSummary, Error>({
     queryKey: [...QUERY_KEYS.portfolioSummary, currency],
     queryFn: getPortfolioValue,
     staleTime: 1000 * 60 * 2, // 2 min
-    enabled: useAuthStore.getState().isAuthenticated,
+    enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 
   return { data, isLoading, isError, error, refetch };

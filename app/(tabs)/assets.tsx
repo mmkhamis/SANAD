@@ -1035,7 +1035,7 @@ export default function AssetsScreen(): React.ReactElement {
                         letterSpacing: -0.4,
                       }}
                     >
-                      Physical Assets
+                      {t('PHYSICAL_ASSETS' as any)}
                     </Text>
                     <Text
                       style={{
@@ -1044,7 +1044,7 @@ export default function AssetsScreen(): React.ReactElement {
                         marginTop: 2,
                       }}
                     >
-                      Your holdings
+                      {t('YOUR_HOLDINGS' as any)}
                     </Text>
                   </View>
                   <Pressable
@@ -1166,7 +1166,7 @@ export default function AssetsScreen(): React.ReactElement {
         />
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary }}>
-            Assets
+            {t('ASSETS_TITLE')}
           </Text>
           {portfolio && portfolio.total_value > 0 ? (
             <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary }}>

@@ -7,6 +7,7 @@ import { useT, useTranslateCategory } from '../../lib/i18n';
 import { formatCompactNumber } from '../../utils/currency';
 import { formatShortDate } from '../../utils/locale-format';
 import { CurrencyIcon, hasCurrencyIcon } from '../ui/CurrencyIcon';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { useSettingsStore } from '../../store/settings-store';
 import { usePrivacyStore } from '../../store/privacy-store';
 import type { Transaction } from '../../types/index';
@@ -58,7 +59,11 @@ export const TransactionRow = React.memo(function TransactionRow({ transaction, 
           backgroundColor: (transaction.category_color ?? colors.textTertiary) + '20',
         }}
       >
-        <Text style={{ fontSize: 18 }}>{transaction.category_icon ?? '📱'}</Text>
+        <CategoryIcon
+          name={transaction.category_icon ?? 'smartphone'}
+          size={20}
+          color={transaction.category_color ?? colors.textSecondary}
+        />
       </View>
 
       {/* Description & Category */}

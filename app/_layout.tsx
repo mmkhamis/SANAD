@@ -17,12 +17,13 @@ import { setupNotificationChannel, requestNotificationPermission } from '../serv
 // Import global CSS for NativeWind
 import '../global.css';
 
-// ─── Initialize RTL based on persisted language ──────────────────────
-const initialLang = useLanguageStore.getState().language;
-const shouldRTL = initialLang === 'ar';
-if (I18nManager.isRTL !== shouldRTL) {
-  I18nManager.allowRTL(shouldRTL);
-  I18nManager.forceRTL(shouldRTL);
+// ─── Ensure layout stays LTR ─────────────────────────────────────────
+// Arabic text renders RTL naturally inside Text components.
+// We intentionally keep the layout LTR so flex, margins, and icons stay
+// in their designed positions. Only individual Text nodes get writingDirection.
+if (I18nManager.isRTL) {
+  I18nManager.allowRTL(false);
+  I18nManager.forceRTL(false);
 }
 
 // ─── Suppress Expo Go deep-link bundle-reload red error box ──────────

@@ -19,11 +19,11 @@ interface UseUnreviewedResult {
   refetch: () => void;
 }
 
-export function useUnreviewedTransactions(): UseUnreviewedResult {
+export function useUnreviewedTransactions(enabled = true): UseUnreviewedResult {
   const { data, isLoading, isError, error, refetch } = useQuery<Transaction[], Error>({
     queryKey: QUERY_KEYS.unreviewedTransactions,
     queryFn: fetchUnreviewedTransactions,
-    enabled: useAuthStore.getState().isAuthenticated,
+    enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 
   return { data, isLoading, isError, error, refetch };

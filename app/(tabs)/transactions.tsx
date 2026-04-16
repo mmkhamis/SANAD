@@ -1012,7 +1012,7 @@ function TransactionsContent(): React.ReactElement {
                     {isCreatingCommunity ? (
                       <ActivityIndicator size="small" color="#FFFFFF" />
                     ) : (
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>Create & Split</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF' }}>{t('CREATE_AND_SPLIT' as any)}</Text>
                     )}
                   </Pressable>
                 </View>

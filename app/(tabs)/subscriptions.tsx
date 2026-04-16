@@ -182,7 +182,7 @@ function AddSubscriptionModal({
                 className="rounded-lg px-3 py-2 mr-2"
                 style={{ backgroundColor: !filterCat ? colors.primary : colors.surfaceSecondary }}
               >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: !filterCat ? '#fff' : colors.textSecondary }}>All</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: !filterCat ? '#fff' : colors.textSecondary }}>{t('ALL_FILTER' as any)}</Text>
               </Pressable>
               {SUBSCRIPTION_CATEGORIES.map((cat) => (
                 <Pressable

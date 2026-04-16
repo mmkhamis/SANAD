@@ -156,6 +156,7 @@ export async function completeOnboarding(
     .update({
       currency: onboardingData.currency,
       locale: onboardingData.locale,
+      country_code: onboardingData.country_code,
       onboarding_completed: true,
       updated_at: new Date().toISOString(),
     })

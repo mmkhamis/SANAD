@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,7 @@ import {
   TrendingUp,
   Target,
 } from 'lucide-react-native';
+import { CategoryIcon } from '../../components/ui/CategoryIcon';
 import { format } from 'date-fns';
 import { Image } from 'expo-image';
 
@@ -508,7 +509,7 @@ function ComparisonRow({
       {/* Category + badge */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Text style={{ fontSize: 18 }}>{item.category_icon}</Text>
+          <CategoryIcon name={item.category_icon ?? 'shopping-bag'} size={18} color={item.category_color ?? colors.textSecondary} />
           <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
             {tc(item.category_name)}
           </Text>
@@ -608,7 +609,7 @@ interface MoneyAnalysisCardProps {
   onPress: () => void;
 }
 
-function MoneyAnalysisCard({
+const MoneyAnalysisCard = React.memo(function MoneyAnalysisCard({
   dashboard,
   habitInsights,
   goalsSummary,
@@ -650,7 +651,7 @@ function MoneyAnalysisCard({
           />
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: goalsSummary ? 14 : 0 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <Text style={{ fontSize: 22 }}>{topCat.category_icon}</Text>
+              <CategoryIcon name={topCat.category_icon ?? 'shopping-bag'} size={22} color={topCat.category_color ?? colors.textSecondary} />
               <View>
                 <Text style={{ fontSize: 11, color: colors.textTertiary }}>{t('TOP_CATEGORY')}</Text>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
@@ -694,7 +695,7 @@ function MoneyAnalysisCard({
       ) : null}
     </AnalyticsCard>
   );
-}
+});
 
 // ─── Money Analysis Sheet Content ─────────────────────────────────────
 
@@ -853,7 +854,7 @@ interface SavingTipsCardProps {
   onPress: () => void;
 }
 
-function SavingTipsCard({
+const SavingTipsCard = React.memo(function SavingTipsCard({
   benchmarkSummary,
   dashboard,
   hidden,
@@ -917,7 +918,7 @@ function SavingTipsCard({
         <>
           <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 14 }}>
             {t('BIGGEST_SPEND')}{' '}
-            <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{topCat.category_icon} {tc(topCat.category_name)}</Text>
+            <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{tc(topCat.category_name)}</Text>
             {t('SMALL_CUT')}
           </Text>
 
@@ -948,7 +949,7 @@ function SavingTipsCard({
       )}
     </AnalyticsCard>
   );
-}
+});
 
 // ─── Saving Tips Sheet Content ─────────────────────────────────────────
 
@@ -1006,10 +1007,12 @@ function SavingTipsSheetContent({
                       borderBottomColor: colors.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
                     }}
                   >
-                    <Text style={{ fontSize: 20, marginRight: 12 }}>{cat.category_icon}</Text>
+                    <View style={{ marginRight: 12 }}>
+                      <CategoryIcon name={cat.category_icon ?? 'shopping-bag'} size={20} color={cat.category_color ?? colors.textSecondary} />
+                    </View>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
-                        {cat.category_name}
+                        {tc(cat.category_name)}
                       </Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                         <Text style={{ fontSize: 11, color: colors.textTertiary }}>{t('FIVE_PCT_CUT')}</Text>
@@ -1018,7 +1021,7 @@ function SavingTipsSheetContent({
                         ) : (
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                             <CurrencyAmount value={saving5pct} color="#34D399" fontSize={11} fontWeight="600" />
-                            <Text style={{ fontSize: 11, color: colors.textTertiary }}>/mo</Text>
+                            <Text style={{ fontSize: 11, color: colors.textTertiary }}>{t('PER_MONTH_SHORT' as any)}</Text>
                           </View>
                         )}
                       </View>
@@ -1062,6 +1065,10 @@ function SavingTipsSheetContent({
     return sum + Math.max(0, c.user_spend - c.benchmark_median) * 0.05;
   }, 0);
 
+  const annualSaving = totalPotentialSaving * 12;
+  const topCategory = overspending.length > 0 ? overspending[0] : null;
+  const topCategoryName = topCategory ? tc(topCategory.category_name) : '';
+
   return (
     <View style={{ paddingTop: 16 }}>
       {/* Summary saving potential */}
@@ -1081,20 +1088,22 @@ function SavingTipsSheetContent({
           <Text style={{ fontSize: 12, color: '#34D399', fontWeight: '600', marginBottom: 4 }}>
             {t('SAVING_OPPORTUNITY')}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
             <TrendingDown size={18} color="#34D399" strokeWidth={2.5} />
             <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-              {t('CUT_OVERSPENDING')}
+              {t('CUT_OVERSPENDING')}{' '}
+              <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{topCategoryName}</Text>
+              {' '}{t('CUT_OVERSPENDING_SUFFIX' as any)}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
             {hidden ? (
               <Text style={{ fontSize: 26, fontWeight: '700', color: '#34D399' }}>••••</Text>
             ) : (
-              <CurrencyAmount value={totalPotentialSaving} color="#34D399" fontSize={26} fontWeight="700" />
+              <CurrencyAmount value={annualSaving} color="#34D399" fontSize={26} fontWeight="700" />
             )}
             <Text style={{ fontSize: 14, color: colors.textTertiary, alignSelf: 'flex-end', marginBottom: 2 }}>
-              {t('PER_MONTH')}
+              {t('PER_YEAR_LABEL' as any)}
             </Text>
           </View>
         </View>
@@ -1119,9 +1128,9 @@ function SavingTipsSheetContent({
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <Text style={{ fontSize: 18 }}>{item.category_icon}</Text>
+                      <CategoryIcon name={item.category_icon ?? 'shopping-bag'} size={18} color={item.category_color ?? colors.textSecondary} />
                       <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
-                        {item.category_name}
+                        {tc(item.category_name)}
                       </Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
@@ -1131,7 +1140,7 @@ function SavingTipsSheetContent({
                       ) : (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
                           <CurrencyAmount value={potentialSaving} color="#34D399" fontSize={13} fontWeight="700" />
-                          <Text style={{ fontSize: 11, color: colors.textTertiary }}>/mo</Text>
+                          <Text style={{ fontSize: 11, color: colors.textTertiary }}>{t('PER_MONTH_SHORT' as any)}</Text>
                         </View>
                       )}
                     </View>
@@ -1223,16 +1232,18 @@ interface SubscriptionsCardProps {
   onPress: () => void;
 }
 
-function SubscriptionsCard({ subs, hidden, onPress }: SubscriptionsCardProps): React.ReactElement {
+const SubscriptionsCard = React.memo(function SubscriptionsCard({ subs, hidden, onPress }: SubscriptionsCardProps): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
-  const active = subs.filter((s) => s.is_active);
-  const endOfMonth = thisMonthEnd();
 
-  const thisMonth = active.filter((s) => new Date(s.next_billing_date) <= endOfMonth);
-  const thisMonthTotal = thisMonth.reduce((sum, s) => sum + s.amount, 0);
-
-  const previews = active.slice(0, 4);
+  const { active, thisMonth, thisMonthTotal, previews } = useMemo(() => {
+    const active = subs.filter((s) => s.is_active);
+    const endOfMonth = thisMonthEnd();
+    const thisMonth = active.filter((s) => new Date(s.next_billing_date) <= endOfMonth);
+    const thisMonthTotal = thisMonth.reduce((sum, s) => sum + s.amount, 0);
+    const previews = active.slice(0, 4);
+    return { active, thisMonth, thisMonthTotal, previews };
+  }, [subs]);
 
   return (
     <AnalyticsCard onPress={onPress} accentColor="#38BDF8" delay={180}>
@@ -1311,7 +1322,7 @@ function SubscriptionsCard({ subs, hidden, onPress }: SubscriptionsCardProps): R
       ) : null}
     </AnalyticsCard>
   );
-}
+});
 
 // ─── Subscriptions Sheet Content ──────────────────────────────────────
 
@@ -1324,27 +1335,35 @@ function SubscriptionsSheetContent({
 }): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
-  const active = subs.filter((s) => s.is_active);
-  const paused = subs.filter((s) => !s.is_active);
-  const endOfMonth = thisMonthEnd();
 
-  const thisMonth = active.filter((s) => new Date(s.next_billing_date) <= endOfMonth);
-  const thisMonthTotal = thisMonth.reduce((sum, s) => sum + s.amount, 0);
-
-  const monthlyEquiv = active.reduce((sum, s) => sum + toMonthly(s.amount, s.billing_cycle as BillingCycle), 0);
-  const yearlyEquiv = monthlyEquiv * 12;
-
-  const monthly = active.filter((s) => s.billing_cycle === 'monthly');
-  const quarterly = active.filter((s) => s.billing_cycle === 'quarterly');
-  const yearly = active.filter((s) => s.billing_cycle === 'yearly');
-
-  const sortedActive = useMemo(
-    () =>
-      subs
-        .filter((s) => s.is_active)
-        .sort((a, b) => new Date(a.next_billing_date).getTime() - new Date(b.next_billing_date).getTime()),
-    [subs],
-  );
+  // Memoize all derived arrays/values so inline filter+reduce runs only when subs changes
+  const {
+    active,
+    paused,
+    thisMonth,
+    thisMonthTotal,
+    monthlyEquiv,
+    yearlyEquiv,
+    monthly,
+    quarterly,
+    yearly,
+    sortedActive,
+  } = useMemo(() => {
+    const active = subs.filter((s) => s.is_active);
+    const paused = subs.filter((s) => !s.is_active);
+    const endOfMonth = thisMonthEnd();
+    const thisMonth = active.filter((s) => new Date(s.next_billing_date) <= endOfMonth);
+    const thisMonthTotal = thisMonth.reduce((sum, s) => sum + s.amount, 0);
+    const monthlyEquiv = active.reduce((sum, s) => sum + toMonthly(s.amount, s.billing_cycle as BillingCycle), 0);
+    const yearlyEquiv = monthlyEquiv * 12;
+    const monthly = active.filter((s) => s.billing_cycle === 'monthly');
+    const quarterly = active.filter((s) => s.billing_cycle === 'quarterly');
+    const yearly = active.filter((s) => s.billing_cycle === 'yearly');
+    const sortedActive = [...active].sort(
+      (a, b) => new Date(a.next_billing_date).getTime() - new Date(b.next_billing_date).getTime(),
+    );
+    return { active, paused, thisMonth, thisMonthTotal, monthlyEquiv, yearlyEquiv, monthly, quarterly, yearly, sortedActive };
+  }, [subs]);
 
   if (subs.length === 0) {
     return (
@@ -1407,7 +1426,7 @@ function SubscriptionsSheetContent({
             borderColor: colors.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
           }}
         >
-          <Text style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 4 }}>Active</Text>
+          <Text style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 4 }}>{t('SUBS_ACTIVE' as any)}</Text>
           <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary }}>{active.length}</Text>
         </View>
       </View>
@@ -1435,7 +1454,7 @@ function SubscriptionsSheetContent({
                   ) : (
                     <CurrencyAmount value={monthly.reduce((s, x) => s + x.amount, 0)} color={colors.expense} fontSize={14} fontWeight="600" />
                   )}
-                  <Text style={{ fontSize: 12, color: colors.textTertiary }}>/mo</Text>
+                  <Text style={{ fontSize: 12, color: colors.textTertiary }}>{t('PER_MONTH_SHORT' as any)}</Text>
                 </View>
               </View>
             ) : null}
@@ -1457,7 +1476,7 @@ function SubscriptionsSheetContent({
                   ) : (
                     <CurrencyAmount value={quarterly.reduce((s, x) => s + x.amount, 0)} color={colors.expense} fontSize={14} fontWeight="600" />
                   )}
-                  <Text style={{ fontSize: 12, color: colors.textTertiary }}>/3mo</Text>
+                  <Text style={{ fontSize: 12, color: colors.textTertiary }}>{t('PER_QUARTER_SHORT' as any)}</Text>
                 </View>
               </View>
             ) : null}
@@ -1477,7 +1496,7 @@ function SubscriptionsSheetContent({
                   ) : (
                     <CurrencyAmount value={yearly.reduce((s, x) => s + x.amount, 0)} color={colors.expense} fontSize={14} fontWeight="600" />
                   )}
-                  <Text style={{ fontSize: 12, color: colors.textTertiary }}>/yr</Text>
+                  <Text style={{ fontSize: 12, color: colors.textTertiary }}>{t('PER_YEAR_SHORT' as any)}</Text>
                 </View>
               </View>
             ) : null}
@@ -1628,23 +1647,23 @@ function AnalyticsContent(): React.ReactElement {
   const subscriptions: Subscription[] = rawSubs ?? [];
 
   // ── Handlers ─────────────────────────────────────────────────────
-  const refetchAll = (): void => {
+  const refetchAll = useCallback((): void => {
     impactLight();
     dashRefetch();
     benchmarkRefetch();
-  };
+  }, [dashRefetch, benchmarkRefetch]);
 
-  const openSheet = (sheet: ActiveSheet): void => {
+  const openSheet = useCallback((sheet: ActiveSheet): void => {
     impactLight();
     setActiveSheet(sheet);
-  };
+  }, []);
 
-  const closeSheet = (): void => setActiveSheet(null);
+  const closeSheet = useCallback((): void => setActiveSheet(null), []);
 
-  const handleShowDemographics = (): void => {
+  const handleShowDemographics = useCallback((): void => {
     setActiveSheet(null);
     setShowDemographics(true);
-  };
+  }, []);
 
   // ── Early returns (safe: all hooks above) ────────────────────────
   if (isLoading) return <LoadingScreen />;

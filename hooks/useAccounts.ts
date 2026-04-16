@@ -22,11 +22,11 @@ interface UseAccountsResult {
   refetch: () => void;
 }
 
-export function useAccounts(): UseAccountsResult {
+export function useAccounts(enabled = true): UseAccountsResult {
   const { data, isLoading, isError, error, refetch } = useQuery<Account[], Error>({
     queryKey: QUERY_KEYS.accounts,
     queryFn: fetchAccounts,
-    enabled: useAuthStore.getState().isAuthenticated,
+    enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 
   return { data, isLoading, isError, error, refetch };

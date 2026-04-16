@@ -10,8 +10,28 @@ import { useCompleteOnboarding } from '../../hooks/useCompleteOnboarding';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { STRINGS } from '../../constants/strings';
 
-// ─── Currency options relevant for MENA users ────────────────────────
+// ─── Country options relevant for MENA users ─────────────────────────
 
+interface CountryOption {
+  code: string;       // ISO 3166-1 alpha-2
+  name: string;
+  flag: string;
+  currency: string;   // default currency code
+  locale: string;     // default locale
+}
+
+const COUNTRY_OPTIONS: CountryOption[] = [
+  { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦', currency: 'SAR', locale: 'en-SA' },
+  { code: 'AE', name: 'UAE', flag: '🇦🇪', currency: 'AED', locale: 'en-AE' },
+  { code: 'EG', name: 'Egypt', flag: '🇪🇬', currency: 'EGP', locale: 'en-EG' },
+  { code: 'KW', name: 'Kuwait', flag: '🇰🇼', currency: 'KWD', locale: 'en-KW' },
+  { code: 'QA', name: 'Qatar', flag: '🇶🇦', currency: 'QAR', locale: 'en-QA' },
+  { code: 'BH', name: 'Bahrain', flag: '🇧🇭', currency: 'BHD', locale: 'en-BH' },
+  { code: 'OM', name: 'Oman', flag: '🇴🇲', currency: 'OMR', locale: 'en-OM' },
+  { code: 'JO', name: 'Jordan', flag: '🇯🇴', currency: 'JOD', locale: 'en-JO' },
+];
+
+// Extra currencies available after country is selected
 interface CurrencyOption {
   code: string;
   name: string;
@@ -19,15 +39,7 @@ interface CurrencyOption {
   flag: string;
 }
 
-const CURRENCY_OPTIONS: CurrencyOption[] = [
-  { code: 'SAR', name: 'Saudi Riyal', locale: 'en-SA', flag: '🇸🇦' },
-  { code: 'AED', name: 'UAE Dirham', locale: 'en-AE', flag: '🇦🇪' },
-  { code: 'EGP', name: 'Egyptian Pound', locale: 'en-EG', flag: '🇪🇬' },
-  { code: 'KWD', name: 'Kuwaiti Dinar', locale: 'en-KW', flag: '🇰🇼' },
-  { code: 'QAR', name: 'Qatari Riyal', locale: 'en-QA', flag: '🇶🇦' },
-  { code: 'BHD', name: 'Bahraini Dinar', locale: 'en-BH', flag: '🇧🇭' },
-  { code: 'OMR', name: 'Omani Rial', locale: 'en-OM', flag: '🇴🇲' },
-  { code: 'JOD', name: 'Jordanian Dinar', locale: 'en-JO', flag: '🇯🇴' },
+const EXTRA_CURRENCIES: CurrencyOption[] = [
   { code: 'USD', name: 'US Dollar', locale: 'en-US', flag: '🇺🇸' },
   { code: 'EUR', name: 'Euro', locale: 'en-DE', flag: '🇪🇺' },
   { code: 'GBP', name: 'British Pound', locale: 'en-GB', flag: '🇬🇧' },
@@ -40,19 +52,34 @@ function OnboardingContent(): React.ReactElement {
   const insets = useSafeAreaInsets();
   const { mutate: completeOnboarding, isPending, isError, error } = useCompleteOnboarding();
 
-  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyOption>(CURRENCY_OPTIONS[0]);
+  const [selectedCountry, setSelectedCountry] = useState<CountryOption>(COUNTRY_OPTIONS[0]);
+  const [overrideCurrency, setOverrideCurrency] = useState<CurrencyOption | null>(null);
+
+  const activeCurrency = overrideCurrency ?? {
+    code: selectedCountry.currency,
+    name: selectedCountry.name,
+    locale: selectedCountry.locale,
+    flag: selectedCountry.flag,
+  };
 
   const handleContinue = (): void => {
     notifySuccess();
     completeOnboarding({
-      currency: selectedCurrency.code,
-      locale: selectedCurrency.locale,
+      currency: activeCurrency.code,
+      locale: activeCurrency.locale,
+      country_code: selectedCountry.code,
     });
   };
 
-  const handleSelectCurrency = (option: CurrencyOption): void => {
+  const handleSelectCountry = (option: CountryOption): void => {
     impactLight();
-    setSelectedCurrency(option);
+    setSelectedCountry(option);
+    setOverrideCurrency(null); // reset currency override when country changes
+  };
+
+  const handleSelectExtraCurrency = (option: CurrencyOption): void => {
+    impactLight();
+    setOverrideCurrency(option);
   };
 
   return (
@@ -95,26 +122,107 @@ function OnboardingContent(): React.ReactElement {
         </View>
       ) : null}
 
-      {/* Currency Label */}
-      <Text
-        className="px-6 mb-3"
-        style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}
-      >
-        {STRINGS.ONBOARDING_CURRENCY_LABEL}
-      </Text>
-
-      {/* Currency List */}
       <ScrollView
         className="flex-1 px-6"
         showsVerticalScrollIndicator={false}
       >
-        {CURRENCY_OPTIONS.map((option) => {
-          const isSelected = option.code === selectedCurrency.code;
+        {/* Country Label */}
+        <Text
+          className="mb-3"
+          style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}
+        >
+          {STRINGS.ONBOARDING_COUNTRY_LABEL}
+        </Text>
 
+        {/* Country Grid */}
+        <View className="flex-row flex-wrap gap-2 mb-6">
+          {COUNTRY_OPTIONS.map((option) => {
+            const isSelected = option.code === selectedCountry.code;
+            return (
+              <Pressable
+                key={option.code}
+                onPress={() => handleSelectCountry(option)}
+                className="items-center rounded-xl px-3 py-3"
+                style={{
+                  width: '23%',
+                  backgroundColor: isSelected ? colors.primary + '10' : colors.surface,
+                  borderWidth: 1.5,
+                  borderColor: isSelected ? colors.primary : colors.borderLight,
+                }}
+              >
+                <Text style={{ fontSize: 28 }}>{option.flag}</Text>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: '600',
+                    color: isSelected ? colors.primary : colors.textPrimary,
+                    marginTop: 4,
+                    textAlign: 'center',
+                  }}
+                >
+                  {option.name}
+                </Text>
+                {isSelected ? (
+                  <View
+                    className="absolute top-1 right-1 h-4 w-4 rounded-full items-center justify-center"
+                    style={{ backgroundColor: colors.primary }}
+                  >
+                    <Check size={10} color={colors.textInverse} strokeWidth={3} />
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* Currency Label */}
+        <Text
+          className="mb-3"
+          style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}
+        >
+          {STRINGS.ONBOARDING_CURRENCY_LABEL}
+        </Text>
+
+        {/* Default currency from country (pre-selected) */}
+        <Pressable
+          onPress={() => setOverrideCurrency(null)}
+          className="flex-row items-center rounded-xl px-4 py-3 mb-2"
+          style={{
+            backgroundColor: !overrideCurrency ? colors.primary + '10' : colors.surface,
+            borderWidth: 1.5,
+            borderColor: !overrideCurrency ? colors.primary : colors.borderLight,
+          }}
+        >
+          <Text style={{ fontSize: 24, marginRight: 12 }}>{selectedCountry.flag}</Text>
+          <View className="flex-1">
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: '600',
+                color: !overrideCurrency ? colors.primary : colors.textPrimary,
+              }}
+            >
+              {selectedCountry.currency}
+            </Text>
+          </View>
+          {!overrideCurrency ? (
+            <View
+              className="h-6 w-6 rounded-full items-center justify-center"
+              style={{ backgroundColor: colors.primary }}
+            >
+              <Check size={14} color={colors.textInverse} strokeWidth={3} />
+            </View>
+          ) : null}
+        </Pressable>
+
+        {/* Extra currencies */}
+        {EXTRA_CURRENCIES.map((option) => {
+          const isSelected = overrideCurrency?.code === option.code;
           return (
             <Pressable
               key={option.code}
-              onPress={() => handleSelectCurrency(option)}
+              onPress={() => handleSelectExtraCurrency(option)}
               className="flex-row items-center rounded-xl px-4 py-3 mb-2"
               style={{
                 backgroundColor: isSelected ? colors.primary + '10' : colors.surface,

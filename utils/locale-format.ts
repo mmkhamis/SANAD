@@ -184,3 +184,21 @@ export function formatLongDate(date: Date): string {
   }
   return format(date, 'EEEE, MMM d, yyyy');
 }
+
+// ─── Text direction helper ──────────────────────────────────────────
+
+/**
+ * Returns `{ writingDirection: 'rtl' }` when the app language is Arabic.
+ * Apply to Text styles so Arabic text flows right-to-left while the
+ * overall layout stays LTR.
+ */
+export function getTextDirection(): { writingDirection: 'rtl' | 'ltr' } {
+  return { writingDirection: getLanguage() === 'ar' ? 'rtl' : 'ltr' };
+}
+
+/**
+ * Returns `'rtl'` or `'ltr'` based on the current language.
+ */
+export function getWritingDirection(): 'rtl' | 'ltr' {
+  return getLanguage() === 'ar' ? 'rtl' : 'ltr';
+}

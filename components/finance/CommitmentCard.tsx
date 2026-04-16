@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { CalendarClock, Check } from 'lucide-react-native';
+import { CategoryIcon } from '../ui/CategoryIcon';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { formatAmount } from '../../utils/currency';
@@ -54,7 +55,11 @@ export function CommitmentCard({
         style={{ backgroundColor: commitment.category_color ? `${commitment.category_color}20` : colors.surfaceSecondary }}
       >
         {commitment.category_icon ? (
-          <Text style={{ fontSize: 18 }}>{commitment.category_icon}</Text>
+          <CategoryIcon
+            name={commitment.category_icon}
+            size={18}
+            color={commitment.category_color ?? colors.primary}
+          />
         ) : (
           <CalendarClock size={18} color={colors.primary} />
         )}

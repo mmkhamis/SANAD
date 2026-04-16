@@ -4,13 +4,44 @@
  * Usage:
  *   const t = useT();
  *   <Text>{t('DASHBOARD_TITLE')}</Text>
+ *
+ * Category translation is dialect-aware:
+ *   - Egypt (country EG or currency EGP)  → Egyptian Arabic labels
+ *   - Gulf countries (SA, AE, KW, QA, BH, OM)  → Gulf Arabic labels
+ * Dialect is selected by country_code first, then falls back to currency.
+ * No call-site changes needed; translateCategory / useTranslateCategory
+ * pick the right dialect automatically.
  */
 import { useLanguageStore } from '../store/language-store';
+import { useSettingsStore } from '../store/settings-store';
 import { STRINGS } from '../constants/strings';
 import { STRINGS_AR } from '../constants/strings.ar';
 import { CATEGORY_NAMES_AR } from '../constants/category-names.ar';
+import { CATEGORY_NAMES_AR_EG } from '../constants/category-names.ar.eg';
 
 type StringKey = keyof typeof STRINGS;
+
+// Merged map for Egypt: Gulf baseline + Egyptian overrides.
+// Built once at module load — O(1) lookups at runtime.
+const CATEGORY_NAMES_AR_EG_MERGED: Record<string, string> = {
+  ...CATEGORY_NAMES_AR,
+  ...CATEGORY_NAMES_AR_EG,
+};
+
+/** Returns true if the user is an Egyptian dialect user (by country or currency). */
+function isEgyptianDialect(): boolean {
+  const { countryCode, activeCurrency } = useSettingsStore.getState();
+  return countryCode === 'EG' || activeCurrency === 'EGP';
+}
+
+/** Returns the Arabic category map for the user's dialect. */
+function getCategoryMap(): Record<string, string> {
+  return isEgyptianDialect()
+    ? CATEGORY_NAMES_AR_EG_MERGED
+    : CATEGORY_NAMES_AR;
+}
+
+// ─── UI string helpers ────────────────────────────────────────────────────────
 
 /**
  * Hook: returns a translation function for the active language.
@@ -37,26 +68,35 @@ export function t(key: StringKey): string {
   return STRINGS[key];
 }
 
+// ─── Category name translation (dialect-aware) ────────────────────────────────
+
 /**
- * Translate a category name to the active language.
- * Returns the original name if no translation exists.
+ * Non-hook: translate a category name to the active language + dialect.
+ * Gulf currencies → Gulf Arabic. EGP → Egyptian Arabic.
+ * Returns the English name unchanged if no translation exists.
  */
 export function translateCategory(name: string): string {
   const language = useLanguageStore.getState().language;
   if (language === 'ar') {
-    return CATEGORY_NAMES_AR[name] ?? name;
+    return getCategoryMap()[name] ?? name;
   }
   return name;
 }
 
 /**
- * Hook version of translateCategory.
+ * Hook: reactive version of translateCategory.
+ * Re-renders automatically when language, currency, or country changes.
  */
 export function useTranslateCategory(): (name: string) => string {
   const language = useLanguageStore((s) => s.language);
+  const countryCode = useSettingsStore((s) => s.countryCode);
+  const currency = useSettingsStore((s) => s.activeCurrency);
+
   return (name: string): string => {
     if (language === 'ar') {
-      return CATEGORY_NAMES_AR[name] ?? name;
+      const isEgypt = countryCode === 'EG' || currency === 'EGP';
+      const map = isEgypt ? CATEGORY_NAMES_AR_EG_MERGED : CATEGORY_NAMES_AR;
+      return map[name] ?? name;
     }
     return name;
   };

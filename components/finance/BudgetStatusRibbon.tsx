@@ -13,6 +13,7 @@ import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { formatCompactNumber } from '../../utils/currency';
 import { impactLight } from '../../utils/haptics';
 import { CurrencyAmount } from '../ui/CurrencyAmount';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import type { BudgetGoal } from '../../types/index';
 import type { Transaction } from '../../types/index';
 
@@ -27,6 +28,7 @@ interface BudgetCardProps {
 const BudgetCard = React.memo(function BudgetCard({ goal, isActive, onPress }: BudgetCardProps): React.ReactElement {
   const colors = useThemeColors();
   const hidden = usePrivacyStore((s) => s.hidden);
+  const tc = useTranslateCategory();
 
   const percentage = goal.percent_used;
   const isOverBudget = percentage > 100;
@@ -89,7 +91,11 @@ const BudgetCard = React.memo(function BudgetCard({ goal, isActive, onPress }: B
               backgroundColor: (goal.category_color ?? colors.primary) + '20',
             }}
           >
-            <Text style={{ fontSize: 15 }}>{goal.category_icon ?? '📋'}</Text>
+            <CategoryIcon
+              name={goal.category_icon ?? 'piggy-bank'}
+              size={16}
+              color={goal.category_color ?? colors.primary}
+            />
           </View>
           <View
             style={{
@@ -122,7 +128,7 @@ const BudgetCard = React.memo(function BudgetCard({ goal, isActive, onPress }: B
             minHeight: 16,
           }}
         >
-          {goal.budget.category_name}
+          {tc(goal.budget.category_name)}
         </Text>
 
         {/* Spent / Budget */}
@@ -201,11 +207,15 @@ const CategoryDetail = React.memo(function CategoryDetail({ goal, transactions, 
               backgroundColor: (goal.category_color ?? colors.primary) + '20',
             }}
           >
-            <Text style={{ fontSize: 18 }}>{goal.category_icon ?? '📋'}</Text>
+            <CategoryIcon
+              name={goal.category_icon ?? 'piggy-bank'}
+              size={18}
+              color={goal.category_color ?? colors.primary}
+            />
           </View>
           <View>
             <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary }}>
-              {goal.budget.category_name}
+              {tc(goal.budget.category_name)}
             </Text>
             <Text style={{ fontSize: 12, color: colors.textTertiary }}>
               {maskIfHidden(formatCompactNumber(goal.actual_spent), hidden)} of {maskIfHidden(formatCompactNumber(goal.budget.amount), hidden)}
@@ -287,7 +297,11 @@ const CategoryDetail = React.memo(function CategoryDetail({ goal, transactions, 
                     backgroundColor: (tx.category_color ?? colors.textTertiary) + '20',
                   }}
                 >
-                  <Text style={{ fontSize: 18 }}>{tx.category_icon ?? '📱'}</Text>
+                  <CategoryIcon
+                    name={tx.category_icon ?? 'smartphone'}
+                    size={18}
+                    color={tx.category_color ?? colors.textSecondary}
+                  />
                 </View>
                 {/* Description + category */}
                 <View style={{ flex: 1, marginRight: 8 }}>

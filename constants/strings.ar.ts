@@ -59,9 +59,10 @@ export const STRINGS_AR = {
 
   // ─── Onboarding ────────────────────────────────────────
   ONBOARDING_TITLE: 'إعداد محفظتك',
-  ONBOARDING_SUBTITLE: 'اختر عملتك المفضلة عشان نبدأ',
+  ONBOARDING_SUBTITLE: 'اختر بلدك وعملتك عشان نبدأ',
   ONBOARDING_CONTINUE: 'متابعة',
   ONBOARDING_CURRENCY_LABEL: 'العملة',
+  ONBOARDING_COUNTRY_LABEL: 'البلد',
 
   // ─── Profile / Feature Cards ────────────────────────────
   PROFILE_GOALS: 'الأهداف',
@@ -112,6 +113,8 @@ export const STRINGS_AR = {
   SMART_INPUT_TRANSCRIBING: 'جاري تحويل الصوت…',
   SMART_INPUT_TRANSCRIBING_DESC: 'نحلّل الكلام بالذكاء الاصطناعي',
   SMART_INPUT_SCANNING_DESC: 'نستخرج التفاصيل من الصورة',
+  SMART_INPUT_PARSING: 'جاري تحليل المدخل…',
+  SMART_INPUT_PARSING_DESC: 'الذكاء الاصطناعي يقرأ عمليتك',
   SMART_INPUT_SUCCESS_ONE: 'تمت إضافة العملية بنجاح',
   SMART_INPUT_SUCCESS_MANY: 'عمليات تمت إضافتها بنجاح',
   SMART_INPUT_RECORDS_UPDATED: 'تم تحديث سجلاتك.',
@@ -160,7 +163,9 @@ export const STRINGS_AR = {
   ADD_TXN_TIPS: 'أضف عمليات عشان تحصل نصائح توفير.',
   NOT_ENOUGH_DATA: 'ما فيه بيانات كافية لفئتك العمرية ومنطقتك للحين.\nراجعنا الشهر الجاي.',
   SAVING_OPPORTUNITY: 'فرصة توفير',
-  CUT_OVERSPENDING: 'لو خفّضت صرفك الزايد ٥٪، تقدر توفّر',
+  CUT_OVERSPENDING: 'لو خفّضت صرفك في',
+  CUT_OVERSPENDING_SUFFIX: 'بس ٥٪، تقدر توفّر',
+  PER_YEAR_LABEL: '/سنة',
   WHERE_SAVE: 'وين تقدر توفّر؟',
   WHERE_CUT: 'وين تقدر تقلّل؟',
   FIVE_PCT_CUT: 'تخفيض ٥٪ ←',
@@ -224,6 +229,12 @@ export const STRINGS_AR = {
   INSIGHT_HOLD_STEADY: 'عن أسعار الشراء. لا تقلق — الأسواق تتقلّب.',
   INSIGHT_ADD_BUY_PRICE: 'أضف أسعار الشراء لـ',
   INSIGHT_TRACK_GAINS: 'عشان تتبّع الأرباح والخسائر.',
+  PHYSICAL_ASSETS: 'الأصول المادية',
+  YOUR_HOLDINGS: 'ممتلكاتك',
+  PER_MONTH_SHORT: '/شهر',
+  PER_QUARTER_SHORT: '/٣شهور',
+  PER_YEAR_SHORT: '/سنة',
+  ALL_FILTER: 'الكل',
 
   // ─── Add Transaction ────────────────────────────────────
   ADD_TRANSACTION: 'إضافة عملية',
@@ -287,6 +298,17 @@ export const STRINGS_AR = {
   SPLIT_EVENTS: 'فعاليات التقسيم',
   NO_SPLIT_EVENTS: 'ما في فعاليات تقسيم للحين',
   NO_SPLIT_EVENTS_DESC: 'اضغط + عشان تنشئ وحدة وترفق الفاتورة.',
+  ADDED_BADGE: 'مضاف',
+  NO_USERS_FOUND: 'ما لقينا مستخدمين لـ',
+  CREATE_AND_SPLIT: 'إنشاء وتقسيم',
+
+  // ─── SMS Review ─────────────────────────────────────────
+  SMS_REVIEW_HEADER: 'مراجعة',
+  SMS_ORIGINAL: 'الرسالة الأصلية',
+  SMS_BACK: 'رجوع',
+  SMS_SKIP: 'تخطي',
+  SMS_SAVE_NEXT: 'حفظ والتالي',
+  SMS_SAVE_DONE: 'حفظ وانتهاء',
 
   // ─── Trash ──────────────────────────────────────────────
   TRASH_DELETE_PERMANENTLY: 'حذف نهائي',
@@ -463,6 +485,17 @@ export const STRINGS_AR = {
   SPLIT_SETTLE_FAILED: 'ما قدرنا نحسب التسويات. تأكد إن كل الأصناف موزّعة.',
   SPLIT_NEW: 'تقسيمة جديدة',
   SPLIT_TOTAL: 'المجموع',
+  SPLIT_CREATE: 'إنشاء',
+  SPLIT_EVENT_NAME: 'اسم الحدث',
+  SPLIT_EVENT_PLACEHOLDER: 'مثال: عشاء في كشري التحرير',
+  SPLIT_WITH: 'قسّم مع',
+  SPLIT_SEARCH_PEOPLE: 'ابحث بالاسم أو الإيميل…',
+  SPLIT_SCAN_RECEIPT: 'مسح فاتورة',
+  SPLIT_FROM_GALLERY: 'من المعرض',
+  SPLIT_ADD_ITEM: 'أضف صنف',
+  SPLIT_QTY: 'الكمية',
+  SPLIT_PRICE: 'السعر',
+  SPLIT_EXTRAS: 'إضافات',
 
   // ─── Smart Input Card Labels ──────────────────────────────
   SMART_INPUT_SAVED: 'تم الحفظ',
@@ -514,9 +547,9 @@ export const STRINGS_AR = {
   SPLIT_TAP_ASSIGN: 'اضغط للتوزيع',
   SPLIT_COULD_NOT_LOAD: 'ما قدرنا نحمّل الفعالية.',
   SPLIT_SUBTOTAL: 'المجموع الفرعي',
-  SPLIT_TAX: 'الضريبة',
-  SPLIT_SERVICE_FEE: 'رسوم الخدمة',
-  SPLIT_DISCOUNT: 'الخصم',
+  SPLIT_TAX: 'ضريبة',
+  SPLIT_SERVICE_FEE: 'رسوم الخدمة / بقشيش',
+  SPLIT_DISCOUNT: 'خصم',
   SPLIT_ITEMS: 'الأصناف',
   SPLIT_UNASSIGNED: 'غير موزّع',
   SPLIT_ASSIGN_MORE: 'وزّع',
@@ -707,6 +740,12 @@ export const STRINGS_AR = {
   // ─── Category Group ─────────────────────────────────────
   CREATE_GROUP_PLACEHOLDER: 'مثلاً عمل جانبي، أطفال، رياضة',
   SUBCATEGORY_PLACEHOLDER: 'اسم الفئة الفرعية',
+
+  // ─── Goal Insights ──────────────────────────────────────
+  INSIGHT_EXCEEDED: '{name} تجاوز الهدف بـ {amount}',
+  INSIGHT_NEAR_LIMIT: '{name} وصل إلى {percent}% من الهدف',
+  INSIGHT_WITHIN_BUDGET: '{name} ضمن الميزانية',
+  INSIGHT_CATEGORIES_ON_TRACK: '{count} فئات ضمن الميزانية',
 } as const;
 
 export type ARStringKey = keyof typeof STRINGS_AR;

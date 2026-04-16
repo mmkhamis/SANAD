@@ -6,7 +6,7 @@ import { fetchHabitInsights } from '../services/habit-service';
 import { useAuthStore } from '../store/auth-store';
 import type { HabitInsights } from '../types/index';
 
-export function useHabitInsights(month?: string): {
+export function useHabitInsights(month?: string, enabled = true): {
   data: HabitInsights | undefined;
   isLoading: boolean;
   isError: boolean;
@@ -16,6 +16,6 @@ export function useHabitInsights(month?: string): {
     queryKey: QUERY_KEYS.habitInsights(resolvedMonth),
     queryFn: () => fetchHabitInsights(resolvedMonth),
     staleTime: 10 * 60 * 1000,
-    enabled: useAuthStore.getState().isAuthenticated,
+    enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 }

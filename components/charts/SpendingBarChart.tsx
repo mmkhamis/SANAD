@@ -3,6 +3,8 @@ import { View, Text } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useTranslateCategory } from '../../lib/i18n';
+import { CategoryIcon } from '../ui/CategoryIcon';
 import { STRINGS } from '../../constants/strings';
 import { formatAmount, formatPercentage } from '../../utils/currency';
 import type { CategorySpending } from '../../types/index';
@@ -27,6 +29,7 @@ export function SpendingBarChart({
   barWidth = 36,
 }: SpendingBarChartProps): React.ReactElement {
   const colors = useThemeColors();
+  const tc = useTranslateCategory();
   if (data.length === 0) {
     return (
       <View className="mx-4 mb-4 rounded-2xl p-4" style={{ backgroundColor: colors.surface }}>
@@ -46,7 +49,7 @@ export function SpendingBarChart({
   const barData: BarDataItem[] = top5.map((item, index) => ({
     value: item.total,
     frontColor: item.category_color || colors.chart[index % colors.chart.length],
-    label: item.category_icon || '',
+    label: '',
     topLabelComponent: () => (
       <Text style={{ fontSize: 10, color: colors.textSecondary, marginBottom: 2 }}>
         {formatAmount(item.total, { compact: true })}
@@ -94,11 +97,16 @@ export function SpendingBarChart({
                 className="h-3 w-3 rounded-full"
                 style={{ backgroundColor: item.category_color }}
               />
+              <CategoryIcon
+                name={item.category_icon ?? 'circle-help'}
+                size={14}
+                color={item.category_color ?? colors.textSecondary}
+              />
               <Text
                 numberOfLines={1}
                 style={{ fontSize: 14, color: colors.textPrimary, flex: 1 }}
               >
-                {item.category_icon} {item.category_name}
+                {tc(item.category_name)}
               </Text>
             </View>
             <View className="flex-row items-center gap-3">

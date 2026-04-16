@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { TrendingUp, TrendingDown, Minus, Users } from 'lucide-react-native';
+import { CategoryIcon } from '../ui/CategoryIcon';
 
 import { formatAmount } from '../../utils/currency';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useTranslateCategory } from '../../lib/i18n';
 import type { BenchmarkComparison, BenchmarkSummary } from '../../types/index';
 
 // ─── Single comparison row ───────────────────────────────────────────
@@ -12,6 +14,7 @@ import type { BenchmarkComparison, BenchmarkSummary } from '../../types/index';
 function BenchmarkRow({ item }: { item: BenchmarkComparison }): React.ReactElement {
   const colors = useThemeColors();
   const hidden = usePrivacyStore((s) => s.hidden);
+  const tc = useTranslateCategory();
   const absDiff = Math.abs(Math.round(item.diff_percent));
   const isAbove = item.diff_percent > 5;
   const isBelow = item.diff_percent < -5;
@@ -47,14 +50,18 @@ function BenchmarkRow({ item }: { item: BenchmarkComparison }): React.ReactEleme
             marginRight: 10,
           }}
         >
-          <Text style={{ fontSize: 18 }}>{item.category_icon}</Text>
+          <CategoryIcon
+            name={item.category_icon ?? 'shopping-bag'}
+            size={18}
+            color={item.category_color ?? colors.textSecondary}
+          />
         </View>
         <View className="flex-1">
           <Text
             numberOfLines={1}
             style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}
           >
-            {item.category_name}
+            {tc(item.category_name)}
           </Text>
           <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>
             {item.sample_size} users in cohort

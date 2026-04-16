@@ -16,6 +16,7 @@ import Animated, { useSharedValue, useAnimatedStyle, interpolate, Extrapolation 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle, AlertTriangle, AlertOctagon, Plus, X, Pencil, Trash2 } from 'lucide-react-native';
+import { CategoryIcon } from '../../components/ui/CategoryIcon';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 import { impactLight, impactMedium, notifySuccess } from '../../utils/haptics';
@@ -34,7 +35,7 @@ import { formatShortMonthYear } from '../../utils/locale-format';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { FeatureGate } from '../../components/ui/FeatureGate';
-import { useT } from '../../lib/i18n';
+import { useT, useTranslateCategory } from '../../lib/i18n';
 import type { Category, BudgetGoal } from '../../types/index';
 
 // ─── Period options ──────────────────────────────────────────────────
@@ -75,6 +76,7 @@ const COLLAPSE_END = 200;
 function GoalsContent(): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const tc = useTranslateCategory();
   const insets = useSafeAreaInsets();
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const { data: goalsSummary, isLoading, isError, error, refetch } = useGoals(selectedMonth);
@@ -667,10 +669,12 @@ function GoalsContent(): React.ReactElement {
                     marginBottom: 20,
                   }}
                 >
-                  <Text style={{ fontSize: 24, marginRight: 12 }}>{editGoal.category_icon}</Text>
+                  <View style={{ marginRight: 12 }}>
+                    <CategoryIcon name={editGoal.category_icon ?? 'piggy-bank'} size={24} color={editGoal.category_color ?? colors.primary} />
+                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary }}>
-                      {editGoal.budget.category_name}
+                      {tc(editGoal.budget.category_name)}
                     </Text>
                     <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
                       {maskIfHidden(formatAmount(editGoal.actual_spent), hidden)} {t('GOALS_SPENT_OF' as any)} {maskIfHidden(formatAmount(editGoal.budget.amount), hidden)}

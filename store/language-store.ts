@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { I18nManager } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const LANG_KEY = 'app_language';
@@ -30,9 +29,8 @@ export const useLanguageStore = create<LanguageStore>((set) => ({
   setLanguage: (language: Language): void => {
     const isRTL = language === 'ar';
     SecureStore.setItemAsync(LANG_KEY, language).catch(() => {});
-    // forceRTL applies globally — requires app reload to fully take effect
-    I18nManager.allowRTL(isRTL);
-    I18nManager.forceRTL(isRTL);
+    // Layout stays LTR; Arabic text direction is handled per-component
+    // via writingDirection style. No global RTL flip.
     set({ language, isRTL });
   },
 }));

@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -44,6 +44,7 @@ import { FeatureGate } from '../../components/ui/FeatureGate';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { VoiceWaveform } from '../../components/ui/VoiceWaveform';
 import { ScanAnimation } from '../../components/ui/ScanAnimation';
+import { SmartInputAnimation } from '../../components/ui/SmartInputAnimation';
 import { CategoryPicker } from '../../components/finance/CategoryPicker';
 import { AccountPicker } from '../../components/finance/AccountPicker';
 import { useSmartInput, type TransactionDraft } from '../../hooks/useSmartInput';
@@ -474,6 +475,29 @@ function SmartInputContent(): React.ReactElement {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState<{ current: number; total: number } | null>(null);
 
+  // ─── FAB radial mode auto-trigger ───────────────────────────────
+  // When navigated from the FAB with ?mode=voice|scan|manual, fire the
+  // appropriate handler once on mount. The ref guard prevents re-firing.
+  const { mode } = useLocalSearchParams<{ mode?: 'voice' | 'scan' | 'manual' }>();
+  const autoTriggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (!mode || autoTriggeredRef.current) return;
+    autoTriggeredRef.current = true;
+    // Brief delay so the screen finishes mounting before triggering permissions
+    const timer = setTimeout(() => {
+      if (mode === 'voice') handleVoice();
+      else if (mode === 'scan') handleOCR();
+      else if (mode === 'manual') {
+        ExpoClipboard.getStringAsync()
+          .then(text => { if (text.trim()) setInputText(text.trim()); })
+          .catch(() => {});
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty — mode is stable from route params, handlers are useCallbacks
+
   // Cleanup recording on unmount
   useEffect(() => {
     return () => {
@@ -842,19 +866,24 @@ function SmartInputContent(): React.ReactElement {
             onBackToDashboard={handleBackToDashboard}
           />
         ) : !showResult ? (
-          isTranscribing || isScanning ? (
+          isTranscribing || isScanning || isParsing ? (
             isTranscribing ? (
-              <VoiceWaveform
-                variant="full"
+              <SmartInputAnimation
+                mode="voice"
                 label={t('SMART_INPUT_TRANSCRIBING')}
                 sublabel={t('SMART_INPUT_TRANSCRIBING_DESC')}
               />
-            ) : (
-              <ScanAnimation
-                variant="full"
-                progress={scanProgress ?? undefined}
+            ) : isScanning ? (
+              <SmartInputAnimation
+                mode="ocr"
                 label={scanProgress ? `${t('SMART_INPUT_SCAN_PROGRESS' as any)} ${scanProgress.current} ${t('SMART_INPUT_SCAN_OF' as any)} ${scanProgress.total}…` : undefined}
                 sublabel={t('SMART_INPUT_SCANNING_DESC')}
+              />
+            ) : (
+              <SmartInputAnimation
+                mode={state.inputSource === 'voice' ? 'loading' : state.inputSource === 'ocr' ? 'loading' : 'text'}
+                label={t('SMART_INPUT_PARSING' as any)}
+                sublabel={t('SMART_INPUT_PARSING_DESC' as any)}
               />
             )
           ) : (

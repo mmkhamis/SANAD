@@ -22,7 +22,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { FloatingCard } from '../../components/ui/FloatingCard';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { SoftGlowButton } from '../../components/ui/SoftGlowButton';
-import { SmartInputButton } from '../../components/ui/SmartInputButton';
+import { SmartInputFAB } from '../../components/ui/SmartInputFAB';
 import { MetallicShine } from '../../components/ui/MetallicShine';
 import { MonthPicker } from '../../components/ui/MonthPicker';
 import { HorizonSelector, type HorizonMonths } from '../../components/ui/HorizonSelector';
@@ -48,6 +48,10 @@ import { useTranslateCategory } from '../../lib/i18n';
 import type { Transaction, Commitment } from '../../types/index';
 import { type Subscription, SUBSCRIPTION_PRESETS } from '../../services/subscription-service';
 import { useAuthStore } from '../../store/auth-store';
+
+// ─── Constants ───────────────────────────────────────────────────────
+// Computed once at module level to avoid Dimensions.get() calls inside renderItem.
+const TX_BLOCK_WIDTH = Dimensions.get('window').width - 32;
 
 // ─── Section item types for FlashList ────────────────────────────────
 
@@ -216,13 +220,16 @@ function DashboardContent(): React.ReactElement {
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const { data, isLoading, isError, error, refetch } = useDashboard(selectedMonth);
   const scrollY = useSharedValue(0);
-  const { data: unreviewed } = useUnreviewedTransactions();
-  const { data: portfolio, isLoading: portfolioLoading } = usePortfolioSummary();
-  const { data: accounts } = useAccounts();
-  const { data: subscriptions } = useSubscriptions();
-  const { data: commitmentsDue } = useCommitmentsDue(selectedMonth);
-  const { data: goalsSummary } = useGoals(selectedMonth);
-  const { data: habitInsights } = useHabitInsights(selectedMonth);
+  // Defer secondary queries until the primary dashboard data loads.
+  // This prevents ~18 simultaneous Supabase requests on cold start.
+  const dashboardReady = !!data;
+  const { data: unreviewed } = useUnreviewedTransactions(dashboardReady);
+  const { data: portfolio, isLoading: portfolioLoading } = usePortfolioSummary(dashboardReady);
+  const { data: accounts } = useAccounts(dashboardReady);
+  const { data: subscriptions } = useSubscriptions(dashboardReady);
+  const { data: commitmentsDue } = useCommitmentsDue(selectedMonth, dashboardReady);
+  const { data: goalsSummary } = useGoals(selectedMonth, dashboardReady);
+  const { data: habitInsights } = useHabitInsights(selectedMonth, dashboardReady);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [reviewVisible, setReviewVisible] = useState(false);
@@ -281,7 +288,10 @@ function DashboardContent(): React.ReactElement {
 
     s.push({ type: 'bottom-spacer' });
     return s;
-  }, [accounts, portfolio, upcomingSubs, upcomingTotal, commitmentsDue, goalsSummary, habitInsights, data]);
+  // NOTE: portfolio, upcomingTotal, goalsSummary, habitInsights are intentionally
+  // excluded — they are NOT used in the sections array itself (data is read in
+  // renderItem). Removing them avoids 4 spurious FlashList re-diffs on initial load.
+  }, [accounts, upcomingSubs, commitmentsDue, data]);
 
   // ─── Scroll-driven compact header hooks ────────────────────────────
   const COLLAPSE_START = 180;
@@ -788,8 +798,10 @@ function DashboardContent(): React.ReactElement {
 
       // ─── Transactions Block: each tx in its own gradient card ───
       case 'transactions-block': {
-        const txns = item.transactions;
-        const txBlockWidth = Dimensions.get('window').width - 32;
+        // Cap at 10 — user can tap "See All" for the full list.
+        // This avoids rendering 20+ items inside a non-virtualized ScrollView.
+        const txns = item.transactions.slice(0, 10);
+        const txBlockWidth = TX_BLOCK_WIDTH;
         return (
           <View style={{
             marginTop: 10,
@@ -1097,15 +1109,14 @@ function DashboardContent(): React.ReactElement {
         </Pressable>
       ) : null}
 
-      {/* Intelligent Input Button with shine & shadow */}
-      <View style={{ position: 'absolute', right: 12, bottom: insets.bottom + 96 }}>
-        <SmartInputButton
-          onPress={() => {
-            impactLight();
-            router.push('/(tabs)/smart-input');
-          }}
-        />
-      </View>
+      {/* Intelligent Input FAB — tap for full screen, long-press for radial mode select */}
+      <SmartInputFAB
+        style={{ right: 12, bottom: insets.bottom + 96 }}
+        onPress={() => router.push('/(tabs)/smart-input')}
+        onVoice={() => router.push('/(tabs)/smart-input?mode=voice')}
+        onScan={() => router.push('/(tabs)/smart-input?mode=scan')}
+        onManual={() => router.push('/(tabs)/smart-input?mode=manual')}
+      />
     </BgWrapper>
   );
 }

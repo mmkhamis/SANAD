@@ -41,50 +41,63 @@ const CATEGORY_HINTS: Record<string, string> = {
   'farm': 'Groceries', 'supermarket': 'Groceries', 'grocery': 'Groceries',
   'baqala': 'Groceries', 'بقالة': 'Groceries', 'سوبر ماركت': 'Groceries',
   'hypermarket': 'Groceries', 'hyper': 'Groceries',
+  'seoudi': 'Groceries', 'kazyon': 'Groceries', // Egypt
+  'oscar': 'Groceries', 'metro market': 'Groceries', // Egypt
 
   // Restaurants & Dining
-  'restaurant': 'Dining / Food', 'cafe': 'Dining / Food', 'coffee': 'Dining / Food',
-  'starbucks': 'Dining / Food', 'mcdonalds': 'Dining / Food', 'kfc': 'Dining / Food',
-  'pizza': 'Dining / Food', 'burger': 'Dining / Food', 'food': 'Dining / Food',
-  'lunch': 'Dining / Food', 'dinner': 'Dining / Food', 'breakfast': 'Dining / Food',
-  'sushi': 'Dining / Food', 'shawarma': 'Dining / Food', 'falafel': 'Dining / Food',
-  'مطعم': 'Dining / Food', 'كافيه': 'Dining / Food', 'غداء': 'Dining / Food',
-  'عشاء': 'Dining / Food', 'فطور': 'Dining / Food',
-  'subway': 'Dining / Food', 'hardees': 'Dining / Food', 'popeyes': 'Dining / Food',
-  'dominos': 'Dining / Food', 'zaatar w zeit': 'Dining / Food',
-  'chilis': 'Dining / Food', 'applebees': 'Dining / Food', 'nandos': 'Dining / Food',
-  'tim hortons': 'Dining / Food', 'costa': 'Dining / Food', 'dunkin': 'Dining / Food',
+  'restaurant': 'Food & Dining', 'cafe': 'Food & Dining', 'coffee': 'Food & Dining',
+  'starbucks': 'Food & Dining', 'mcdonalds': 'Food & Dining', 'kfc': 'Food & Dining',
+  'pizza': 'Food & Dining', 'burger': 'Food & Dining', 'food': 'Food & Dining',
+  'lunch': 'Food & Dining', 'dinner': 'Food & Dining', 'breakfast': 'Food & Dining',
+  'sushi': 'Food & Dining', 'shawarma': 'Food & Dining', 'falafel': 'Food & Dining',
+  'مطعم': 'Food & Dining', 'كافيه': 'Food & Dining', 'غداء': 'Food & Dining',
+  'عشاء': 'Food & Dining', 'فطور': 'Food & Dining',
+  'subway': 'Food & Dining', 'hardees': 'Food & Dining', 'popeyes': 'Food & Dining',
+  'dominos': 'Food & Dining', 'zaatar w zeit': 'Food & Dining',
+  'chilis': 'Food & Dining', 'applebees': 'Food & Dining', 'nandos': 'Food & Dining',
+  'tim hortons': 'Food & Dining', 'costa': 'Food & Dining', 'dunkin': 'Food & Dining',
 
-  // Beverages & Snacks
-  'pepsi': 'Beverages & Snacks', 'coca cola': 'Beverages & Snacks', 'coke': 'Beverages & Snacks',
-  'cola': 'Beverages & Snacks', 'sprite': 'Beverages & Snacks', 'fanta': 'Beverages & Snacks',
-  'miranda': 'Beverages & Snacks', 'mountain dew': 'Beverages & Snacks',
-  'redbull': 'Beverages & Snacks', 'red bull': 'Beverages & Snacks',
-  'juice': 'Beverages & Snacks', 'water bottle': 'Beverages & Snacks',
-  'chips': 'Beverages & Snacks', 'lays': 'Beverages & Snacks', 'doritos': 'Beverages & Snacks',
-  'chocolate': 'Beverages & Snacks', 'candy': 'Beverages & Snacks', 'gum': 'Beverages & Snacks',
-  'ice cream': 'Beverages & Snacks', 'dessert': 'Beverages & Snacks',
-  'snack': 'Beverages & Snacks', 'sweets': 'Beverages & Snacks',
-  'بيبسي': 'Beverages & Snacks', 'كولا': 'Beverages & Snacks',
-  'شيبسي': 'Beverages & Snacks', 'شوكولاتة': 'Beverages & Snacks',
-  'عصير': 'Beverages & Snacks', 'ايس كريم': 'Beverages & Snacks',
-  'مشروبات': 'Beverages & Snacks', 'حلويات': 'Beverages & Snacks',
-  'tea': 'Beverages & Snacks', 'شاي': 'Beverages & Snacks',
-  'energy drink': 'Beverages & Snacks',
+  // Snacks & Sweets
+  'chips': 'Snacks & Sweets', 'lays': 'Snacks & Sweets', 'doritos': 'Snacks & Sweets',
+  'chocolate': 'Snacks & Sweets', 'candy': 'Snacks & Sweets', 'gum': 'Snacks & Sweets',
+  'ice cream': 'Snacks & Sweets', 'dessert': 'Snacks & Sweets',
+  'snack': 'Snacks & Sweets', 'sweets': 'Snacks & Sweets',
+  'شيبسي': 'Snacks & Sweets', 'شوكولاتة': 'Snacks & Sweets',
+  'ايس كريم': 'Snacks & Sweets', 'حلويات': 'Snacks & Sweets',
 
-  // Food Delivery
+  // Water & Beverages
+  'pepsi': 'Water & Beverages', 'coca cola': 'Water & Beverages', 'coke': 'Water & Beverages',
+  'cola': 'Water & Beverages', 'sprite': 'Water & Beverages', 'fanta': 'Water & Beverages',
+  'miranda': 'Water & Beverages', 'mountain dew': 'Water & Beverages',
+  'redbull': 'Water & Beverages', 'red bull': 'Water & Beverages',
+  'juice': 'Water & Beverages', 'water bottle': 'Water & Beverages',
+  'بيبسي': 'Water & Beverages', 'كولا': 'Water & Beverages',
+  'عصير': 'Water & Beverages', 'مشروبات': 'Water & Beverages',
+  'tea': 'Water & Beverages', 'شاي': 'Water & Beverages',
+  'energy drink': 'Water & Beverages',
+  'شاملة': 'Water & Beverages', 'قلون': 'Water & Beverages', // KSA water delivery
+
+  // Food Delivery — KSA-first, Egypt compat
   'talabat': 'Food Delivery', 'hungerstation': 'Food Delivery',
   'deliveroo': 'Food Delivery', 'jahez': 'Food Delivery',
   'marsool': 'Food Delivery', 'مرسول': 'Food Delivery',
   'طلبات': 'Food Delivery', 'هنقرستيشن': 'Food Delivery',
   'delivery': 'Food Delivery', 'توصيل': 'Food Delivery',
+  'otlob': 'Food Delivery', 'elmenus': 'Food Delivery', // Egypt
+  'breadfast': 'Food Delivery', 'rabbit': 'Food Delivery', // Egypt grocery delivery
 
-  // Transportation
-  'uber': 'Transportation', 'careem': 'Transportation', 'taxi': 'Transportation',
-  'fuel': 'Transportation', 'petrol': 'Transportation', 'gas station': 'Transportation',
-  'parking': 'Transportation', 'bus': 'Transportation', 'metro': 'Transportation',
-  'بنزين': 'Transportation', 'وقود': 'Transportation', 'كريم': 'Transportation',
-  'اوبر': 'Transportation', 'تاكسي': 'Transportation',
+  // Transport
+  'uber': 'Transport', 'careem': 'Transport', 'taxi': 'Transport',
+  'fuel': 'Transport', 'petrol': 'Transport', 'gas station': 'Transport',
+  'parking': 'Transport', 'bus': 'Transport', 'metro': 'Transport',
+  'بنزين': 'Transport', 'وقود': 'Transport', 'كريم': 'Transport',
+  'اوبر': 'Transport', 'تاكسي': 'Transport',
+  'indriver': 'Transport', 'اندريف': 'Transport', // Egypt
+  'swvl': 'Transport', 'سويفل': 'Transport', // Egypt
+  'ميكروباص': 'Transport', 'توك توك': 'Transport', // Egypt
+  'darb': 'Transport', 'salik': 'Transport', // KSA/UAE tolls
+  'car rental': 'Car Rental', 'rent a car': 'Car Rental', 'udrive': 'Car Rental',
+  'ekar': 'Car Rental', 'theeb': 'Car Rental', 'تأجير سيارة': 'Car Rental',
 
   // Shopping
   'amazon': 'Shopping', 'noon': 'Shopping', 'shein': 'Shopping', 'zara': 'Shopping',
@@ -96,30 +109,55 @@ const CATEGORY_HINTS: Record<string, string> = {
   'مشتريات': 'Shopping', 'تسوق': 'Shopping',
   'clothes': 'Shopping', 'shoes': 'Shopping', 'ملابس': 'Shopping',
 
-  // Healthcare
-  'pharmacy': 'Healthcare', 'hospital': 'Healthcare', 'clinic': 'Healthcare',
-  'doctor': 'Healthcare', 'medical': 'Healthcare', 'medicine': 'Healthcare',
-  'drug': 'Healthcare', 'صيدلية': 'Healthcare', 'مستشفى': 'Healthcare',
-  'دكتور': 'Healthcare', 'علاج': 'Healthcare', 'دواء': 'Healthcare',
+  // Health & Medical
+  'pharmacy': 'Health & Medical', 'hospital': 'Health & Medical', 'clinic': 'Health & Medical',
+  'doctor': 'Health & Medical', 'medical': 'Health & Medical', 'medicine': 'Health & Medical',
+  'drug': 'Health & Medical', 'صيدلية': 'Health & Medical', 'مستشفى': 'Health & Medical',
+  'دكتور': 'Health & Medical', 'علاج': 'Health & Medical', 'دواء': 'Health & Medical',
 
-  // Entertainment
-  'netflix': 'Entertainment', 'spotify': 'Entertainment', 'cinema': 'Entertainment',
-  'movie': 'Entertainment', 'game': 'Entertainment', 'playstation': 'Entertainment',
-  'ps5': 'Entertainment', 'xbox': 'Entertainment', 'steam': 'Entertainment',
-  'youtube': 'Entertainment', 'disney': 'Entertainment', 'shahid': 'Entertainment',
+  // Entertainment & Lifestyle
+  'cinema': 'Entertainment & Lifestyle', 'movie': 'Entertainment & Lifestyle',
+  'game': 'Entertainment & Lifestyle', 'playstation': 'Entertainment & Lifestyle',
+  'ps5': 'Entertainment & Lifestyle', 'xbox': 'Entertainment & Lifestyle',
+  'steam': 'Entertainment & Lifestyle',
+  'طلعة': 'Entertainment & Lifestyle', 'فسحة': 'Entertainment & Lifestyle', // KSA social outings
 
-  // Subscriptions
-  'subscription': 'Subscriptions', 'icloud': 'Subscriptions',
-  'google one': 'Subscriptions', 'chatgpt': 'Subscriptions', 'premium': 'Subscriptions',
+  // Subscriptions & Digital
+  'netflix': 'Subscriptions & Digital', 'spotify': 'Subscriptions & Digital',
+  'youtube': 'Subscriptions & Digital', 'disney': 'Subscriptions & Digital',
+  'shahid': 'Subscriptions & Digital', 'anghami': 'Subscriptions & Digital',
+  'subscription': 'Subscriptions & Digital', 'icloud': 'Subscriptions & Digital',
+  'google one': 'Subscriptions & Digital', 'chatgpt': 'Subscriptions & Digital',
+  'openai': 'Subscriptions & Digital', 'vpn': 'Subscriptions & Digital',
+  'adobe': 'Software & Tools', 'creative cloud': 'Software & Tools',
+  'microsoft 365': 'Software & Tools', 'office 365': 'Software & Tools',
 
-  // Telecom
-  'stc': 'Internet', 'mobily': 'Internet', 'zain': 'Internet',
-  'etisalat': 'Internet', 'vodafone': 'Internet', 'orange': 'Internet',
-  'we': 'Internet', 'اتصالات': 'Internet', 'شحن': 'Internet',
+  // Installments / BNPL — KSA-first
+  'tabby': 'Installments / BNPL', 'tamara': 'Installments / BNPL',
+  'bnpl': 'Installments / BNPL', 'تقسيط': 'Installments / BNPL',
+  'تابي': 'Installments / BNPL', 'تمارا': 'Installments / BNPL',
 
-  // Housing
-  'rent': 'Housing / Rent', 'electricity': 'Electricity', 'water bill': 'Water',
-  'إيجار': 'Housing / Rent', 'كهرباء': 'Electricity', 'مياه': 'Water',
+  // Bills & Utilities — Telecom
+  'stc': 'Bills & Utilities', 'mobily': 'Bills & Utilities', 'zain': 'Bills & Utilities',
+  'etisalat': 'Bills & Utilities', 'vodafone': 'Bills & Utilities', 'orange': 'Bills & Utilities',
+  'we': 'Bills & Utilities', 'اتصالات': 'Bills & Utilities', 'شحن': 'Bills & Utilities',
+  'absher': 'Government Services', 'sahel': 'Government Services',
+  'baladiya': 'Government Services', 'خدمات حكومية': 'Government Services',
+  'qiwa': 'Government Services', 'mudad': 'Government Services',
+  'muqeem': 'Government Services', 'musaned': 'Government Services',
+  'nafath': 'Government Services', 'ajeer': 'Government Services',
+  'tawakkalna': 'Government Services', 'etimad': 'Government Services',
+  'قوى': 'Government Services', 'مدد': 'Government Services',
+  'مقيم': 'Government Services', 'مساند': 'Government Services',
+  'أبشر': 'Government Services', 'بلدية': 'Government Services',
+  'نفاذ': 'Government Services', 'توكلنا': 'Government Services',
+  'ساهل': 'Government Services', 'نافذة': 'Government Services', // Egypt
+  'fawry': 'Government Services', 'فوري': 'Government Services', // Egypt payments
+
+  // Housing & Home
+  'rent': 'Housing & Home', 'electricity': 'Electricity', 'water bill': 'Water',
+  'إيجار': 'Housing & Home', 'كهرباء': 'Electricity', 'مياه': 'Water',
+  'maid': 'Domestic Worker', 'housekeeper': 'Domestic Worker', 'عمالة منزلية': 'Domestic Worker',
 
   // Education
   'university': 'Education', 'school': 'Education', 'course': 'Education',
@@ -131,14 +169,26 @@ const CATEGORY_HINTS: Record<string, string> = {
   'salary': 'Salary', 'freelance': 'Freelance', 'bonus': 'Bonus',
   'راتب': 'Salary', 'مكافأة': 'Bonus',
 
-  // Personal Care
-  'haircut': 'Personal Care', 'barber': 'Personal Care', 'salon': 'Personal Care',
-  'spa': 'Personal Care', 'gym': 'Personal Care', 'fitness': 'Personal Care',
-  'حلاق': 'Personal Care', 'صالون': 'Personal Care', 'جيم': 'Personal Care',
+  // Beauty & Grooming
+  'haircut': 'Beauty & Grooming', 'barber': 'Beauty & Grooming', 'salon': 'Beauty & Grooming',
+  'spa': 'Beauty & Grooming', 'skincare': 'Beauty & Grooming', 'nail': 'Beauty & Grooming',
+  'حلاق': 'Beauty & Grooming', 'صالون': 'Beauty & Grooming',
+  'كوافير': 'Beauty & Grooming', // Egypt dialect
 
-  // Charity
-  'charity': 'Charity', 'donation': 'Charity', 'زكاة': 'Charity',
-  'صدقة': 'Charity', 'تبرع': 'Charity',
+  // Sports & Gym (distinct from Beauty & Grooming)
+  'gym': 'Sports Clubs', 'fitness': 'Sports Clubs', 'sports club': 'Sports Clubs',
+  'جيم': 'Sports Clubs', 'نادي رياضي': 'Sports Clubs',
+
+  // Laundry
+  'laundry': 'Laundry & Dry Clean', 'dry clean': 'Laundry & Dry Clean',
+  'مغسلة': 'Laundry & Dry Clean', 'غسيل': 'Laundry & Dry Clean',
+
+  // Religion / Charity / Social
+  'charity': 'Religion / Charity / Social Duties', 'donation': 'Religion / Charity / Social Duties',
+  'zakat': 'Religion / Charity / Social Duties', 'زكاة': 'Religion / Charity / Social Duties',
+  'صدقة': 'Religion / Charity / Social Duties', 'تبرع': 'Religion / Charity / Social Duties',
+  'ramadan': 'Ramadan Supplies', 'iftar': 'Ramadan Supplies',
+  'رمضان': 'Ramadan Supplies', 'إفطار': 'Ramadan Supplies',
 };
 
 const CURRENCY_SYMBOLS = [
@@ -365,7 +415,7 @@ function buildSystemPrompt(
 
   const expenseCatList = expenseCategories.length > 0
     ? expenseCategories.map((c) => `"${c.name}"`).join(', ')
-    : 'Groceries, Dining / Food, Shopping, Transportation, Healthcare, Entertainment, Subscriptions, Education, Housing / Rent, Bills & Utilities, Personal Care, Charity, Miscellaneous';
+    : 'Groceries, Food & Dining, Shopping, Transport, Health & Medical, Entertainment & Lifestyle, Subscriptions & Digital, Education, Housing & Home, Bills & Utilities, Beauty & Grooming, Religion / Charity / Social Duties, Miscellaneous';
 
   const incomeCatList = incomeCategories.length > 0
     ? incomeCategories.map((c) => `"${c.name}"`).join(', ')

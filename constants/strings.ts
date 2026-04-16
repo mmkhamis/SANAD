@@ -53,9 +53,10 @@ export const STRINGS = {
 
   // ─── Onboarding ────────────────────────────────────────
   ONBOARDING_TITLE: 'Set Up Your Wallet',
-  ONBOARDING_SUBTITLE: 'Choose your preferred currency to get started',
+  ONBOARDING_SUBTITLE: 'Choose your country and currency to get started',
   ONBOARDING_CONTINUE: 'Continue',
   ONBOARDING_CURRENCY_LABEL: 'Currency',
+  ONBOARDING_COUNTRY_LABEL: 'Country',
 
   // ─── Profile / Feature Cards ────────────────────────────
   PROFILE_GOALS: 'Goals',
@@ -106,6 +107,8 @@ export const STRINGS = {
   SMART_INPUT_TRANSCRIBING: 'Transcribing voice…',
   SMART_INPUT_TRANSCRIBING_DESC: 'Processing your audio with AI',
   SMART_INPUT_SCANNING_DESC: 'Extracting details from image',
+  SMART_INPUT_PARSING: 'Analyzing your input…',
+  SMART_INPUT_PARSING_DESC: 'AI is reading your transaction',
   SMART_INPUT_SUCCESS_ONE: 'Transaction added successfully',
   SMART_INPUT_SUCCESS_MANY: 'transactions added successfully',
   SMART_INPUT_RECORDS_UPDATED: 'Your records have been updated.',
@@ -154,7 +157,9 @@ export const STRINGS = {
   ADD_TXN_TIPS: 'Add transactions to unlock personalized saving tips.',
   NOT_ENOUGH_DATA: 'Not enough data for your age group and area yet.\nCheck back next month.',
   SAVING_OPPORTUNITY: 'SAVING OPPORTUNITY',
-  CUT_OVERSPENDING: 'If you cut overspending by 5%, you could save',
+  CUT_OVERSPENDING: 'If you reduce overspending in',
+  CUT_OVERSPENDING_SUFFIX: 'by 5%, you could save',
+  PER_YEAR_LABEL: '/year',
   WHERE_SAVE: 'Where You Can Save',
   WHERE_CUT: 'Where You Can Cut Back',
   FIVE_PCT_CUT: '5% cut →',
@@ -218,6 +223,12 @@ export const STRINGS = {
   INSIGHT_HOLD_STEADY: 'from your buy prices. Hold steady — markets fluctuate.',
   INSIGHT_ADD_BUY_PRICE: 'Add buy prices to',
   INSIGHT_TRACK_GAINS: 'to track gains/losses.',
+  PHYSICAL_ASSETS: 'Physical Assets',
+  YOUR_HOLDINGS: 'Your holdings',
+  PER_MONTH_SHORT: '/mo',
+  PER_QUARTER_SHORT: '/3mo',
+  PER_YEAR_SHORT: '/yr',
+  ALL_FILTER: 'All',
 
   // ─── Add Transaction ────────────────────────────────────
   ADD_TRANSACTION: 'Add Transaction',
@@ -281,6 +292,17 @@ export const STRINGS = {
   SPLIT_EVENTS: 'Split Events',
   NO_SPLIT_EVENTS: 'No split events yet',
   NO_SPLIT_EVENTS_DESC: 'Tap + to create one and attach a receipt.',
+  ADDED_BADGE: 'Added',
+  NO_USERS_FOUND: 'No users found for',
+  CREATE_AND_SPLIT: 'Create & Split',
+
+  // ─── SMS Review ─────────────────────────────────────────
+  SMS_REVIEW_HEADER: 'Review',
+  SMS_ORIGINAL: 'ORIGINAL SMS',
+  SMS_BACK: 'Back',
+  SMS_SKIP: 'Skip',
+  SMS_SAVE_NEXT: 'Save & Next',
+  SMS_SAVE_DONE: 'Save & Done',
 
   // ─── Trash ──────────────────────────────────────────────
   TRASH_DELETE_PERMANENTLY: 'Delete Permanently',
@@ -457,6 +479,17 @@ export const STRINGS = {
   SPLIT_SETTLE_FAILED: 'Could not compute settlements. Make sure all items are assigned.',
   SPLIT_NEW: 'New Split',
   SPLIT_TOTAL: 'Total',
+  SPLIT_CREATE: 'Create',
+  SPLIT_EVENT_NAME: 'EVENT NAME',
+  SPLIT_EVENT_PLACEHOLDER: 'e.g. Dinner at Koshary El Tahrir',
+  SPLIT_WITH: 'SPLIT WITH',
+  SPLIT_SEARCH_PEOPLE: 'Search by name or email…',
+  SPLIT_SCAN_RECEIPT: 'Scan Receipt',
+  SPLIT_FROM_GALLERY: 'From Gallery',
+  SPLIT_ADD_ITEM: 'Add Item',
+  SPLIT_QTY: 'Qty',
+  SPLIT_PRICE: 'Price',
+  SPLIT_EXTRAS: 'EXTRAS',
 
   // ─── Smart Input Card Labels ──────────────────────────────
   SMART_INPUT_SAVED: 'Saved',
@@ -509,7 +542,7 @@ export const STRINGS = {
   SPLIT_COULD_NOT_LOAD: 'Could not load event.',
   SPLIT_SUBTOTAL: 'Subtotal',
   SPLIT_TAX: 'Tax',
-  SPLIT_SERVICE_FEE: 'Service Fee',
+  SPLIT_SERVICE_FEE: 'Service Fee / Tip',
   SPLIT_DISCOUNT: 'Discount',
   SPLIT_ITEMS: 'ITEMS',
   SPLIT_UNASSIGNED: 'unassigned',
@@ -701,4 +734,10 @@ export const STRINGS = {
   // ─── Category Group ─────────────────────────────────────
   CREATE_GROUP_PLACEHOLDER: 'e.g. Side Hustle, Kids, Fitness',
   SUBCATEGORY_PLACEHOLDER: 'Subcategory name',
+
+  // ─── Goal Insights ──────────────────────────────────────
+  INSIGHT_EXCEEDED: '{name} exceeded target by {amount}',
+  INSIGHT_NEAR_LIMIT: '{name} is at {percent}% of target',
+  INSIGHT_WITHIN_BUDGET: '{name} remains within budget',
+  INSIGHT_CATEGORIES_ON_TRACK: '{count} categories remain within budget',
 } as const;

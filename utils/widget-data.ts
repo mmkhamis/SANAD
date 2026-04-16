@@ -7,6 +7,7 @@ import { Platform } from 'react-native';
 
 import { setWidgetData, reloadWidget } from '../modules/widget-shared-data';
 import { getActiveCurrency } from './currency';
+import { translateCategory } from '../lib/i18n';
 import type { GoalsSummary } from '../types/index';
 
 const WIDGET_DATA_KEY = 'budgetWidgetData';
@@ -41,7 +42,7 @@ export async function syncBudgetToWidget(summary: GoalsSummary): Promise<void> {
     totalSpent: summary.total_spent,
     currency: getActiveCurrency(),
     goals: summary.goals.slice(0, 5).map((g) => ({
-      name: g.budget.category_name,
+      name: translateCategory(g.budget.category_name),
       icon: g.category_icon,
       budgeted: g.budget.amount,
       spent: g.actual_spent,

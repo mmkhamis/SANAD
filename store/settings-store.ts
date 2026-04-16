@@ -12,13 +12,17 @@ import { create } from 'zustand';
 interface SettingsStore {
   activeCurrency: string;
   activeLocale: string;
+  countryCode: string;
   setCurrency: (currency: string, locale: string) => void;
+  setCountryCode: (code: string) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
   activeCurrency: 'SAR',
   activeLocale: 'en-SA',
+  countryCode: 'SA',
   setCurrency: (currency, locale) => set({ activeCurrency: currency, activeLocale: locale }),
+  setCountryCode: (code) => set({ countryCode: code }),
 }));
 
 /** Non-React hook to read the current currency (for services, formatters, etc.) */
@@ -28,6 +32,10 @@ export function getActiveCurrency(): string {
 
 export function getActiveLocale(): string {
   return useSettingsStore.getState().activeLocale;
+}
+
+export function getCountryCode(): string {
+  return useSettingsStore.getState().countryCode;
 }
 
 /** Call once when the user profile loads (or updates). */

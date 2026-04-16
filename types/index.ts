@@ -384,6 +384,7 @@ export interface AuthState {
 export interface OnboardingData {
   currency: string;
   locale: string;
+  country_code: string;
 }
 
 // ─── API Response Types ──────────────────────────────────────────────
