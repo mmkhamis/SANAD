@@ -1,9 +1,17 @@
 import { useEffect, useRef } from 'react';
+import * as Linking from 'expo-linking';
 
-import { getSession, fetchUserProfile, onAuthStateChange } from '../services/auth-service';
+import {
+  getSession,
+  fetchUserProfile,
+  fetchOrCreateProfile,
+  handleOAuthRedirect,
+  onAuthStateChange,
+} from '../services/auth-service';
 import { seedDefaultCategories } from '../services/category-service';
 import { seedDefaultAccounts } from '../services/account-service';
 import { useAuthStore } from '../store/auth-store';
+import { supabase } from '../lib/supabase';
 import { queryClient } from '../lib/query-client';
 
 /**
@@ -29,6 +37,9 @@ export function useAuthBootstrap(): void {
 
     const bootstrap = async (): Promise<void> => {
       try {
+        const initialUrl = await Linking.getInitialURL().catch(() => null);
+        await handleOAuthRedirect(initialUrl);
+
         const session = await getSession();
 
         if (session) {
@@ -43,7 +54,8 @@ export function useAuthBootstrap(): void {
           clearUser();
         }
       } catch {
-        // Session is invalid or network is down — send to login
+        // Session is invalid or network is down — wipe any stale token and send to login
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
         clearUser();
       } finally {
         // Guarantee loading state is cleared even if setUser/clearUser
@@ -56,19 +68,28 @@ export function useAuthBootstrap(): void {
 
     // Listen for auth changes (sign-out from another tab, token expiry, etc.)
     const listener = onAuthStateChange((event, userId) => {
-      if (event === 'SIGNED_OUT' || !userId) {
+      if (event === 'SIGNED_OUT') {
+        // Explicit sign-out — wipe local state
+        supabase.auth.signOut({ scope: 'local' }).catch(() => {});
         clearUser();
         queryClient.clear();
       }
       if (event === 'SIGNED_IN' && userId) {
         // During signup the profile row may not exist yet (register() inserts it
-        // after signUp()). Retry once after a short delay if the fetch fails.
-        fetchUserProfile(userId)
-          .then(setUser)
+        // after signUp()). Google OAuth users also need auto-creation.
+        // fetchOrCreateProfile is idempotent — safe to call on every SIGNED_IN.
+        fetchOrCreateProfile(userId)
+          .then((profile) => {
+            setUser(profile);
+            if (profile.onboarding_completed) {
+              seedDefaultCategories().catch(() => {});
+              seedDefaultAccounts().catch(() => {});
+            }
+          })
           .catch(() => {
             // Profile may not exist yet — retry after a brief pause
             setTimeout(() => {
-              fetchUserProfile(userId)
+              fetchOrCreateProfile(userId)
                 .then((profile) => {
                   setUser(profile);
                   if (profile.onboarding_completed) {

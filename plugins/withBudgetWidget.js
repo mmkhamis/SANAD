@@ -5,7 +5,7 @@
  * Xcode project during `npx expo prebuild`.
  *
  * What it does:
- * 1. Adds the "group.com.wallet.app" App Group entitlement to the main app.
+ * 1. Adds a bundle-id-derived App Group entitlement to the main app.
  * 2. Copies Swift widget source files into the ios/ directory.
  * 3. Creates a new app-extension target in the .xcodeproj with correct
  *    build settings, build phases, entitlements, and embedding.
@@ -18,7 +18,6 @@ const {
 const fs = require('fs');
 const path = require('path');
 
-const APP_GROUP = 'group.com.wallet.app';
 const WIDGET_EXT_NAME = 'BudgetWidgetExtension';
 
 // ── Helper: recursive directory copy ─────────────────────────────────
@@ -43,9 +42,10 @@ function copyDirRecursive(src, dest) {
 
 function withAppGroupEntitlement(config) {
   return withEntitlementsPlist(config, (mod) => {
+    const appGroup = `group.${config.ios.bundleIdentifier}`;
     const groups = mod.modResults['com.apple.security.application-groups'] || [];
-    if (!groups.includes(APP_GROUP)) {
-      groups.push(APP_GROUP);
+    if (!groups.includes(appGroup)) {
+      groups.push(appGroup);
     }
     mod.modResults['com.apple.security.application-groups'] = groups;
     return mod;
@@ -60,11 +60,29 @@ function withWidgetTarget(config) {
     const projectRoot = mod.modRequest.projectRoot;
     const iosPath = path.join(projectRoot, 'ios');
     const bundleId = `${mod.ios.bundleIdentifier}.BudgetWidget`;
+    const appGroup = `group.${mod.ios.bundleIdentifier}`;
 
     // ── Copy Swift files ───────────────────────────────────────────
     const sourceDir = path.join(projectRoot, 'targets', 'budget-widget');
     const widgetDir = path.join(iosPath, WIDGET_EXT_NAME);
     copyDirRecursive(sourceDir, widgetDir);
+
+    const widgetSwiftPath = path.join(widgetDir, 'BudgetWidget.swift');
+    const widgetEntitlementsPath = path.join(widgetDir, `${WIDGET_EXT_NAME}.entitlements`);
+    if (fs.existsSync(widgetSwiftPath)) {
+      const contents = fs.readFileSync(widgetSwiftPath, 'utf8');
+      fs.writeFileSync(
+        widgetSwiftPath,
+        contents.replace(/group\.com\.wallet\.app/g, appGroup)
+      );
+    }
+    if (fs.existsSync(widgetEntitlementsPath)) {
+      const contents = fs.readFileSync(widgetEntitlementsPath, 'utf8');
+      fs.writeFileSync(
+        widgetEntitlementsPath,
+        contents.replace(/group\.com\.wallet\.app/g, appGroup)
+      );
+    }
 
     // ── Add extension target ───────────────────────────────────────
     const target = proj.addTarget(
@@ -76,7 +94,13 @@ function withWidgetTarget(config) {
 
     // ── Source build phase ──────────────────────────────────────────
     proj.addBuildPhase(
-      ['BudgetWidget.swift', 'BudgetWidgetBundle.swift'],
+      [
+        'BudgetWidget.swift',
+        'CommitmentsWidget.swift',
+        'CharityWidget.swift',
+        'WalletColors.swift',
+        'BudgetWidgetBundle.swift',
+      ],
       'PBXSourcesBuildPhase',
       'Sources',
       target.uuid,
@@ -143,6 +167,9 @@ function withWidgetTarget(config) {
     const group = proj.addPbxGroup(
       [
         'BudgetWidget.swift',
+        'CommitmentsWidget.swift',
+        'CharityWidget.swift',
+        'WalletColors.swift',
         'BudgetWidgetBundle.swift',
         'Assets.xcassets',
         'Info.plist',

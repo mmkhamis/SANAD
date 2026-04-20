@@ -4,7 +4,8 @@ import { Check, ChevronLeft, Plus } from 'lucide-react-native';
 import { CategoryIcon } from '../ui/CategoryIcon';
 
 import { impactLight } from '../../utils/haptics';
-import { useTranslateCategory } from '../../lib/i18n';
+import { useTranslateCategory, useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 
 import { useGroupedCategoriesByType, useCategoriesByType } from '../../hooks/useCategories';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -37,22 +38,27 @@ function FlatCategoryList({
 }): React.ReactElement {
   const colors = useThemeColors();
   const tc = useTranslateCategory();
+  const { rowDir } = useRTL();
   return (
-    <View className="flex-row flex-wrap gap-2">
+    <View style={{ flexDirection: rowDir, flexWrap: 'wrap', gap: 8 }}>
       {categories.map((category) => {
         const isSelected = category.id === selectedId;
         return (
           <Pressable
             key={category.id}
             onPress={() => { impactLight(); onSelect(category); }}
-            className="flex-row items-center rounded-xl px-3 py-2"
             style={{
+              flexDirection: rowDir,
+              alignItems: 'center',
+              borderRadius: 12,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
               backgroundColor: isSelected ? category.color + '18' : colors.surface,
               borderWidth: 1.5,
               borderColor: isSelected ? category.color : colors.borderLight,
             }}
           >
-            <View style={{ marginRight: 6 }}><CategoryIcon name={category.icon} size={18} color={isSelected ? category.color : colors.textSecondary} /></View>
+            <View style={{ marginEnd: 6 }}><CategoryIcon name={category.icon} size={18} color={isSelected ? category.color : colors.textSecondary} /></View>
             <Text
               style={{
                 fontSize: 14,
@@ -60,7 +66,7 @@ function FlatCategoryList({
                 color: isSelected ? category.color : colors.textPrimary,
               }}
             >
-              {tc(category.name)}
+              {tc(category.name) ?? category.name}
             </Text>
             {isSelected ? (
               <View className="ml-2">
@@ -89,8 +95,10 @@ function GroupGrid({
 }): React.ReactElement {
   const colors = useThemeColors();
   const tc = useTranslateCategory();
+  const t = useT();
+  const { rowDir } = useRTL();
   return (
-    <View className="flex-row flex-wrap gap-2">
+    <View style={{ flexDirection: rowDir, flexWrap: 'wrap', gap: 8 }}>
       {groups.map((g) => {
         const isActive = g.group.id === selectedGroupId;
         return (
@@ -119,7 +127,7 @@ function GroupGrid({
                 textAlign: 'center',
               }}
             >
-              {tc(g.group.name)}
+              {tc(g.group.name) ?? g.group.name}
             </Text>
           </Pressable>
         );
@@ -161,7 +169,7 @@ function GroupGrid({
               textAlign: 'center',
             }}
           >
-            New Group
+            {t('NEW_GROUP' as any)}
           </Text>
         </Pressable>
       ) : null}
@@ -184,15 +192,16 @@ function SubcategoryList({
 }): React.ReactElement {
   const colors = useThemeColors();
   const tc = useTranslateCategory();
+  const { rowDir, isRTL } = useRTL();
   return (
     <View>
       {/* Back header */}
       <Pressable
-        className="flex-row items-center mb-3"
+        style={{ flexDirection: rowDir, alignItems: 'center', marginBottom: 12 }}
         onPress={() => { impactLight(); onBack(); }}
       >
-        <ChevronLeft size={18} color={group.group.color} strokeWidth={2.5} />
-        <View style={{ marginLeft: 4, marginRight: 6 }}><CategoryIcon name={group.group.icon} size={22} color={group.group.color} /></View>
+        <ChevronLeft size={18} color={group.group.color} strokeWidth={2.5} style={isRTL ? { transform: [{ scaleX: -1 }] } : undefined} />
+        <View style={{ marginHorizontal: 4 }}><CategoryIcon name={group.group.icon} size={22} color={group.group.color} /></View>
         <Text
           style={{
             fontSize: 16,
@@ -201,26 +210,30 @@ function SubcategoryList({
             flex: 1,
           }}
         >
-          {tc(group.group.name)}
+          {tc(group.group.name) ?? group.group.name}
         </Text>
       </Pressable>
 
       {/* Subcategory chips */}
-      <View className="flex-row flex-wrap gap-2">
+      <View style={{ flexDirection: rowDir, flexWrap: 'wrap', gap: 8 }}>
         {group.categories.map((category) => {
           const isSelected = category.id === selectedId;
           return (
             <Pressable
               key={category.id}
               onPress={() => { impactLight(); onSelect(category); }}
-              className="flex-row items-center rounded-xl px-3 py-2.5"
               style={{
+                flexDirection: rowDir,
+                alignItems: 'center',
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
                 backgroundColor: isSelected ? group.group.color + '18' : colors.surfaceSecondary,
                 borderWidth: 1.5,
                 borderColor: isSelected ? group.group.color : 'transparent',
               }}
             >
-              <View style={{ marginRight: 6 }}><CategoryIcon name={category.icon} size={17} color={isSelected ? group.group.color : colors.textSecondary} /></View>
+              <View style={{ marginEnd: 6 }}><CategoryIcon name={category.icon} size={17} color={isSelected ? group.group.color : colors.textSecondary} /></View>
               <Text
                 style={{
                   fontSize: 14,
@@ -228,7 +241,7 @@ function SubcategoryList({
                   color: isSelected ? group.group.color : colors.textPrimary,
                 }}
               >
-                {tc(category.name)}
+                {tc(category.name) ?? category.name}
               </Text>
               {isSelected ? (
                 <View className="ml-1.5">
@@ -308,6 +321,7 @@ export function CategoryPicker({
   onRequestCreateGroup,
 }: CategoryPickerProps): React.ReactElement {
   const colors = useThemeColors();
+  const t = useT();
   const { data: grouped, isLoading: groupedLoading } = useGroupedCategoriesByType(type);
   const { data: fetchedCategories, isLoading: flatLoading } = useCategoriesByType(type);
 
@@ -331,7 +345,7 @@ export function CategoryPicker({
       return (
         <View className="items-center justify-center py-8 px-4">
           <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center' }}>
-            No categories available. Create one first.
+            {t('NO_CATEGORIES_AVAILABLE' as any)}
           </Text>
         </View>
       );
@@ -352,7 +366,7 @@ export function CategoryPicker({
     return (
       <View className="items-center justify-center py-8 px-4">
         <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center' }}>
-          No categories available. Create one first.
+          {t('NO_CATEGORIES_AVAILABLE' as any)}
         </Text>
       </View>
     );

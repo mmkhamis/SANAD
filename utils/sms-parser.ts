@@ -296,24 +296,54 @@ function detectTransactionType(text: string): TransactionType {
 
 // ─── Merchant extraction ─────────────────────────────────────────────
 
+// Terminators that follow a merchant name in Arabic/English SMS.
+// Important for Arabic SMS like "عند BEET ELGOMLA يوم 15/04..." where
+// "يوم" (on/day), "بتاريخ" (on date), "الساعه" (at time) end the merchant.
+const MERCHANT_TERMINATORS =
+  '(?:\\s+on\\b|\\s+ref\\b|\\s+at\\s+\\d|\\s+يوم\\b|\\s+بتاريخ\\b|\\s+الساعه\\b|\\s+الساعة\\b|\\s+في\\s+\\d|\\s+بمبلغ\\b|\\s+كود\\b|\\s+رقم\\b|\\s+المتاح\\b|\\s+للمزيد\\b|\\s*[.,]|\\s*$)';
+
 const MERCHANT_PATTERNS = [
-  // "at MERCHANT_NAME" or "from MERCHANT_NAME"
-  /(?:at|from|عند|في|لدى)\s+([A-Za-z0-9\s&'._-]{2,40}?)(?:\s+on|\s+ref|\s*\.|\s*$)/i,
+  // "at MERCHANT_NAME" / "from MERCHANT_NAME" / "عند MERCHANT"
+  new RegExp(
+    `(?:at|from|عند|لدى)\\s+([A-Za-z0-9][A-Za-z0-9\\s&'._\\-]{1,60}?)${MERCHANT_TERMINATORS}`,
+    'i',
+  ),
+  // Egyptian bank style: "By Mobile payment عند BEET ELGOMLA" → captured via عند above.
+  // Standalone "By <Method>" is NOT a merchant — skip.
   // "to MERCHANT_NAME"
-  /(?:to|إلى)\s+([A-Za-z0-9\s&'._-]{2,40}?)(?:\s+on|\s+ref|\s*\.|\s*$)/i,
+  new RegExp(
+    `(?:to|إلى)\\s+([A-Za-z0-9][A-Za-z0-9\\s&'._\\-]{1,60}?)${MERCHANT_TERMINATORS}`,
+    'i',
+  ),
   // "Merchant: NAME"
-  /(?:merchant|store|shop|التاجر)[:\s]+([A-Za-z0-9\s&'._-]{2,40})/i,
+  /(?:merchant|store|shop|التاجر)[:\s]+([A-Za-z0-9][A-Za-z0-9\s&'._-]{1,60})/i,
 ];
+
+// Noise fragments that sometimes get captured as a merchant name.
+const MERCHANT_NOISE = [
+  /^mobile\s+payment$/i,
+  /^pos$/i,
+  /^card$/i,
+  /^online$/i,
+  /^transfer$/i,
+  /^بطاقة/i,          // Arabic "card..."
+  /^حساب/i,          // Arabic "account..."
+];
+
+function cleanMerchant(raw: string): string | null {
+  const trimmed = raw.trim().replace(/\s+/g, ' ');
+  if (trimmed.length < 2) return null;
+  if (/^\d+$/.test(trimmed)) return null;
+  if (MERCHANT_NOISE.some((re) => re.test(trimmed))) return null;
+  return trimmed;
+}
 
 function extractMerchant(text: string): string | null {
   for (const pattern of MERCHANT_PATTERNS) {
     const match = text.match(pattern);
     if (match?.[1]) {
-      const merchant = match[1].trim();
-      // Skip if it's just a number or too short
-      if (merchant.length >= 2 && !/^\d+$/.test(merchant)) {
-        return merchant;
-      }
+      const cleaned = cleanMerchant(match[1]);
+      if (cleaned) return cleaned;
     }
   }
   return null;
@@ -540,6 +570,15 @@ export function parseSmsToTransaction(message: string): ParsedTransaction | null
     message,
   );
 
+  // Suggest a taxonomy subcategory based on merchant + raw text.
+  // We combine the merchant into the haystack so brand names like
+  // "BEET ELGOMLA" ("بيت الجملة") match grocery aliases.
+  const haystack = [merchant ?? '', message].join(' ');
+  const suggestedKey = suggestCategoryKey(haystack);
+  const suggestedLabel = suggestedKey
+    ? FLATTENED_SUBCATEGORIES.find((s) => s.key === suggestedKey)?.label ?? null
+    : null;
+
   return {
     amount,
     transaction_type: transactionType,
@@ -551,5 +590,7 @@ export function parseSmsToTransaction(message: string): ParsedTransaction | null
     needs_review: needsReview,
     review_reason: reviewReason,
     rawText: message,
+    suggested_category_key: suggestedKey,
+    suggested_category_label: suggestedLabel,
   };
 }

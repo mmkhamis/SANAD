@@ -1,18 +1,22 @@
 import React, { useEffect } from 'react';
 import { I18nManager, LogBox } from 'react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 
-import { queryClient } from '../lib/query-client';
+import { queryClient, persistOptions } from '../lib/query-client';
 import { useAuthBootstrap } from '../hooks/useAuthBootstrap';
+import { useOAuthRedirect } from '../hooks/useOAuthRedirect';
 import { useSMSDeepLink } from '../hooks/useSMSDeepLink';
 import { useAuthStore } from '../store/auth-store';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { useLanguageStore } from '../store/language-store';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
-import { setupNotificationChannel, requestNotificationPermission } from '../services/notification-service';
+import { setupNotificationChannel, requestNotificationPermission, registerPushToken } from '../services/notification-service';
+import { useOfflineQueue } from '../hooks/useOfflineQueue';
+import { OfflineBanner } from '../components/ui/OfflineBanner';
+import { startNativeSessionBridge } from '../services/native-session-bridge';
 
 // Import global CSS for NativeWind
 import '../global.css';
@@ -97,14 +101,23 @@ function useProtectedRoute(): void {
 // ─── Inner Layout (needs to be inside QueryClientProvider) ───────────
 
 function RootLayoutInner(): React.ReactElement {
+  useOAuthRedirect();
   useAuthBootstrap();
   useProtectedRoute();
   useSMSDeepLink();
+  // Wires connectivity detection and triggers replay on reconnect
+  useOfflineQueue();
 
   // Initialize notification channel + request permission
   useEffect(() => {
     setupNotificationChannel().catch(() => {});
-    requestNotificationPermission().catch(() => {});
+    requestNotificationPermission()
+      .then((granted) => {
+        if (granted) registerPushToken().catch(() => {});
+      })
+      .catch(() => {});
+    // Mirror Supabase session into shared Keychain for the iOS App Intent.
+    startNativeSessionBridge();
   }, []);
 
   const isLoading = useAuthStore((s) => s.isLoading);
@@ -117,6 +130,7 @@ function RootLayoutInner(): React.ReactElement {
   return (
     <>
       <StatusBar style={colors.isDark ? 'light' : 'dark'} />
+      <OfflineBanner />
       <Slot />
     </>
   );
@@ -129,9 +143,12 @@ export default function RootLayout(): React.ReactElement {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={persistOptions}
+      >
         <RootLayoutInner />
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </GestureHandlerRootView>
   );
 }

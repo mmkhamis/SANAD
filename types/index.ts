@@ -182,6 +182,10 @@ export interface ParsedTransaction {
   needs_review: boolean;
   review_reason: string | null;
   rawText: string;
+  /** Taxonomy subcategory key suggested from SMS text (e.g. "groceries"). */
+  suggested_category_key?: string | null;
+  /** Human-friendly category label (e.g. "Groceries"). */
+  suggested_category_label?: string | null;
 }
 
 export interface CategoryGroup {
@@ -194,6 +198,7 @@ export interface CategoryGroup {
   sort_order: number;
   is_default: boolean;
   taxonomy_key: string | null;
+  retired_at: string | null;
   created_at: string;
 }
 
@@ -208,6 +213,7 @@ export interface Category {
   is_default: boolean;
   group_id: string | null;
   taxonomy_key: string | null;
+  retired_at: string | null;
   created_at: string;
 }
 
@@ -350,6 +356,7 @@ export interface UserProfile {
   id: string;
   email: string;
   full_name: string;
+  name_ar: string | null;
   avatar_url: string | null;
   currency: string;
   locale: string;
@@ -372,6 +379,9 @@ export interface RegisterCredentials {
   email: string;
   password: string;
   full_name: string;
+  name_ar?: string;
+  birth_date?: string;
+  phone: string;
 }
 
 export interface AuthState {

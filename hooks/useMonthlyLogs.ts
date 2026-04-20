@@ -25,6 +25,7 @@ export function useMonthlyLogs(): {
   const { data, isLoading, isError, error, refetch } = useQuery<MonthlyLog[], Error>({
     queryKey: QUERY_KEYS.monthlyLogs,
     queryFn: getMonthlyLogs,
+    staleTime: 10 * 60 * 1000,
     enabled: useAuthStore.getState().isAuthenticated,
   });
 
@@ -103,7 +104,18 @@ export function useDeleteLog(): {
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: deleteMonthlyLog,
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: QUERY_KEYS.monthlyLogs });
+      const prev = qc.getQueryData<MonthlyLog[]>(QUERY_KEYS.monthlyLogs);
+      qc.setQueryData<MonthlyLog[]>(QUERY_KEYS.monthlyLogs, (old) =>
+        old ? old.filter((l) => l.id !== id) : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(QUERY_KEYS.monthlyLogs, ctx.prev);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.monthlyLogs });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.monthlySummary });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });

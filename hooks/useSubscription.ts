@@ -23,6 +23,7 @@ import {
 import { resolveEntitlement } from '../lib/plan';
 import { QUERY_KEYS } from '../lib/query-client';
 import { notifySuccess, notifyError } from '../utils/haptics';
+import { useDevPlanStore } from '../store/dev-plan-store';
 import type { TrialPlan, ResolvedEntitlement, AppConfig } from '../types/index';
 
 // ─── Hook ────────────────────────────────────────────────────────────
@@ -75,7 +76,15 @@ export function useSubscription(): UseSubscriptionReturn {
 
   // ── Resolve entitlement ─────────────────────────────────────────
 
-  const entitlement = resolveEntitlement(subscription ?? null);
+  const resolved = resolveEntitlement(subscription ?? null);
+
+  // ── Dev-only plan override (no-op in production) ────────────────
+
+  const devOverride = useDevPlanStore((s) => s.override);
+  const entitlement: ResolvedEntitlement =
+    __DEV__ && devOverride
+      ? { ...resolved, effectivePlan: devOverride }
+      : resolved;
 
   // ── Lazy expiration: persist to DB when we detect client-side ───
 

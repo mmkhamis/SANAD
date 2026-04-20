@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import {
   View,
-  Text,
+  Text as BaseText,
+  type TextProps,
   RefreshControl,
   Pressable,
   Modal,
@@ -34,9 +35,19 @@ import { formatAmount } from '../../utils/currency';
 import { formatShortMonthYear } from '../../utils/locale-format';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useResponsive } from '../../hooks/useResponsive';
 import { FeatureGate } from '../../components/ui/FeatureGate';
 import { useT, useTranslateCategory } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import type { Category, BudgetGoal } from '../../types/index';
+
+// RTL-aware Text wrapper: every <Text> in this file auto-aligns to the
+// active language's start edge (right in Arabic, left in English).
+// Caller-provided `style` still wins because it comes after in the array.
+function Text({ style, ...rest }: TextProps): React.ReactElement {
+  const { textAlign } = useRTL();
+  return <BaseText style={[{ textAlign }, style]} {...rest} />;
+}
 
 // ─── Period options ──────────────────────────────────────────────────
 
@@ -75,8 +86,10 @@ const COLLAPSE_END = 200;
 
 function GoalsContent(): React.ReactElement {
   const colors = useThemeColors();
+  const { hPad } = useResponsive();
   const t = useT();
   const tc = useTranslateCategory();
+  const { rowDir, textAlign } = useRTL();
   const insets = useSafeAreaInsets();
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const { data: goalsSummary, isLoading, isError, error, refetch } = useGoals(selectedMonth);
@@ -203,7 +216,7 @@ function GoalsContent(): React.ReactElement {
   if (isLoading) return <LoadingScreen />;
 
   if (isError) {
-    return <ErrorState message={error?.message ?? 'Failed to load goals'} onRetry={handleRefresh} />;
+    return <ErrorState message={error?.message ?? t('ERROR_LOADING_DASHBOARD')} onRetry={handleRefresh} />;
   }
 
   const hasGoals = goalsSummary && goalsSummary.goals.length > 0;
@@ -422,7 +435,7 @@ function GoalsContent(): React.ReactElement {
             zIndex: 50,
             paddingTop: insets.top + 4,
             paddingBottom: 10,
-            paddingHorizontal: 20,
+            paddingHorizontal: hPad,
           },
           compactBarStyle,
         ]}
@@ -434,7 +447,7 @@ function GoalsContent(): React.ReactElement {
             : ['rgba(248,250,252,0.97)', 'rgba(248,250,252,0.92)', 'rgba(248,250,252,0)']}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: -12 }}
         />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary }}>
             {t('GOALS_HEADER' as any)}
           </Text>
@@ -443,15 +456,15 @@ function GoalsContent(): React.ReactElement {
           </Text>
         </View>
         {goalsSummary && goalsSummary.goals.length > 0 ? (
-          <View style={{ flexDirection: 'row', marginTop: 4, gap: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <View style={{ flexDirection: rowDir, marginTop: 4, gap: 8 }}>
+            <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
               <CheckCircle size={10} color={colors.income} strokeWidth={2.5} />
               <Text style={{ fontSize: 11, fontWeight: '600', color: colors.income }}>
                 {goalsSummary.on_track_count} {t('GOALS_TRACKED' as any)}
               </Text>
             </View>
             {goalsSummary.exceeded_count > 0 ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
                 <AlertOctagon size={10} color={colors.expense} strokeWidth={2.5} />
                 <Text style={{ fontSize: 11, fontWeight: '600', color: colors.expense }}>
                   {goalsSummary.exceeded_count} {t('GOALS_EXCEEDED_LABEL' as any)}
@@ -502,8 +515,8 @@ function GoalsContent(): React.ReactElement {
             }}
           >
             {/* Modal header */}
-            <View className="flex-row items-center justify-between px-5 pt-5 pb-3">
-              <Text style={{ fontSize: 20, fontWeight: '700', color: colors.textPrimary }}>
+            <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: colors.textPrimary, textAlign }}>
                 {t('GOALS_NEW_BUDGET' as any)}
               </Text>
               <Pressable onPress={handleCloseAdd} hitSlop={12}>
@@ -513,8 +526,8 @@ function GoalsContent(): React.ReactElement {
 
             {/* Category selection – scrollable */}
             <View className="px-5">
-              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 }}>
-                Category
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8, textAlign }}>
+                {t('CATEGORY')}
               </Text>
             </View>
             <ScrollView
@@ -540,6 +553,7 @@ function GoalsContent(): React.ReactElement {
                   color: colors.textSecondary,
                   marginTop: 20,
                   marginBottom: 8,
+                  textAlign,
                 }}
               >
                 {t('GOALS_BUDGET_AMOUNT' as any)}
@@ -570,11 +584,12 @@ function GoalsContent(): React.ReactElement {
                   color: colors.textSecondary,
                   marginTop: 20,
                   marginBottom: 8,
+                  textAlign,
                 }}
               >
                 {t('GOALS_PERIOD' as any)}
               </Text>
-              <View className="flex-row gap-2">
+              <View style={{ flexDirection: rowDir, gap: 8 }}>
                 {PERIODS.map((p) => (
                   <Pressable
                     key={p.value}
@@ -661,7 +676,7 @@ function GoalsContent(): React.ReactElement {
                 {/* Goal info */}
                 <View
                   style={{
-                    flexDirection: 'row',
+                    flexDirection: rowDir,
                     alignItems: 'center',
                     padding: 14,
                     borderRadius: 14,
@@ -723,7 +738,7 @@ function GoalsContent(): React.ReactElement {
                     paddingVertical: 15,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    flexDirection: 'row',
+                    flexDirection: rowDir,
                     opacity: isUpdating ? 0.6 : 1,
                   }}
                 >
@@ -751,7 +766,7 @@ function GoalsContent(): React.ReactElement {
                     paddingVertical: 13,
                     alignItems: 'center',
                     justifyContent: 'center',
-                    flexDirection: 'row',
+                    flexDirection: rowDir,
                     opacity: isDeleting ? 0.6 : 1,
                   }}
                 >
@@ -770,12 +785,9 @@ function GoalsContent(): React.ReactElement {
 }
 
 export default function GoalsScreen(): React.ReactElement {
-  const colors = useThemeColors();
   return (
     <ErrorBoundary>
-      <FeatureGate feature="budgetGoals">
-        <GoalsContent />
-      </FeatureGate>
+      <GoalsContent />
     </ErrorBoundary>
   );
 }

@@ -11,7 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppScreen } from '../../components/ui/AppScreen';
+import { useResponsive } from '../../hooks/useResponsive';
 import { ArrowLeft, Plus, Trash2, Camera, Receipt, Search, X, UserPlus } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,12 +21,13 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { Image } from 'expo-image';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useRTL } from '../../hooks/useRTL';
 import { useCreateSplitEvent, useSearchUsers } from '../../hooks/useCommunity';
 import { createCommunity, addMemberToCommunity } from '../../services/community-service';
 import { impactLight, impactMedium, notifySuccess, notifyError } from '../../utils/haptics';
 import { invokeWithRetry } from '../../lib/supabase';
 import { FeatureGate } from '../../components/ui/FeatureGate';
-import { useT } from '../../lib/i18n';
+import { useT, tFormat } from '../../lib/i18n';
 
 
 interface LineItem {
@@ -89,7 +91,9 @@ interface SelectedPerson {
 
 export default function CreateSplitEventScreen(): React.ReactElement {
   const colors = useThemeColors();
+  const { isRTL } = useRTL();
   const t = useT();
+  const { hPad } = useResponsive();
   const { communityId, prefillTitle, prefillAmount } = useLocalSearchParams<{
     communityId: string;
     prefillTitle?: string;
@@ -277,12 +281,12 @@ export default function CreateSplitEventScreen(): React.ReactElement {
   return (
     <ErrorBoundary>
     <FeatureGate feature="billSplit">
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <AppScreen backgroundColor={colors.background} noKeyboard horizontalPadding={0}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: hPad, paddingVertical: 16 }}>
           <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginRight: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
-            <ArrowLeft size={18} color={colors.textPrimary} />
+            <ArrowLeft size={18} color={colors.textPrimary} style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
           </Pressable>
           <Text style={{ flex: 1, color: colors.textPrimary, fontSize: 20, fontWeight: '700', letterSpacing: -0.5 }}>{ t('SPLIT_NEW')}</Text>
           <Pressable onPress={handleCreate} disabled={isPending} style={{ backgroundColor: colors.primaryDark, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 }}>
@@ -290,7 +294,7 @@ export default function CreateSplitEventScreen(): React.ReactElement {
           </Pressable>
         </View>
 
-        <ScrollView style={{ flex: 1, paddingHorizontal: 20 }} keyboardShouldPersistTaps="handled">
+        <ScrollView style={{ flex: 1, paddingHorizontal: hPad }} keyboardShouldPersistTaps="handled">
           {/* Event title */}
           <Text style={{ color: colors.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, marginTop: 4 }}>{t('SPLIT_EVENT_NAME' as any)}</Text>
           <TextInput
@@ -402,7 +406,7 @@ export default function CreateSplitEventScreen(): React.ReactElement {
                 <TextInput
                   value={item.name}
                   onChangeText={(v) => updateItem(item.id, 'name', v)}
-                  placeholder={`Item ${index + 1} name`}
+                  placeholder={tFormat('SPLIT_ITEM_NAME_PLACEHOLDER', { index: index + 1 })}
                   placeholderTextColor={colors.textDim}
                   style={{ flex: 1, fontSize: 15, color: colors.textPrimary }}
                 />
@@ -417,7 +421,7 @@ export default function CreateSplitEventScreen(): React.ReactElement {
                 </View>
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6 }}>
                   <Text style={{ color: colors.textDim, fontSize: 11, marginRight: 4 }}>{t('SPLIT_PRICE' as any)}</Text>
-                  <TextInput value={item.unit_price} onChangeText={(v) => updateItem(item.id, 'unit_price', v)} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={colors.textDim} style={{ flex: 1, fontSize: 14, color: colors.textPrimary }} />
+                  <TextInput value={item.unit_price} onChangeText={(v) => updateItem(item.id, 'unit_price', v)} keyboardType="decimal-pad" placeholder={t('SMART_INPUT_AMOUNT_PLACEHOLDER')} placeholderTextColor={colors.textDim} style={{ flex: 1, fontSize: 14, color: colors.textPrimary }} />
                 </View>
                 <View style={{ alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, borderRadius: 8, backgroundColor: colors.surfaceSecondary }}>
                   <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary }}>{((parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0)).toFixed(2)}</Text>
@@ -436,7 +440,7 @@ export default function CreateSplitEventScreen(): React.ReactElement {
             ].map(({ label, value, setValue }, i) => (
               <View key={label} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: i < 2 ? 1 : 0, borderBottomColor: colors.borderLight }}>
                 <Text style={{ color: colors.textTertiary, fontSize: 14 }}>{label}</Text>
-                <TextInput value={value} onChangeText={setValue} keyboardType="decimal-pad" placeholder="0.00" placeholderTextColor={colors.textDim} style={{ fontSize: 14, color: colors.textPrimary, textAlign: 'right', width: 100 }} />
+                <TextInput value={value} onChangeText={setValue} keyboardType="decimal-pad" placeholder={t('SMART_INPUT_AMOUNT_PLACEHOLDER')} placeholderTextColor={colors.textDim} style={{ fontSize: 14, color: colors.textPrimary, textAlign: 'right', width: 100 }} />
               </View>
             ))}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingTop: 14, marginTop: 6, borderTopWidth: 1, borderTopColor: colors.border }}>
@@ -446,7 +450,7 @@ export default function CreateSplitEventScreen(): React.ReactElement {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </AppScreen>
     </FeatureGate>
     </ErrorBoundary>
   );

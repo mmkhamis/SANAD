@@ -8,6 +8,15 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const TRANSCRIBE_PROMPT =
+  'Transcribe only the words actually spoken. ' +
+  'If the audio is silence, noise-only, music-only, or unintelligible, return empty string "". ' +
+  'Do not hallucinate, summarize, translate, normalize, or correct wording. ' +
+  'Keep original language/script exactly as spoken (Arabic, English, Franko-Arab, or mixed). ' +
+  'Keep numbers, currencies, and merchant names exactly as heard. ' +
+  'Examples: "dafa3t 150 fel carrefour" -> "dafa3t 150 fel carrefour", ' +
+  '"دفعت ٢٥٠ في كارفور" -> "دفعت ٢٥٠ في كارفور".';
+
 Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: CORS_HEADERS });
@@ -57,19 +66,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
     const formData = new FormData();
     formData.append('file', audioFile);
     formData.append('model', 'gpt-4o-mini-transcribe');
-    // gpt-4o-mini-transcribe handles mixed Arabic/English (code-switching)
-    // much better than whisper-1. Prompt gives financial domain context.
-    formData.append('prompt',
-      'هذا تسجيل صوتي عن مصاريف مالية بالعربي والإنجليزي. ' +
-      'المستخدم ممكن يقول حاجات زي: دفعت ١٥٠ جنيه في كارفور، ' +
-      'أو paid 80 EGP at KFC، أو اشتريت من أمازون بـ 200 جنيه. ' +
-      'أسماء تجار: كارفور، سبينيس، أمازون، نون، طلبات، أوبر، فودافون، اتصالات. ' +
-      'عملات: جنيه مصري EGP، ريال SAR، درهم AED. ' +
-      'Financial transactions in Arabic and English. ' +
-      'Merchants: Carrefour, Spinneys, Amazon, Noon, Talabat, Uber, Vodafone, KFC, McDonald\'s. ' +
-      'Currencies: Egyptian pounds EGP, Saudi Riyal SAR. ' +
-      'Actions: paid, bought, spent, transferred, received.',
-    );
+    formData.append('prompt', TRANSCRIBE_PROMPT);
     // gpt-4o-mini-transcribe only supports json or text (not verbose_json)
     formData.append('response_format', 'json');
 

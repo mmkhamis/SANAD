@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
 import { QUERY_KEYS } from '../lib/query-client';
@@ -21,6 +21,7 @@ export function useDashboard(month?: string): UseDashboardResult {
     queryKey: [...QUERY_KEYS.dashboard, resolvedMonth],
     queryFn: () => fetchDashboardData(resolvedMonth),
     staleTime: 1000 * 60 * 2,
+    placeholderData: keepPreviousData,
     enabled: useAuthStore.getState().isAuthenticated,
   });
 

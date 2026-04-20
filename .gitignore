@@ -23,3 +23,5 @@ android/
 
 expo-env.d.ts
 # @end expo-cli
+# Google OAuth client secrets
+client_secret_*.json

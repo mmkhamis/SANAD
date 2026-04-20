@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
 import { QUERY_KEYS } from '../lib/query-client';
@@ -16,6 +16,7 @@ export function useHabitInsights(month?: string, enabled = true): {
     queryKey: QUERY_KEYS.habitInsights(resolvedMonth),
     queryFn: () => fetchHabitInsights(resolvedMonth),
     staleTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
     enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 }

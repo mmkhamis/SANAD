@@ -26,6 +26,7 @@ export function useBudgets(): UseBudgetsResult {
   const { data, isLoading, isError, error, refetch } = useQuery<Budget[], Error>({
     queryKey: QUERY_KEYS.budgets,
     queryFn: fetchActiveBudgets,
+    staleTime: 10 * 60 * 1000,
     enabled: useAuthStore.getState().isAuthenticated,
   });
 
@@ -89,7 +90,18 @@ export function useDeleteBudget(): UseDeleteBudgetResult {
 
   const { mutate, isPending } = useMutation({
     mutationFn: deleteBudget,
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: QUERY_KEYS.budgets });
+      const prev = qc.getQueryData(QUERY_KEYS.budgets);
+      qc.setQueryData(QUERY_KEYS.budgets, (old: any) =>
+        Array.isArray(old) ? old.filter((b: any) => b.id !== id) : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) qc.setQueryData(QUERY_KEYS.budgets, context.prev);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.budgets });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
     },

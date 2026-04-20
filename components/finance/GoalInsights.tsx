@@ -1,8 +1,16 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text as BaseText, type TextProps } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
+
+// RTL-aware Text wrapper (caller style still wins).
+function Text({ style, ...rest }: TextProps): React.ReactElement {
+  const { textAlign } = useRTL();
+  return <BaseText style={[{ textAlign }, style]} {...rest} />;
+}
 
 interface GoalInsightsProps {
   insights: string[];
@@ -10,6 +18,7 @@ interface GoalInsightsProps {
 
 export function GoalInsights({ insights }: GoalInsightsProps): React.ReactElement | null {
   const colors = useThemeColors();
+  const t = useT();
   if (insights.length === 0) return null;
 
   return (
@@ -54,7 +63,7 @@ export function GoalInsights({ insights }: GoalInsightsProps): React.ReactElemen
         {/* Content */}
         <View>
           <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary, marginBottom: 8, letterSpacing: 0.3 }}>
-            💡 Quick Insights
+            {'💡 ' + t('INSIGHTS')}
           </Text>
           {insights.map((insight) => (
             <Text

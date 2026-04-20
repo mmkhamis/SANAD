@@ -16,8 +16,12 @@ const MERCHANT_ALIASES: Record<string, string> = {
   'panda': 'Panda',
   'danube': 'Danube',
   'farm': 'Farm Superstores',
+  'bin dawood': 'Bin Dawood',
+  'bindawood': 'Bin Dawood',
+  'othaim': 'Othaim',
+  'nesto': 'Nesto',
 
-  // Dining
+  // Fast food & dining
   'mac': "McDonald's",
   'mcd': "McDonald's",
   'mcdonalds': "McDonald's",
@@ -30,10 +34,42 @@ const MERCHANT_ALIASES: Record<string, string> = {
   'burger king': 'Burger King',
   'hardees': "Hardee's",
   "hardee's": "Hardee's",
+  'albaik': 'Al Baik',
+  'al baik': 'Al Baik',
+  'kudu': 'Kudu',
+  'herfy': 'Herfy',
+  'shawarmer': 'Shawarmer',
+  'dunkin': 'Dunkin',
+  "dunkin'": 'Dunkin',
+  'tim hortons': 'Tim Hortons',
+  'timhortons': 'Tim Hortons',
+  'subway': 'Subway',
+  'pizza hut': 'Pizza Hut',
+  'dominos': "Domino's",
+  "domino's": "Domino's",
+  "papa john's": "Papa John's",
+  'papa johns': "Papa John's",
+  'baskin robbins': 'Baskin Robbins',
+  'krispy kreme': 'Krispy Kreme',
+  'cheesecake factory': 'The Cheesecake Factory',
+  'maestro': 'Maestro Pizza',
+  'maestro pizza': 'Maestro Pizza',
+  "barn's": "Barn's",
+  'barns': "Barn's",
+
+  // Delivery
+  'hungerstation': 'HungerStation',
+  'hunger station': 'HungerStation',
+  'jahez': 'Jahez',
+  'toyou': 'ToYou',
+  'to you': 'ToYou',
+  'mrsool': 'Mrsool',
+  'talabat': 'Talabat',
 
   // Ride-hailing
   'uber': 'Uber',
   'careem': 'Careem',
+  'bolt': 'Bolt',
 
   // E-commerce
   'amzn': 'Amazon',
@@ -41,6 +77,25 @@ const MERCHANT_ALIASES: Record<string, string> = {
   'noon': 'Noon',
   'shein': 'SHEIN',
   'namshi': 'Namshi',
+  'temu': 'Temu',
+  'aliexpress': 'AliExpress',
+  'ali express': 'AliExpress',
+  'jarir': 'Jarir',
+  'extra': 'Extra',
+
+  // Fashion
+  'zara': 'Zara',
+  'h&m': 'H&M',
+  'nike': 'Nike',
+  'adidas': 'Adidas',
+  'skechers': 'Skechers',
+  'max fashion': 'Max Fashion',
+  'centrepoint': 'Centrepoint',
+  'sephora': 'Sephora',
+  'bath and body works': 'Bath & Body Works',
+  'bath & body': 'Bath & Body Works',
+  'splash': 'Splash',
+  'ounass': 'Ounass',
 
   // Subscriptions
   'nflx': 'Netflix',
@@ -51,6 +106,10 @@ const MERCHANT_ALIASES: Record<string, string> = {
   'youtube': 'YouTube',
   'yt premium': 'YouTube Premium',
   'google': 'Google',
+  'shahid': 'Shahid',
+  'anghami': 'Anghami',
+  'playstation': 'PlayStation',
+  'xbox': 'Xbox',
 
   // Telecom
   'stc': 'STC',
@@ -64,14 +123,22 @@ const MERCHANT_ALIASES: Record<string, string> = {
 
   // Furniture / Home
   'ikea': 'IKEA',
-
-  // Fashion
-  'zara': 'Zara',
-  'h&m': 'H&M',
+  'home centre': 'Home Centre',
+  'home center': 'Home Centre',
+  'pottery barn': 'Pottery Barn',
 
   // Fuel
   'aramco': 'Aramco',
   'adnoc': 'ADNOC',
+
+  // Healthcare
+  'nahdi': 'Nahdi',
+  'al dawaa': 'Al Dawaa',
+  'aldawaa': 'Al Dawaa',
+  'whites': 'Whites Pharmacy',
+
+  // Fitness
+  'fitness time': 'Fitness Time',
 };
 
 /**

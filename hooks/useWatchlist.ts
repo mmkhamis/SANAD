@@ -124,7 +124,18 @@ export function useRemoveFromWatchlist(): UseRemoveFromWatchlistResult {
 
   const { mutate, mutateAsync, isPending } = useMutation({
     mutationFn: removeFromWatchlist,
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: WATCHLIST_KEYS.watchlist });
+      const prev = qc.getQueryData(WATCHLIST_KEYS.watchlist);
+      qc.setQueryData(WATCHLIST_KEYS.watchlist, (old: any) =>
+        Array.isArray(old) ? old.filter((item: any) => item.id !== id) : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(WATCHLIST_KEYS.watchlist, ctx.prev);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: WATCHLIST_KEYS.watchlist });
       qc.invalidateQueries({ queryKey: WATCHLIST_KEYS.quotes });
     },

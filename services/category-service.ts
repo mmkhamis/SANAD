@@ -9,12 +9,32 @@ import {
   type FlattenedTaxonomySubcategory,
 } from '../constants/category-taxonomy';
 
+// ─── Client-side deduplication safety net ────────────────────────────
+// Keeps the first occurrence per (taxonomy_key OR lowercased name).
+// This prevents duplicates caused by any pending DB migrations or by
+// categories with taxonomy_key=null that share a name with a canonical one.
+function deduplicateCategories(cats: Category[]): Category[] {
+  const seenKeys = new Set<string>();
+  const seenNames = new Set<string>();
+  return cats.filter((c) => {
+    if (c.taxonomy_key) {
+      if (seenKeys.has(c.taxonomy_key)) return false;
+      seenKeys.add(c.taxonomy_key);
+    }
+    const nameLower = c.name.toLowerCase().trim();
+    if (seenNames.has(nameLower)) return false;
+    seenNames.add(nameLower);
+    return true;
+  });
+}
+
 // ─── Fetch all category groups for the current user ──────────────────
 
 export async function fetchCategoryGroups(): Promise<CategoryGroup[]> {
   const { data, error } = await supabase
     .from('category_groups')
     .select('*')
+    .is('retired_at', null)
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true });
 
@@ -28,11 +48,12 @@ export async function fetchCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from('categories')
     .select('*')
+    .is('retired_at', null)
     .order('is_default', { ascending: false })
     .order('name', { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data as Category[]) ?? [];
+  return deduplicateCategories((data as Category[]) ?? []);
 }
 
 // ─── Fetch categories filtered by transaction type ───────────────────
@@ -44,11 +65,12 @@ export async function fetchCategoriesByType(
     .from('categories')
     .select('*')
     .eq('type', type)
+    .is('retired_at', null)
     .order('is_default', { ascending: false })
     .order('name', { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data as Category[]) ?? [];
+  return deduplicateCategories((data as Category[]) ?? []);
 }
 
 // ─── Fetch grouped categories by type ────────────────────────────────
@@ -56,10 +78,22 @@ export async function fetchCategoriesByType(
 export async function fetchGroupedCategoriesByType(
   type: TransactionType,
 ): Promise<GroupedCategories[]> {
-  const [groups, categories] = await Promise.all([
+  const [groups, allCategories] = await Promise.all([
     fetchCategoryGroups(),
     fetchCategoriesByType(type),
   ]);
+
+  // Deduplicate categories by taxonomy_key:
+  // If two active categories share the same taxonomy_key, keep only the one
+  // whose group also has a taxonomy_key (the canonical one). This is a
+  // safety net for users whose DB hasn't had migration 033 applied yet.
+  const seenTaxonomyKeys = new Set<string>();
+  const categories = allCategories.filter((c) => {
+    if (!c.taxonomy_key) return true; // custom user-created, always include
+    if (seenTaxonomyKeys.has(c.taxonomy_key)) return false;
+    seenTaxonomyKeys.add(c.taxonomy_key);
+    return true;
+  });
 
   const typeGroups = groups.filter((g) => g.type === type);
   const grouped: GroupedCategories[] = [];
@@ -71,20 +105,22 @@ export async function fetchGroupedCategoriesByType(
     }
   }
 
-  // Ungrouped categories
-  const ungrouped = categories.filter((c) => !c.group_id);
+  // Ungrouped categories (user-created without a group)
+  const groupedIds = new Set(groups.map((g) => g.id));
+  const ungrouped = categories.filter((c) => !c.group_id || !groupedIds.has(c.group_id));
   if (ungrouped.length > 0) {
     grouped.push({
       group: {
         id: '__ungrouped__',
         user_id: '',
         name: 'Other',
-        icon: '📦',
+        icon: 'boxes',
         color: '#94A3B8',
         type,
         sort_order: 999,
         is_default: false,
         taxonomy_key: null,
+        retired_at: null,
         created_at: '',
       },
       categories: ungrouped,
@@ -265,6 +301,7 @@ export async function fetchCategoryByTaxonomyKey(
     .from('categories')
     .select('*')
     .eq('taxonomy_key', taxonomyKey)
+    .is('retired_at', null)
     .maybeSingle();
 
   if (error) throw new Error(error.message);

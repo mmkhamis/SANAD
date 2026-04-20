@@ -6,6 +6,7 @@ import { Pencil, Users } from 'lucide-react-native';
 import { CategoryIcon } from '../ui/CategoryIcon';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useRTL } from '../../hooks/useRTL';
 import { formatAmount } from '../../utils/currency';
 import { formatShortDate } from '../../utils/locale-format';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
@@ -27,6 +28,7 @@ export const TransactionCard = React.memo(function TransactionCard({
   onSplit,
 }: TransactionCardProps): React.ReactElement {
   const colors = useThemeColors();
+  const { isRTL, rowDir } = useRTL();
   const hidden = usePrivacyStore((s) => s.hidden);
   const t = useT();
   const tc = useTranslateCategory();
@@ -121,7 +123,7 @@ export const TransactionCard = React.memo(function TransactionCard({
           />
         ) : null}
         {/* Content */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+        <View style={{ flexDirection: rowDir, alignItems: 'center', flex: 1, gap: 12 }}>
           {/* Category icon */}
           <View
             style={{
@@ -130,7 +132,6 @@ export const TransactionCard = React.memo(function TransactionCard({
               borderRadius: 12,
               alignItems: 'center',
               justifyContent: 'center',
-              marginRight: 12,
               backgroundColor: (transaction.category_color ?? colors.textTertiary) + '15',
             }}
           >
@@ -141,13 +142,15 @@ export const TransactionCard = React.memo(function TransactionCard({
             />
           </View>
           {/* Description + date */}
-          <View style={{ flex: 1, marginRight: 10 }}>
+          <View style={{ flex: 1 }}>
             <Text
               numberOfLines={1}
               style={{
                 fontSize: 15,
                 fontWeight: '600',
                 color: colors.textPrimary,
+                textAlign: isRTL ? 'right' : 'left',
+                writingDirection: isRTL ? 'rtl' : 'ltr',
               }}
             >
               {transaction.description}
@@ -157,6 +160,8 @@ export const TransactionCard = React.memo(function TransactionCard({
                 fontSize: 12,
                 color: colors.textSecondary,
                 marginTop: 2,
+                textAlign: isRTL ? 'right' : 'left',
+                writingDirection: isRTL ? 'rtl' : 'ltr',
               }}
             >
               {tc(transaction.category_name ?? '') || t('UNCATEGORIZED')} · {formatShortDate(parseISO(transaction.date))}
@@ -164,7 +169,7 @@ export const TransactionCard = React.memo(function TransactionCard({
             </Text>
           </View>
           {/* Amount + action icons */}
-          <View style={{ alignItems: 'flex-end' }}>
+          <View style={{ alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
             <Text
               style={{
                 fontSize: 16,

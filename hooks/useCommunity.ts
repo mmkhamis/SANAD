@@ -72,7 +72,15 @@ export function useRemoveMember() {
   return useMutation({
     mutationFn: ({ communityId, userId }: { communityId: string; userId: string }) =>
       removeMemberFromCommunity(communityId, userId),
-    onSuccess: () => {
+    onMutate: async ({ communityId }) => {
+      await queryClient.cancelQueries({ queryKey: COMMUNITY_KEYS.list() });
+      const prev = queryClient.getQueryData(COMMUNITY_KEYS.list());
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(COMMUNITY_KEYS.list(), ctx.prev);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: COMMUNITY_KEYS.list() });
     },
   });
@@ -106,7 +114,9 @@ export function useSplitEventDetail(eventId: string) {
     queryKey: COMMUNITY_KEYS.eventDetail(eventId),
     queryFn: () => fetchSplitEventDetail(eventId),
     enabled: !!eventId,
-    staleTime: 1000 * 30,
+    staleTime: 500,
+    refetchInterval: 1000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -117,7 +127,6 @@ export function useSetItemAssignments() {
   return useMutation({
     mutationFn: (input: AssignItemInput) => setItemAssignments(input),
     onSuccess: (_, variables) => {
-      // We need the eventId — find it from cached detail queries
       queryClient.invalidateQueries({ queryKey: COMMUNITY_KEYS.all });
     },
   });
@@ -147,7 +156,24 @@ export function useMarkSettlementPaid() {
       userId: string;
       isPaid: boolean;
     }) => markSettlementPaid(eventId, userId, isPaid),
-    onSuccess: (_, { eventId }) => {
+    onMutate: async ({ eventId, userId, isPaid }) => {
+      await queryClient.cancelQueries({ queryKey: COMMUNITY_KEYS.eventDetail(eventId) });
+      const prev = queryClient.getQueryData(COMMUNITY_KEYS.eventDetail(eventId));
+      queryClient.setQueryData(COMMUNITY_KEYS.eventDetail(eventId), (old: any) => {
+        if (!old?.settlements) return old;
+        return {
+          ...old,
+          settlements: old.settlements.map((s: any) =>
+            s.user_id === userId ? { ...s, is_paid: isPaid } : s,
+          ),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, { eventId }, context) => {
+      if (context?.prev) queryClient.setQueryData(COMMUNITY_KEYS.eventDetail(eventId), context.prev);
+    },
+    onSettled: (_, _err, { eventId }) => {
       queryClient.invalidateQueries({ queryKey: COMMUNITY_KEYS.eventDetail(eventId) });
     },
   });

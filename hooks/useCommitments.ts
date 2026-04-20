@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
 import { QUERY_KEYS } from '../lib/query-client';
@@ -45,6 +45,7 @@ export function useCommitmentsDue(month?: string, enabled = true): {
     queryKey: QUERY_KEYS.commitmentsDue(resolvedMonth),
     queryFn: () => fetchCommitmentsDue(resolvedMonth),
     staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
     enabled,
   });
 
@@ -112,7 +113,18 @@ export function useDeleteCommitment(): {
 
   const { mutateAsync, isPending } = useMutation<void, Error, string>({
     mutationFn: deleteCommitment,
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: QUERY_KEYS.commitments });
+      const prev = qc.getQueryData(QUERY_KEYS.commitments);
+      qc.setQueryData(QUERY_KEYS.commitments, (old: any) =>
+        Array.isArray(old) ? old.filter((c: any) => c.id !== id) : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) qc.setQueryData(QUERY_KEYS.commitments, context.prev);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.commitments });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
     },

@@ -128,7 +128,19 @@ export function useDeleteTransaction(): UseDeleteTransactionResult {
 
   const { mutate, isPending, isError, error } = useMutation({
     mutationFn: deleteTransaction,
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: QUERY_KEYS.transactions });
+      const prev = qc.getQueriesData({ queryKey: QUERY_KEYS.transactions });
+      qc.setQueriesData({ queryKey: QUERY_KEYS.transactions }, (old: any) => {
+        if (Array.isArray(old)) return old.filter((t: any) => t.id !== id);
+        return old;
+      });
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      context?.prev?.forEach(([key, data]: [any, any]) => qc.setQueryData(key, data));
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.transactions });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.accounts });

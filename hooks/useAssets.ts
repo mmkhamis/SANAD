@@ -72,6 +72,8 @@ export function usePortfolioSummary(enabled = true): UsePortfolioSummaryResult {
     queryKey: [...QUERY_KEYS.portfolioSummary, currency],
     queryFn: getPortfolioValue,
     staleTime: 1000 * 60 * 2, // 2 min
+    // Keep last data visible while refetching so returning to the tab is instant.
+    placeholderData: (prev) => prev,
     enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 
@@ -171,7 +173,18 @@ export function useDeleteAsset(): UseDeleteAssetResult {
 
   const { mutate, mutateAsync, isPending, isError, error } = useMutation({
     mutationFn: deleteAsset,
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: QUERY_KEYS.assets });
+      const prev = qc.getQueryData<UserAsset[]>(QUERY_KEYS.assets);
+      qc.setQueryData<UserAsset[]>(QUERY_KEYS.assets, (old) =>
+        old ? old.filter((a) => a.id !== id) : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(QUERY_KEYS.assets, ctx.prev);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.assets });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.portfolioSummary });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });

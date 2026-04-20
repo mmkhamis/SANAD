@@ -1,13 +1,11 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
-
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 /**
- * Verify the JWT from the Authorization header.
- * Returns the authenticated user ID or a 401 Response.
+ * Verify the JWT by calling the Supabase Auth API directly.
+ * This avoids any local JWT decoding — no ES256 issues.
  */
 export async function verifyAuth(
   req: Request,
@@ -20,23 +18,39 @@ export async function verifyAuth(
     );
   }
 
-  const jwt = authHeader.replace('Bearer ', '');
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: `Bearer ${jwt}` } } },
-  );
+  try {
+    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        Authorization: authHeader,
+        apikey: anonKey,
+      },
+    });
 
-  // Pass JWT directly — more reliable than global headers
-  const { data: { user }, error } = await supabase.auth.getUser(jwt);
-  if (error || !user) {
-    console.error('[verifyAuth]', error?.message ?? 'No user returned');
+    if (!res.ok) {
+      console.error('[verifyAuth] Auth API returned', res.status);
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    const user = await res.json() as { id?: string };
+    if (!user?.id) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }),
+        { status: 401, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } },
+      );
+    }
+
+    return { userId: user.id };
+  } catch (err) {
+    console.error('[verifyAuth]', err);
     return new Response(
-      JSON.stringify({ error: 'Invalid or expired token' }),
+      JSON.stringify({ error: 'Auth verification failed' }),
       { status: 401, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } },
     );
   }
-
-  return { userId: user.id };
 }

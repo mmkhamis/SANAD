@@ -3,6 +3,8 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { LineChart } from 'react-native-gifted-charts';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useT } from '../../lib/i18n';
+import { COLORS } from '../../constants/colors';
 
 // ─── Fetch 7-day price history ──────────────────────────────────────
 
@@ -108,6 +110,7 @@ export function AssetSparkline({
   height = 40,
 }: AssetSparklineProps): React.ReactElement {
   const colors = useThemeColors();
+  const t = useT();
   const [prices, setPrices] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -136,13 +139,13 @@ export function AssetSparkline({
   if (prices.length < 2) {
     return (
       <View style={{ width, height, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 10, color: colors.textTertiary }}>No data</Text>
+        <Text style={{ fontSize: 10, color: colors.textTertiary }}>{t('NO_DATA' as any)}</Text>
       </View>
     );
   }
 
   const isUp = prices[prices.length - 1] >= prices[0];
-  const lineColor = isUp ? '#34D399' : '#FB7185';
+  const lineColor = isUp ? COLORS.claude.green : COLORS.claude.red;
   const lineData = prices.map((value) => ({ value }));
 
   return (

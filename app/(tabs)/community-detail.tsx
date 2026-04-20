@@ -11,12 +11,15 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppScreen } from '../../components/ui/AppScreen';
+import { useResponsive } from '../../hooks/useResponsive';
 import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 import { Image } from 'expo-image';
-import { ArrowLeft, Plus, UserPlus, ChevronRight, X, Search, CheckCircle2, Clock } from 'lucide-react-native';
+import { ArrowLeft, Plus, UserPlus, ChevronLeft, ChevronRight, X, Search, CheckCircle2, Clock } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useRTL } from '../../hooks/useRTL';
 import { useT } from '../../lib/i18n';
 import {
   useCommunities,
@@ -34,6 +37,9 @@ import type { SplitEvent, CommunityWithMembers } from '../../types/index';
 
 function SplitEventCard({ event, onPress }: { event: SplitEvent; onPress: () => void }): React.ReactElement {
   const colors = useThemeColors();
+  const t = useT();
+  const { isRTL, rowDir } = useRTL();
+  const ForwardChevron = isRTL ? ChevronLeft : ChevronRight;
   const isSettled = event.status === 'settled';
   return (
     <Pressable
@@ -45,11 +51,11 @@ function SplitEventCard({ event, onPress }: { event: SplitEvent; onPress: () => 
         borderRadius: 12,
         padding: 16,
         marginBottom: 10,
-        flexDirection: 'row',
+        flexDirection: rowDir,
         alignItems: 'center',
       }}
     >
-      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: isSettled ? colors.income + '18' : colors.primaryDark + '18', borderWidth: 1, borderColor: isSettled ? colors.income + '30' : colors.primary + '30', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: isSettled ? colors.income + '18' : colors.primaryDark + '18', borderWidth: 1, borderColor: isSettled ? colors.income + '30' : colors.primary + '30', alignItems: 'center', justifyContent: 'center', marginEnd: 14 }}>
         {isSettled ? <CheckCircle2 size={20} color={colors.income} /> : <Clock size={20} color={colors.primary} />}
       </View>
       <View style={{ flex: 1 }}>
@@ -57,13 +63,13 @@ function SplitEventCard({ event, onPress }: { event: SplitEvent; onPress: () => 
         <Text style={{ color: colors.textDim, fontSize: 12, marginTop: 3, fontWeight: '500' }}>
           {formatFullDate(new Date(event.date))}
           <Text style={{ color: colors.textDim }}> · </Text>
-          <Text style={{ color: isSettled ? colors.income : colors.primary }}>{isSettled ? 'Settled' : 'Open'}</Text>
+          <Text style={{ color: isSettled ? colors.income : colors.primary }}>{isSettled ? t('SPLIT_STATUS_SETTLED') : t('SPLIT_STATUS_OPEN')}</Text>
         </Text>
       </View>
       <View style={{ alignItems: 'flex-end' }}>
         <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: '700', letterSpacing: -0.3 }}>{formatAmount(event.total, { currency: event.currency })}</Text>
       </View>
-      <ChevronRight size={14} color={colors.textDim} style={{ marginLeft: 8 }} />
+      <ForwardChevron size={14} color={colors.textDim} style={{ marginStart: 8 }} />
     </Pressable>
   );
 }
@@ -148,6 +154,7 @@ function AddMemberModal({ visible, communityId, existingUserIds, onClose }: { vi
 export default function CommunityDetailScreen(): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { textAlign, isRTL } = useRTL();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [showAddMember, setShowAddMember] = useState(false);
@@ -156,12 +163,13 @@ export default function CommunityDetailScreen(): React.ReactElement {
   const community = communities?.find((c) => c.id === id);
   const { data: events, isLoading: evLoading } = useSplitEvents(id ?? '');
   const isLoading = comLoading || evLoading;
+  const { hPad } = useResponsive();
 
   if (isLoading || !community) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+      <AppScreen backgroundColor={colors.background} contentStyle={{ alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={colors.primary} size="large" />
-      </SafeAreaView>
+      </AppScreen>
     );
   }
 
@@ -169,16 +177,16 @@ export default function CommunityDetailScreen(): React.ReactElement {
 
   return (
     <ErrorBoundary>
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <AppScreen backgroundColor={colors.background} noKeyboard horizontalPadding={0}>
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: hPad, paddingVertical: 16 }}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginRight: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
-          <ArrowLeft size={18} color={colors.textPrimary} />
+          <ArrowLeft size={18} color={colors.textPrimary} style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
         </Pressable>
         <Text style={{ fontSize: 24, marginRight: 8 }}>{community.icon}</Text>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '700', letterSpacing: -0.5 }}>{community.name}</Text>
-          <Text style={{ color: colors.textDim, fontSize: 12, marginTop: 2, fontWeight: '500' }}>{community.members.length} {t('MEMBERS')}</Text>
+          <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '700', letterSpacing: -0.5, textAlign }}>{community.name}</Text>
+          <Text style={{ color: colors.textDim, fontSize: 12, marginTop: 2, fontWeight: '500', textAlign }}>{community.members.length} {t('MEMBERS')}</Text>
         </View>
         <Pressable onPress={() => { impactLight(); setShowAddMember(true); }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.borderLight, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}>
           <UserPlus size={16} color={colors.primary} />
@@ -189,7 +197,7 @@ export default function CommunityDetailScreen(): React.ReactElement {
       </View>
 
       {/* Members row */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 16 }}>
+      <View style={{ paddingHorizontal: hPad, paddingBottom: 16 }}>
         <View style={{ backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {community.members.map((member) => (
@@ -209,7 +217,7 @@ export default function CommunityDetailScreen(): React.ReactElement {
       </View>
 
       {/* Section label */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: 10 }}>
+      <View style={{ paddingHorizontal: hPad, paddingBottom: 10 }}>
         <Text style={{ color: colors.textDim, fontSize: 11, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase' }}>{t('SPLIT_EVENTS' as any)}</Text>
       </View>
 
@@ -223,7 +231,7 @@ export default function CommunityDetailScreen(): React.ReactElement {
         <FlashList<SplitEvent>
           data={events}
           keyExtractor={(item) => item.id}
-          style={{ paddingHorizontal: 20, paddingBottom: 24 }}
+          style={{ paddingHorizontal: hPad, paddingBottom: 24 }}
           renderItem={({ item }: ListRenderItemInfo<SplitEvent>) => (
             <SplitEventCard event={item} onPress={() => { impactLight(); router.push({ pathname: '/(tabs)/split-event', params: { eventId: item.id } }); }} />
           )}
@@ -231,7 +239,7 @@ export default function CommunityDetailScreen(): React.ReactElement {
       )}
 
       <AddMemberModal visible={showAddMember} communityId={id ?? ''} existingUserIds={existingUserIds} onClose={() => setShowAddMember(false)} />
-    </SafeAreaView>
+    </AppScreen>
     </ErrorBoundary>
   );
 }

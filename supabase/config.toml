@@ -372,6 +372,12 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
+# sms-webhook is called from iOS Shortcuts "Get Contents of URL" action and
+# authenticates via the `?token=` query param (per-user rotatable uuid).
+# No bearer JWT is sent, so JWT verification must be disabled.
+[functions.sms-webhook]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

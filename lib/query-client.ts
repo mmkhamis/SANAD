@@ -1,10 +1,12 @@
 import { QueryClient } from '@tanstack/react-query';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30, // 30 minutes
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours — must be >= persister maxAge
       retry: 2,
       refetchOnWindowFocus: false,
     },
@@ -13,6 +15,26 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// ─── Persistent cache ────────────────────────────────────────────────
+// Persists all query data to AsyncStorage so the app can render cached
+// data when opening offline. Cache is keyed by `buster` — increment
+// CACHE_BUSTER when the query data shape changes to force a clean slate.
+
+const CACHE_BUSTER = 'wallet-cache-v1';
+const CACHE_MAX_AGE = 1000 * 60 * 60 * 24; // 24 hours
+
+export const asyncStoragePersister = createAsyncStoragePersister({
+  storage: AsyncStorage,
+  key: CACHE_BUSTER,
+  throttleTime: 1000, // Debounce writes by 1 second
+});
+
+export const persistOptions = {
+  persister: asyncStoragePersister,
+  maxAge: CACHE_MAX_AGE,
+  buster: CACHE_BUSTER,
+} as const;
 
 // ─── Query Keys ─────────────────────────────────────────────
 export const QUERY_KEYS = {
@@ -45,4 +67,5 @@ export const QUERY_KEYS = {
   subscription: ['subscription'] as const,
   appConfig: ['app-config'] as const,
   usageCounts: ['usage-counts'] as const,
+  subscriptionSavings: (region: string) => ['subscription-savings', region] as const,
 } as const;

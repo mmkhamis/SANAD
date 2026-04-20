@@ -24,6 +24,7 @@ export function useSubscriptions(enabled = true): {
   const { data, isLoading, isError, error, refetch } = useQuery<Subscription[], Error>({
     queryKey: QUERY_KEYS.subscriptions,
     queryFn: fetchSubscriptions,
+    staleTime: 10 * 60 * 1000,
     enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 
@@ -59,7 +60,18 @@ export function useDeleteSubscription(): {
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: deleteSubscription,
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: QUERY_KEYS.subscriptions });
+      const prev = qc.getQueryData(QUERY_KEYS.subscriptions);
+      qc.setQueryData(QUERY_KEYS.subscriptions, (old: any) =>
+        Array.isArray(old) ? old.filter((s: any) => s.id !== id) : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) qc.setQueryData(QUERY_KEYS.subscriptions, context.prev);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.subscriptions });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
     },

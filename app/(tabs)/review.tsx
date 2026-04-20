@@ -25,10 +25,11 @@ import { useT } from '../../lib/i18n';
 import { QUERY_KEYS } from '../../lib/query-client';
 import { formatAmount } from '../../utils/currency';
 import { suggestCategory } from '../../utils/sms-parser';
-import { useUnreviewedTransactions, useReviewTransaction } from '../../hooks/useReviewTransactions';
+import { useUnreviewedTransactions, useReviewTransaction, useBulkReviewTransactions } from '../../hooks/useReviewTransactions';
 import { useCategories } from '../../hooks/useCategories';
 import { deleteTransaction } from '../../services/transaction-service';
 import { CategoryPicker } from '../../components/finance/CategoryPicker';
+import { ReviewBulkSaveBar } from '../../components/finance/ReviewBulkSaveBar';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -91,25 +92,25 @@ interface ReviewItemProps {
   transaction: Transaction;
   index: number;
   allCategories: Category[];
+  selectedCategory: Category | null;
+  onCategoryChange: (id: string, category: Category | null) => void;
   onSave: (tx: Transaction, type: TransactionType, category: Category | null, editedAmount: number, editedDescription: string) => void;
   onDiscard: (tx: Transaction) => void;
   isSaving: boolean;
 }
 
-function ReviewItem({ transaction, index, allCategories, onSave, onDiscard, isSaving }: ReviewItemProps): React.ReactElement {
+function ReviewItem({ transaction, index, allCategories, selectedCategory, onCategoryChange, onSave, onDiscard, isSaving }: ReviewItemProps): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
   const [selectedType, setSelectedType] = useState<TransactionType>(
     transaction.transaction_type ?? transaction.type,
   );
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [editedAmount, setEditedAmount] = useState<string>(String(Math.abs(transaction.amount)));
   const [editedDescription, setEditedDescription] = useState<string>(transaction.description ?? '');
 
   // Reset local state when the underlying transaction changes (FlashList recycles views)
   useEffect(() => {
     setSelectedType(transaction.transaction_type ?? transaction.type);
-    setSelectedCategory(null);
     setEditedAmount(String(Math.abs(transaction.amount)));
     setEditedDescription(transaction.description ?? '');
   }, [transaction.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -128,14 +129,14 @@ function ReviewItem({ transaction, index, allCategories, onSave, onDiscard, isSa
           c.name.toLowerCase() === suggestedName.toLowerCase() &&
           c.type === selectedType,
       );
-      if (match) setSelectedCategory(match);
+      if (match) onCategoryChange(transaction.id, match);
     }
-  }, [suggestedName, allCategories, selectedType, selectedCategory]);
+  }, [suggestedName, allCategories, selectedType, selectedCategory, transaction.id, onCategoryChange]);
 
   // Reset category when type changes
   const handleTypeChange = (newType: TransactionType): void => {
     setSelectedType(newType);
-    setSelectedCategory(null);
+    onCategoryChange(transaction.id, null);
   };
 
   const isIncome = selectedType === 'income';
@@ -265,7 +266,7 @@ function ReviewItem({ transaction, index, allCategories, onSave, onDiscard, isSa
       <CategoryPicker
         type={selectedType}
         selectedId={selectedCategory?.id ?? null}
-        onSelect={setSelectedCategory}
+        onSelect={(cat) => onCategoryChange(transaction.id, cat)}
       />
 
       {/* Action buttons */}
@@ -335,9 +336,29 @@ export default function ReviewScreen(): React.ReactElement {
   const insets = useSafeAreaInsets();
   const { data: transactions, isLoading, isError, error, refetch } = useUnreviewedTransactions();
   const { mutateAsync: reviewAsync, isPending } = useReviewTransaction();
+  const { saveAll: bulkSaveAll, isSaving: isBulkSaving, progress: bulkProgress } = useBulkReviewTransactions();
   const { data: allCategories } = useCategories();
   const queryClient = useQueryClient();
   const [savingId, setSavingId] = useState<string | null>(null);
+  // Screen-level map: txId → chosen Category. Lifted out of ReviewItem so
+  // the bulk "Save all" bars can see which rows are ready, and so FlashList
+  // recycling does not lose selections.
+  const [selectionMap, setSelectionMap] = useState<Map<string, Category>>(new Map());
+
+  const handleCategoryChange = useCallback(
+    (id: string, category: Category | null): void => {
+      setSelectionMap((prev) => {
+        const next = new Map(prev);
+        if (category) {
+          next.set(id, category);
+        } else {
+          next.delete(id);
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   // ─── Voice state ──────────────────────────────────────────────────
   const [isRecording, setIsRecording] = useState(false);
@@ -380,6 +401,41 @@ export default function ReviewScreen(): React.ReactElement {
     },
     [reviewAsync],
   );
+
+  const handleSaveAll = useCallback(async () => {
+    if (!transactions || selectionMap.size === 0) return;
+    impactMedium();
+    const inputs = transactions
+      .filter((tx) => selectionMap.has(tx.id))
+      .map((tx) => {
+        const cat = selectionMap.get(tx.id)!;
+        return {
+          id: tx.id,
+          type: tx.transaction_type ?? tx.type,
+          category_id: cat.id,
+          category_name: cat.name,
+          category_icon: cat.icon,
+          category_color: cat.color,
+          amount: Math.abs(tx.amount),
+          description: tx.description ?? '',
+        };
+      });
+    const result = await bulkSaveAll(inputs);
+    if (result.failed.length === 0) {
+      notifySuccess();
+    } else {
+      notifyError();
+      Alert.alert(
+        t('REVIEW_SAVE_ALL_FAILED' as any),
+        `${result.saved.length} ${t('REVIEW_SAVE_ALL_DONE' as any)} \u00b7 ${result.failed.length}`,
+      );
+    }
+    setSelectionMap((prev) => {
+      const next = new Map(prev);
+      for (const id of result.saved) next.delete(id);
+      return next;
+    });
+  }, [transactions, selectionMap, bulkSaveAll, t]);
 
   const handleDiscard = useCallback(
     (tx: Transaction) => {
@@ -805,11 +861,33 @@ export default function ReviewScreen(): React.ReactElement {
               transaction={item}
               index={idx + 1}
               allCategories={allCategories ?? []}
+              selectedCategory={selectionMap.get(item.id) ?? null}
+              onCategoryChange={handleCategoryChange}
               onSave={handleSave}
               onDiscard={handleDiscard}
-              isSaving={savingId === item.id}
+              isSaving={savingId === item.id || isBulkSaving}
             />
           )}
+          ListHeaderComponent={
+            <ReviewBulkSaveBar
+              position="top"
+              readyCount={selectionMap.size}
+              totalCount={items.length}
+              isSaving={isBulkSaving}
+              progress={{ done: bulkProgress.done, total: bulkProgress.total }}
+              onSaveAll={handleSaveAll}
+            />
+          }
+          ListFooterComponent={
+            <ReviewBulkSaveBar
+              position="bottom"
+              readyCount={selectionMap.size}
+              totalCount={items.length}
+              isSaving={isBulkSaving}
+              progress={{ done: bulkProgress.done, total: bulkProgress.total }}
+              onSaveAll={handleSaveAll}
+            />
+          }
         />
       )}
     </View>

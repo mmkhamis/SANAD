@@ -1,11 +1,13 @@
 import React from 'react';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { Check } from 'lucide-react-native';
 
 import { impactLight } from '../../utils/haptics';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT } from '../../lib/i18n';
+import { ALL_BANK_PRESETS } from '../../constants/bank-presets';
 import type { Account } from '../../types/index';
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -62,6 +64,9 @@ export function AccountPicker({
       {accounts.map((account) => {
         const isSelected = account.id === selectedId;
         const icon = ACCOUNT_ICON[account.type] ?? '💰';
+        const preset = ALL_BANK_PRESETS.find(
+          (b) => b.nameEn === account.name || b.nameAr === account.name
+        );
 
         return (
           <Pressable
@@ -74,7 +79,15 @@ export function AccountPicker({
               borderColor: isSelected ? colors.primary : colors.borderLight,
             }}
           >
-            <Text style={{ fontSize: 18, marginRight: 6 }}>{icon}</Text>
+            {preset?.logo ? (
+              <Image
+                source={{ uri: preset.logo }}
+                style={{ width: 20, height: 20, borderRadius: 4, marginRight: 6 }}
+                contentFit="contain"
+              />
+            ) : (
+              <Text style={{ fontSize: 18, marginRight: 6 }}>{icon}</Text>
+            )}
             <Text
               style={{
                 fontSize: 14,

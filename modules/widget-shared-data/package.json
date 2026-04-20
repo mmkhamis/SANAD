@@ -1,0 +1,8 @@
+{
+  "name": "widget-shared-data",
+  "version": "1.0.0",
+  "description": "Shared App Group UserDefaults bridge for the iOS Budget Widget.",
+  "main": "index.ts",
+  "private": true,
+  "platforms": ["ios"]
+}

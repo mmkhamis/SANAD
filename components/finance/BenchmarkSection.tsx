@@ -118,7 +118,7 @@ function BenchmarkNoData(): React.ReactElement {
     >
       <Users size={20} color={colors.textTertiary} strokeWidth={1.8} />
       <Text style={{ fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 8, lineHeight: 18 }}>
-        Not enough anonymous data for your age group and region yet.{'\n'}Check back as more Wallet users opt in.
+        Not enough anonymous data for your age group and region yet.{'\n'}Check back as more SANAD users opt in.
       </Text>
     </View>
   );
@@ -153,7 +153,7 @@ export function BenchmarkSection({ summary }: BenchmarkSectionProps): React.Reac
       {/* Disclaimer */}
       <View className="mx-4 mb-3">
         <Text style={{ fontSize: 11, color: colors.textTertiary, fontStyle: 'italic' }}>
-          Based on anonymized data from Wallet users. Minimum 3 users per cohort.
+          Based on anonymized data from SANAD users. Minimum 3 users per cohort.
         </Text>
       </View>
 

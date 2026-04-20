@@ -21,6 +21,7 @@ import { AccountPicker } from '../../components/finance/AccountPicker';
 import { CreateGroupSheet } from '../../components/finance/CreateGroupSheet';
 import { useCreateTransaction } from '../../hooks/useTransactions';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useResponsive } from '../../hooks/useResponsive';
 import type { Category, TransactionType, Account } from '../../types/index';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -63,6 +64,7 @@ function validateForm(
 
 function AddTransactionContent(): React.ReactElement {
   const colors = useThemeColors();
+  const { hPad } = useResponsive();
   const t = useT();
   const insets = useSafeAreaInsets();
   const { mutate: create, isPending, isError, error, reset } = useCreateTransaction();
@@ -150,7 +152,7 @@ function AddTransactionContent(): React.ReactElement {
     >
       <ScrollView
         contentContainerStyle={{
-          paddingHorizontal: 20,
+          paddingHorizontal: hPad,
           paddingTop: insets.top + 16,
           paddingBottom: insets.bottom + 100,
         }}

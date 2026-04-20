@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Repeat, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react-native';
+import { Repeat, TrendingUp, TrendingDown, ArrowLeft, ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -9,6 +9,7 @@ import { formatCompactAmount } from '../../utils/currency';
 import { impactLight } from '../../utils/haptics';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import type { SpendingHabit } from '../../types/index';
 
 interface HabitInsightCardProps {
@@ -27,6 +28,8 @@ export function HabitInsightCard({
   const router = useRouter();
   const hidden = usePrivacyStore((s) => s.hidden);
   const t = useT();
+  const { isRTL } = useRTL();
+  const ForwardArrow = isRTL ? ArrowLeft : ArrowRight;
 
   const freqLabels: Record<string, string> = {
     daily: t('FREQ_DAILY' as any),
@@ -99,7 +102,7 @@ export function HabitInsightCard({
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Text style={{ fontSize: 11, color: colors.textTertiary }}>{t('SEE_ALL')}</Text>
-            <ArrowRight size={12} color={colors.textTertiary} strokeWidth={2} />
+            <ForwardArrow size={12} color={colors.textTertiary} strokeWidth={2} />
           </View>
         </View>
 

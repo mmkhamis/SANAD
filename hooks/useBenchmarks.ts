@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
 import { QUERY_KEYS } from '../lib/query-client';
@@ -21,6 +21,7 @@ export function useBenchmarks(month?: string): UseBenchmarksResult {
     queryKey: [...QUERY_KEYS.benchmarks, resolvedMonth],
     queryFn: () => fetchBenchmarkSummary(resolvedMonth),
     staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
     enabled: useAuthStore.getState().isAuthenticated,
   });
 

@@ -60,7 +60,7 @@ function fmtReply(txs: PTx[], icon: string): string {
   if (txs.length === 1) {
     const t = txs[0];
     const status = t.category ? 'Saved ✓' : 'Needs review 📋';
-    return `${status} ${icon}\nEGP ${t.amount} — ${t.merchant || t.counterparty || t.category || 'transaction'} (${t.category ?? 'Uncategorized'})\nCheck your Wallet app${t.category ? '.' : ' to categorize.'}`;
+    return `${status} ${icon}\nEGP ${t.amount} — ${t.merchant || t.counterparty || t.category || 'transaction'} (${t.category ?? 'Uncategorized'})\nCheck SANAD${t.category ? '.' : ' to categorize.'}`;
   }
   const saved = txs.filter((t) => t.category).length;
   const review = txs.length - saved;
@@ -143,7 +143,7 @@ Deno.serve(async (_req: Request): Promise<Response> => {
         });
         if (error) throw new Error(`Insert: ${error.message}`);
         await sb.from('whatsapp_events').update({ status: 'completed' }).eq('id', ev.id);
-        await twilioReply(ev.from_number, `Got it ✓ 🧾\n${ocr.currency ?? 'EGP'} ${receiptAmount} — ${ocr.merchant ?? 'Receipt'} (${ocr.category ?? 'Uncategorized'})\nCheck your Wallet app to confirm.`);
+        await twilioReply(ev.from_number, `Got it ✓ 🧾\n${ocr.currency ?? 'EGP'} ${receiptAmount} — ${ocr.merchant ?? 'Receipt'} (${ocr.category ?? 'Uncategorized'})\nCheck SANAD to confirm.`);
         results.push({ id: ev.id, ok: true, count: 1 }); continue;
       }
 

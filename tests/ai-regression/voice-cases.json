@@ -1,0 +1,110 @@
+{
+  "parse": [
+    {
+      "id": "parse_fallbacks_and_clamps_confidence",
+      "input": [
+        {
+          "amount": "150",
+          "currency": "egp",
+          "transaction_type": "expense",
+          "category": "food",
+          "merchant": "Carrefour",
+          "counterparty": null,
+          "account_name": "Cash",
+          "description": "Paid for groceries",
+          "confidence": 1.5,
+          "needs_review": false
+        },
+        {
+          "amount": null,
+          "currency": null,
+          "transaction_type": "bonus-type",
+          "category": "random",
+          "merchant": "",
+          "counterparty": "Ali",
+          "account_name": "",
+          "description": "",
+          "confidence": -1,
+          "needs_review": false
+        }
+      ],
+      "expenseCategories": ["Groceries", "Transport", "Miscellaneous"],
+      "incomeCategories": ["Salary", "Other Income"],
+      "expected": [
+        {
+          "amount": 150,
+          "currency": "EGP",
+          "transaction_type": "expense",
+          "category": "Miscellaneous",
+          "merchant": "Carrefour",
+          "counterparty": null,
+          "account_name": "Cash",
+          "description": "Paid for groceries",
+          "confidence": 1,
+          "needs_review": false
+        },
+        {
+          "amount": 0,
+          "currency": "EGP",
+          "transaction_type": "expense",
+          "category": "Miscellaneous",
+          "merchant": null,
+          "counterparty": "Ali",
+          "account_name": null,
+          "description": null,
+          "confidence": 0,
+          "needs_review": true
+        }
+      ]
+    },
+    {
+      "id": "parse_income_uses_income_fallback",
+      "input": [
+        {
+          "amount": 5000,
+          "currency": "sar",
+          "transaction_type": "income",
+          "category": "Payroll",
+          "merchant": null,
+          "counterparty": "Employer",
+          "account_name": null,
+          "description": "Salary",
+          "confidence": 0.85,
+          "needs_review": false
+        }
+      ],
+      "expenseCategories": ["Groceries", "Miscellaneous"],
+      "incomeCategories": ["Salary", "Other Income"],
+      "expected": [
+        {
+          "amount": 5000,
+          "currency": "SAR",
+          "transaction_type": "income",
+          "category": "Other Income",
+          "merchant": null,
+          "counterparty": "Employer",
+          "account_name": null,
+          "description": "Salary",
+          "confidence": 0.85,
+          "needs_review": false
+        }
+      ]
+    }
+  ],
+  "reviewMatches": [
+    {
+      "id": "review_matches_category_and_dedupes",
+      "input": [
+        {"index": 1, "category_name": "groceries", "transaction_type": "expense"},
+        {"index": 1, "category_name": "Transport", "transaction_type": "transfer"},
+        {"index": 2, "category_name": "unknown", "transaction_type": "expense"},
+        {"index": "3", "category_name": "Salary", "transaction_type": "income"}
+      ],
+      "availableCategories": ["Groceries", "Transport", "Salary"],
+      "expected": [
+        {"index": 1, "category_name": "Groceries", "transaction_type": "expense"},
+        {"index": 3, "category_name": "Salary", "transaction_type": "income"}
+      ]
+    }
+  ]
+}

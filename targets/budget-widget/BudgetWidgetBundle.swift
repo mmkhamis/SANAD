@@ -5,5 +5,7 @@ import SwiftUI
 struct BudgetWidgetBundle: WidgetBundle {
     var body: some Widget {
         BudgetStatusWidget()
+        CommitmentsWidget()
+        CharityWidget()
     }
 }

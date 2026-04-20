@@ -1,11 +1,12 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { MessageSquareWarning, ChevronRight } from 'lucide-react-native';
+import { MessageSquareWarning, ChevronRight, ChevronLeft } from 'lucide-react-native';
 
 import { impactLight } from '../../utils/haptics';
 import { formatAmount } from '../../utils/currency';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import type { Transaction } from '../../types/index';
 
 interface SMSReviewBannerProps {
@@ -19,6 +20,8 @@ const MAX_PREVIEW = 3;
 export function SMSReviewBanner({ count, transactions, onPress }: SMSReviewBannerProps): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { isRTL } = useRTL();
+  const Chevron = isRTL ? ChevronLeft : ChevronRight;
   const preview = (transactions ?? []).slice(0, MAX_PREVIEW);
 
   return (
@@ -50,7 +53,7 @@ export function SMSReviewBanner({ count, transactions, onPress }: SMSReviewBanne
             {count} {count > 1 ? t('TRANSACTIONS_TO_REVIEW') : t('TRANSACTION_TO_REVIEW')}
           </Text>
         </View>
-        <ChevronRight size={18} color={colors.textTertiary} strokeWidth={2} />
+        <Chevron size={18} color={colors.textTertiary} strokeWidth={2} />
       </View>
 
       {/* Transaction previews */}

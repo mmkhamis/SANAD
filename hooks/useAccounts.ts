@@ -26,6 +26,7 @@ export function useAccounts(enabled = true): UseAccountsResult {
   const { data, isLoading, isError, error, refetch } = useQuery<Account[], Error>({
     queryKey: QUERY_KEYS.accounts,
     queryFn: fetchAccounts,
+    staleTime: 10 * 60 * 1000,
     enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 
@@ -67,7 +68,18 @@ export function useDeleteAccount() {
 
   return useMutation<void, Error, string>({
     mutationFn: deleteAccount,
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: QUERY_KEYS.accounts });
+      const prev = qc.getQueryData(QUERY_KEYS.accounts);
+      qc.setQueryData(QUERY_KEYS.accounts, (old: any) =>
+        Array.isArray(old) ? old.filter((a: any) => a.id !== id) : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) qc.setQueryData(QUERY_KEYS.accounts, context.prev);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.accounts });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
     },

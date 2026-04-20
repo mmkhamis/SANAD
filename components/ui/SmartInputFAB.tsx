@@ -29,9 +29,9 @@ const ANGLE_SNAP_THRESHOLD = 40; // degrees
 // Angles in standard math convention (0° = right, CCW positive)
 // Fan upward-left since FAB is at bottom-right of screen
 const OPTIONS = [
-  { label: 'Manual',  Icon: Clipboard, angle: 160, color: '#3B82F6' },
-  { label: 'Voice',   Icon: Mic,       angle: 120, color: '#8B5CF6' },
-  { label: 'Scan',    Icon: Camera,    angle: 80,  color: '#10B981' },
+  { label: 'Manual',  Icon: Clipboard, angle: 160, color: '#3B82F6' }, // index 0 — leftmost
+  { label: 'Scan',    Icon: Camera,    angle: 120, color: '#10B981' }, // index 1 — middle
+  { label: 'Voice',   Icon: Mic,       angle: 80,  color: '#8B5CF6' }, // index 2 — top/rightmost
 ] as const;
 
 // Pre-compute Cartesian offsets from FAB center
@@ -140,8 +140,8 @@ function OptionBubble({ index, isMenuOpen, activeIndex }: OptionBubbleProps) {
           width: OPTION_SIZE,
           height: OPTION_SIZE,
           borderRadius: OPTION_SIZE / 2,
-          backgroundColor: 'rgba(15,18,30,0.92)',
-          borderWidth: 1.5,
+          backgroundColor: 'rgba(22,24,39,0.94)',
+          borderWidth: 1,
           borderColor: color + '80',
           alignItems: 'center',
           justifyContent: 'center',
@@ -152,6 +152,18 @@ function OptionBubble({ index, isMenuOpen, activeIndex }: OptionBubbleProps) {
           elevation: 6,
         }}
       >
+        {/* Inset-light top rim */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0,
+            height: 1,
+            backgroundColor: 'rgba(255,255,255,0.06)',
+            borderTopLeftRadius: OPTION_SIZE / 2,
+            borderTopRightRadius: OPTION_SIZE / 2,
+          }}
+        />
         <Icon size={20} color={color} strokeWidth={2} />
       </View>
 
@@ -229,9 +241,9 @@ export const SmartInputFAB = React.memo(function SmartInputFAB({
   const handleOptionSelect = React.useCallback((index: number) => {
     notifySuccess();
     if (index === 0) onManual();
-    else if (index === 1) onVoice();
-    else if (index === 2) onScan();
-  }, [onManual, onVoice, onScan]);
+    else if (index === 1) onScan();
+    else if (index === 2) onVoice();
+  }, [onManual, onScan, onVoice]);
 
   // ── Gestures ─────────────────────────────────────────────────────────
 
@@ -348,7 +360,7 @@ export const SmartInputFAB = React.memo(function SmartInputFAB({
                 height: size + 14,
                 borderRadius: (size + 14) / 2,
                 borderWidth: 2,
-                borderColor: '#8B5CF6',
+                borderColor: '#A278EA',
               },
               pressRingStyle,
             ]}
@@ -363,7 +375,7 @@ export const SmartInputFAB = React.memo(function SmartInputFAB({
                 height: glowSize,
                 borderRadius: glowSize / 2,
                 backgroundColor: '#8B5CF6',
-                opacity: 0.2,
+                opacity: 0.28,
               },
               glowStyle,
             ]}
@@ -392,15 +404,17 @@ export const SmartInputFAB = React.memo(function SmartInputFAB({
                 height: size,
                 borderRadius: size / 2,
                 overflow: 'hidden',
+                borderWidth: 1,
+                borderColor: 'rgba(200,180,243,0.35)',
               },
               fabContainerStyle,
             ]}
           >
             {/* Gradient background */}
             <LinearGradient
-              colors={['rgba(139,92,246,0.95)', 'rgba(109,72,226,0.95)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+              colors={['rgba(139,92,246,0.98)', 'rgba(91,47,199,0.98)']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
               style={{
                 position: 'absolute',
                 top: 0, left: 0, right: 0, bottom: 0,

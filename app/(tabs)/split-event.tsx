@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
 import {
   View,
-  Text,
+  Text as BaseText,
+  type TextProps,
   Pressable,
   ScrollView,
   Modal,
@@ -10,13 +11,16 @@ import {
   Alert,
   Switch,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppScreen } from '../../components/ui/AppScreen';
+import { useResponsive } from '../../hooks/useResponsive';
 import { ArrowLeft, Calculator, CheckCircle2, Circle, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import {
   useSplitEventDetail,
   useSetItemAssignments,
@@ -28,6 +32,13 @@ import {
 import { formatAmount } from '../../utils/currency';
 import { impactLight, notifySuccess, notifyError } from '../../utils/haptics';
 import type { SplitItem, CommunityMember, SplitSettlement } from '../../types/index';
+
+// RTL-aware Text wrapper: every <Text> in this file auto-aligns to the
+// active language's start edge (right in Arabic, left in English).
+function Text({ style, ...rest }: TextProps): React.ReactElement {
+  const { textAlign } = useRTL();
+  return <BaseText style={[{ textAlign }, style]} {...rest} />;
+}
 
 
 // ─── Avatar ───────────────────────────────────────────────────────────
@@ -177,12 +188,14 @@ function SettlementRow({ settlement, onTogglePaid }: { settlement: SplitSettleme
 
 export default function SplitEventScreen(): React.ReactElement {
   const colors = useThemeColors();
+  const { isRTL } = useRTL();
   const t = useT();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
   const [assigningItem, setAssigningItem] = useState<SplitItem | null>(null);
   const [showSettlements, setShowSettlements] = useState(false);
 
+  const insets = useSafeAreaInsets();
   const { data: detail, isLoading, isError, refetch } = useSplitEventDetail(eventId ?? '');
   const { data: communities } = useCommunities();
   const { mutateAsync: computeSettlements, isPending: isComputing } = useComputeSettlements();
@@ -190,6 +203,7 @@ export default function SplitEventScreen(): React.ReactElement {
 
   const community = communities?.find((c) => c.id === detail?.community_id);
   const members = community?.members ?? [];
+  const { hPad } = useResponsive();
 
   const handleCompute = async (): Promise<void> => {
     if (!eventId) return;
@@ -215,20 +229,20 @@ export default function SplitEventScreen(): React.ReactElement {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+      <AppScreen backgroundColor={colors.background} contentStyle={{ alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={colors.primary} size="large" />
-      </SafeAreaView>
+      </AppScreen>
     );
   }
 
   if (isError || !detail) {
     return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+      <AppScreen backgroundColor={colors.background} contentStyle={{ alignItems: 'center', justifyContent: 'center' }}>
         <Text style={{ color: colors.textTertiary, fontSize: 15 }}>{t('SPLIT_COULD_NOT_LOAD' as any)}</Text>
         <Pressable onPress={() => refetch()} style={{ marginTop: 16, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.primaryDark }}>
           <Text style={{ color: '#fff', fontWeight: '600' }}>{t('RETRY')}</Text>
         </Pressable>
-      </SafeAreaView>
+      </AppScreen>
     );
   }
 
@@ -237,11 +251,11 @@ export default function SplitEventScreen(): React.ReactElement {
 
   return (
     <ErrorBoundary>
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <AppScreen backgroundColor={colors.background} noKeyboard horizontalPadding={0}>
       {/* Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: hPad, paddingVertical: 16 }}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={{ marginRight: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.borderLight, alignItems: 'center', justifyContent: 'center' }}>
-          <ArrowLeft size={18} color={colors.textPrimary} />
+          <ArrowLeft size={18} color={colors.textPrimary} style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
         </Pressable>
         <View style={{ flex: 1 }}>
           <Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '700', letterSpacing: -0.5 }}>{detail.title}</Text>
@@ -249,7 +263,7 @@ export default function SplitEventScreen(): React.ReactElement {
         </View>
       </View>
 
-      <ScrollView style={{ flex: 1, paddingHorizontal: 20 }}>
+      <ScrollView style={{ flex: 1, paddingHorizontal: hPad }} contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}>
         {/* Summary Card */}
         <View style={{ backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 12, padding: 16, marginBottom: 20 }}>
           {[
@@ -324,7 +338,7 @@ export default function SplitEventScreen(): React.ReactElement {
       {assigningItem && (
         <AssignItemModal item={assigningItem} members={members} visible={!!assigningItem} onClose={() => { setAssigningItem(null); refetch(); }} />
       )}
-    </SafeAreaView>
+    </AppScreen>
     </ErrorBoundary>
   );
 }

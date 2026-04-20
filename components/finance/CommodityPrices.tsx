@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { TrendingUp, TrendingDown } from 'lucide-react-native';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import { useCommodityPrices } from '../../hooks/useWatchlist';
 import { AssetSparkline } from '../charts/AssetSparkline';
 import type { CommodityPrice } from '../../services/watchlist-service';
@@ -12,6 +14,7 @@ import type { CommodityPrice } from '../../services/watchlist-service';
 
 function CommodityRow({ item }: { item: CommodityPrice }): React.ReactElement {
   const colors = useThemeColors();
+  const { rowDir } = useRTL();
   const isPositive = item.change >= 0;
   const changeColor = isPositive ? '#34C759' : '#FF3B30';
   const hasChange = item.change_percent !== 0;
@@ -19,7 +22,7 @@ function CommodityRow({ item }: { item: CommodityPrice }): React.ReactElement {
   return (
     <View
       style={{
-        flexDirection: 'row',
+        flexDirection: rowDir,
         alignItems: 'center',
         paddingVertical: 12,
         paddingHorizontal: 16,
@@ -34,14 +37,14 @@ function CommodityRow({ item }: { item: CommodityPrice }): React.ReactElement {
           backgroundColor: colors.surfaceSecondary,
           alignItems: 'center',
           justifyContent: 'center',
-          marginRight: 12,
+          marginHorizontal: 12,
         }}
       >
         <Text style={{ fontSize: 20 }}>{item.icon}</Text>
       </View>
 
       {/* Name + code */}
-      <View style={{ flex: 1, marginRight: 8 }}>
+      <View style={{ flex: 1 }}>
         <Text
           style={{
             fontSize: 16,
@@ -63,7 +66,7 @@ function CommodityRow({ item }: { item: CommodityPrice }): React.ReactElement {
       </View>
 
       {/* Mini sparkline */}
-      <View style={{ marginRight: 12 }}>
+      <View style={{ marginHorizontal: 12 }}>
         <AssetSparkline
           assetCode={item.code}
           color={hasChange ? changeColor : colors.textTertiary}
@@ -136,6 +139,8 @@ function Separator(): React.ReactElement {
 
 export function CommodityPrices(): React.ReactElement {
   const colors = useThemeColors();
+  const t = useT();
+  const { textAlign } = useRTL();
   const { data: commodities, isLoading } = useCommodityPrices();
 
   return (
@@ -196,18 +201,20 @@ export function CommodityPrices(): React.ReactElement {
             fontWeight: '700',
             color: colors.textPrimary,
             letterSpacing: -0.4,
+            textAlign,
           }}
         >
-          Commodities & Crypto
+          {t('ASSETS_COMMODITIES_CRYPTO' as any)}
         </Text>
         <Text
           style={{
             fontSize: 12,
             color: colors.textTertiary,
             marginTop: 2,
+            textAlign,
           }}
         >
-          Live market prices
+          {t('ASSETS_LIVE_PRICES' as any)}
         </Text>
       </View>
 

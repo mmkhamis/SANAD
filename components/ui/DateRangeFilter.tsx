@@ -25,6 +25,7 @@ import { Calendar, X, Check, ChevronLeft, ChevronRight } from 'lucide-react-nati
 import { impactLight } from '../../utils/haptics';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import { formatMonthYear, formatShortDate, formatFullDate, getDayLabels } from '../../utils/locale-format';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -41,7 +42,6 @@ export interface DateRange {
 // ─── Preset computations ─────────────────────────────────────────────
 
 function computePreset(preset: Exclude<DatePreset, 'custom'>): DateRange {
-  const colors = useThemeColors();
   const now = new Date();
   switch (preset) {
     case 'today':
@@ -94,7 +94,6 @@ function computePreset(preset: Exclude<DatePreset, 'custom'>): DateRange {
 }
 
 export function getDefaultRange(): DateRange {
-  const colors = useThemeColors();
   return computePreset('this_month');
 }
 
@@ -233,6 +232,7 @@ function CustomRangeModal({
 }): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { isRTL } = useRTL();
   const insets = useSafeAreaInsets();
   const [viewMonth, setViewMonth] = useState(() => {
     const d = parseISO(initialStart);
@@ -327,13 +327,13 @@ function CustomRangeModal({
 
           {/* Month navigation */}
           <View className="flex-row items-center justify-between px-5 mb-3">
-            <Pressable onPress={() => setViewMonth((m) => addMonths(m, -1))} hitSlop={12}>
+            <Pressable onPress={() => setViewMonth((m) => addMonths(m, isRTL ? 1 : -1))} hitSlop={12}>
               <ChevronLeft size={20} color={colors.textSecondary} strokeWidth={2} />
             </Pressable>
             <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
               {formatMonthYear(viewMonth)}
             </Text>
-            <Pressable onPress={() => setViewMonth((m) => addMonths(m, 1))} hitSlop={12}>
+            <Pressable onPress={() => setViewMonth((m) => addMonths(m, isRTL ? -1 : 1))} hitSlop={12}>
               <ChevronRight size={20} color={colors.textSecondary} strokeWidth={2} />
             </Pressable>
           </View>

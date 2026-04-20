@@ -1,0 +1,104 @@
+import React, { useState } from 'react';
+import { View, Text } from 'react-native';
+import { Image } from 'expo-image';
+
+import { COLORS } from '../../constants/colors';
+import { useThemeColors } from '../../hooks/useThemeColors';
+import { CurrencyAmount } from './CurrencyAmount';
+
+interface AccountChipProps {
+  bankName: string;
+  amount: number;
+  color: string;
+  /** Optional logo URL — shows logo instead of initial letter */
+  logo?: string | null;
+}
+
+/**
+ * Small pill chip showing a bank/account with its balance.
+ * Matches Claude Design:
+ *
+ * pill: borderRadius 999, padding 5/10/5/6, rgba(255,255,255,0.04), stroke border
+ * - dot: 18×18, borderRadius 6, bank color, initial letter OR logo
+ * - bank name: fg-2, 11.5px
+ * - amount: num class, weight 600
+ * - currency icon: 10px
+ */
+export const AccountChip = React.memo(function AccountChip({
+  bankName,
+  amount,
+  color,
+  logo,
+}: AccountChipProps): React.ReactElement {
+  const colors = useThemeColors();
+  const [imgError, setImgError] = useState(false);
+  const showLogo = !!logo && !imgError;
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
+        paddingVertical: 5,
+        paddingLeft: 6,
+        paddingRight: 10,
+        borderRadius: 9999,
+        backgroundColor: colors.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+        borderWidth: 1,
+        borderColor: colors.isDark ? COLORS.claude.stroke : 'rgba(0,0,0,0.06)',
+      }}
+    >
+      {/* Bank logo or initial dot */}
+      {showLogo ? (
+        <Image
+          source={{ uri: logo }}
+          style={{ width: 18, height: 18, borderRadius: 6 }}
+          contentFit="contain"
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <View
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 6,
+            backgroundColor: color,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 9,
+              fontWeight: '800',
+              color: '#FFFFFF',
+            }}
+          >
+            {bankName.slice(0, 1)}
+          </Text>
+        </View>
+      )}
+
+      {/* Bank name */}
+      <Text
+        style={{
+          fontSize: 11.5,
+          color: colors.isDark ? COLORS.claude.fg2 : colors.textSecondary,
+        }}
+        numberOfLines={1}
+      >
+        {bankName}
+      </Text>
+
+      {/* Amount */}
+      <CurrencyAmount
+        value={amount}
+        color={colors.isDark ? COLORS.claude.fg : colors.textPrimary}
+        fontSize={11.5}
+        fontWeight="600"
+        iconSize={10}
+      />
+    </View>
+  );
+});

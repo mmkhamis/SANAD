@@ -11,6 +11,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../lib/query-client';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { smsDedup } from '../lib/sms-dedup';
+import { enqueue } from '../services/offline-queue-service';
+import { isNetworkError } from '../utils/offline/network-error';
 
 const SMS_PROCESSED_PREFIX = 'sms_processed:';
 
@@ -105,33 +107,62 @@ export default function SMSProcessorScreen(): React.ReactElement {
         }
 
         // Save
-        await createSMSTransaction({
-          amount: parsed.amount,
-          type: parsed.transaction_type,
-          transaction_type: parsed.transaction_type,
-          description: parsed.description,
-          merchant: parsed.merchant,
-          counterparty: parsed.counterparty,
-          date: parsed.date,
-          notes: decoded,
-          parse_confidence: parsed.parse_confidence,
-          review_reason: parsed.review_reason,
-        });
+        try {
+          await createSMSTransaction({
+            amount: parsed.amount,
+            type: parsed.transaction_type,
+            transaction_type: parsed.transaction_type,
+            description: parsed.description,
+            merchant: parsed.merchant,
+            counterparty: parsed.counterparty,
+            date: parsed.date,
+            notes: decoded,
+            parse_confidence: parsed.parse_confidence,
+            review_reason: parsed.review_reason,
+          });
 
-        await smsDedup.add(dedupKey);
+          await smsDedup.add(dedupKey);
 
-        // Invalidate caches
-        qc.invalidateQueries({ queryKey: QUERY_KEYS.transactions });
-        qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
-        qc.invalidateQueries({ queryKey: QUERY_KEYS.unreviewedTransactions });
+          // Invalidate caches
+          qc.invalidateQueries({ queryKey: QUERY_KEYS.transactions });
+          qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
+          qc.invalidateQueries({ queryKey: QUERY_KEYS.unreviewedTransactions });
 
-        // Send local notification
-        await notifySmsTransaction({
-          amount: parsed.amount,
-          type: parsed.transaction_type,
-          merchant: parsed.merchant,
-          description: parsed.description,
-        });
+          // Send local notification (merchant + category, no "Card payment")
+          await notifySmsTransaction({
+            amount: parsed.amount,
+            type: parsed.transaction_type,
+            merchant: parsed.merchant,
+            counterparty: parsed.counterparty,
+            category: parsed.suggested_category_label ?? null,
+          });
+        } catch (saveErr) {
+          if (isNetworkError(saveErr)) {
+            // Enqueue for replay when connectivity returns.
+            // Mark dedup key NOW so the same SMS deep link won't re-enqueue
+            // if the app re-opens before the queue is replayed.
+            const queueId = `sms-${dedupKey}`;
+            await enqueue({
+              id: queueId,
+              type: 'sms_transaction',
+              payload: {
+                amount: parsed.amount,
+                type: parsed.transaction_type,
+                transaction_type: parsed.transaction_type,
+                description: parsed.description,
+                merchant: parsed.merchant,
+                counterparty: parsed.counterparty,
+                date: parsed.date,
+                notes: decoded,
+                parse_confidence: parsed.parse_confidence,
+                review_reason: parsed.review_reason,
+              },
+            });
+            // Store dedup key so the same SMS deep link won't queue it again
+            await smsDedup.add(dedupKey);
+          }
+          // Non-network errors: silently discard (malformed SMS, RLS error, etc.)
+        }
       } catch {
         // Silently fail — don't block the user
       }

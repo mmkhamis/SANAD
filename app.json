@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "Wallet",
-    "slug": "wallet-app",
+    "name": "SANAD",
+    "slug": "sanad-app",
     "version": "1.0.0",
-    "scheme": "walletapp",
+    "scheme": "sanad",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.wallet.app",
+      "bundleIdentifier": "com.sanad.app",
       "infoPlist": {
         "NSCameraUsageDescription": "Used to scan receipts.",
         "NSPhotoLibraryUsageDescription": "Used to attach receipt images.",
@@ -27,7 +27,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F8FAFC"
       },
-      "package": "com.wallet.app",
+      "package": "com.sanad.app",
       "permissions": [
         "android.permission.RECEIVE_SMS",
         "android.permission.READ_SMS",
@@ -43,7 +43,9 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "expo-apple-authentication",
       "./plugins/withBudgetWidget",
+      "./plugins/withAppIntents",
       [
         "expo-notifications",
         {
@@ -54,16 +56,18 @@
       [
         "expo-av",
         {
-          "microphonePermission": "Allow Wallet to access your microphone for voice note input."
+          "microphonePermission": "Allow SANAD to access your microphone for voice note input."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Wallet to access your photos for receipt scanning.",
-          "cameraPermission": "Allow Wallet to access your camera for receipt scanning."
+          "photosPermission": "Allow SANAD to access your photos for receipt scanning.",
+          "cameraPermission": "Allow SANAD to access your camera for receipt scanning."
         }
-      ]
+      ],
+      "expo-web-browser",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

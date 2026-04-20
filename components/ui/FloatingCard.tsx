@@ -38,37 +38,32 @@ export function FloatingCard({
     ? {
         backgroundColor:
           variant === 'elevated'
-            ? 'rgba(15,23,42,0.80)'        // slate-900/80
+            ? 'rgba(255,255,255,0.08)'       // glass-3
             : variant === 'glass'
-              ? 'rgba(30,41,56,0.60)'       // slate-800/60
-              : 'rgba(30,41,56,0.75)',      // slate-800/75
+              ? 'rgba(255,255,255,0.03)'      // glass-1
+              : 'rgba(255,255,255,0.055)',    // glass-2
         borderWidth: 1,
         borderColor:
-          variant === 'glass'
-            ? 'rgba(51,65,85,0.40)'         // slate-700/40
-            : 'rgba(51,65,85,0.30)',        // slate-700/30
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.20,
-        shadowRadius: 12,
+          variant === 'elevated' ? colors.glassBorderStrong : colors.glassBorder,
+        ...colors.elevation.card,
         elevation: variant === 'elevated' ? 6 : 3,
       }
     : {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: colors.glassBg,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        shadowColor: 'rgba(15,23,42,1)',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: variant === 'elevated' ? 4 : 2,
+        borderColor: colors.glassBorder,
+        shadowColor: 'rgba(72,75,106,1)',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.35,
+        shadowRadius: 18,
+        elevation: variant === 'elevated' ? 7 : 5,
       };
 
   return (
     <View
       style={[
         {
-          borderRadius: 16,
+          borderRadius: colors.cardRadius,
           overflow: 'hidden',
           ...(noPadding ? {} : { padding: 16 }),
           marginHorizontal: 16,
@@ -87,7 +82,7 @@ export function FloatingCard({
           left: 0,
           right: 0,
           bottom: 0,
-          borderRadius: 16,
+          borderRadius: colors.cardRadius,
         }}
         pointerEvents="none"
       >
@@ -105,13 +100,28 @@ export function FloatingCard({
         />
       </View>
 
+      {/* Top-edge inset-light band in dark mode */}
+      {colors.isDark ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 1,
+            backgroundColor: colors.insetLight,
+          }}
+        />
+      ) : null}
+
       {/* Animated metallic shine sweep */}
       {metallic && cardWidth > 0 ? (
         <MetallicShine
           width={cardWidth}
-          borderRadius={16}
-          duration={3500}
-          intensity={colors.isDark ? 0.3 : 0.45}
+          borderRadius={colors.cardRadius}
+          intensity={colors.isDark ? 0.18 : 0.55}
+          tint="shine"
         />
       ) : null}
 

@@ -65,7 +65,7 @@ extension BudgetWidgetData.GoalItem {
 
 // MARK: - App Group Data Loading
 
-private let appGroupId = "group.com.wallet.app"
+private let appGroupId = "group.com.sanad.app"
 private let dataKey = "budgetWidgetData"
 
 func loadBudgetData() -> BudgetWidgetData? {
@@ -177,7 +177,7 @@ struct SmallBudgetView: View {
 
                 VStack(spacing: 1) {
                     Text("\(Int(data.percentUsed * 100))%")
-                        .font(.system(.title3, design: .rounded, weight: .bold))
+                        .font(.system(.title3, design: .rounded).weight(.bold))
                         .foregroundStyle(data.statusColor)
                     Text("used")
                         .font(.system(size: 9, weight: .medium))
@@ -188,7 +188,7 @@ struct SmallBudgetView: View {
 
             VStack(spacing: 1) {
                 Text(data.formattedAmount(data.remaining))
-                    .font(.system(.caption2, design: .rounded, weight: .bold))
+                    .font(.system(.caption2, design: .rounded).weight(.bold))
                     .foregroundStyle(data.statusColor)
                 Text("remaining")
                     .font(.system(size: 9))
@@ -222,7 +222,7 @@ struct MediumBudgetView: View {
 
                     VStack(spacing: 0) {
                         Text("\(Int(data.percentUsed * 100))%")
-                            .font(.system(.headline, design: .rounded, weight: .bold))
+                            .font(.system(.headline, design: .rounded).weight(.bold))
                         Text("total")
                             .font(.system(size: 9, weight: .medium))
                             .foregroundStyle(.secondary)
@@ -231,7 +231,7 @@ struct MediumBudgetView: View {
                 .frame(width: 60, height: 60)
 
                 Text(data.formattedAmount(data.remaining))
-                    .font(.system(size: 10, design: .rounded, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
                     .foregroundStyle(data.statusColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -301,7 +301,7 @@ struct GoalRowView: View {
                     .lineLimit(1)
                 Spacer()
                 Text("\(Int(goal.percent))%")
-                    .font(.system(size: 10, design: .rounded, weight: .bold))
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundStyle(goal.statusColor)
             }
 
@@ -352,7 +352,7 @@ struct EmptyBudgetView: View {
             Text("No Budget Data")
                 .font(.caption.weight(.semibold))
 
-            Text("Open Wallet to\nload your budgets")
+            Text("Open SANAD to\nload your budgets")
                 .font(.caption2)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
@@ -362,13 +362,7 @@ struct EmptyBudgetView: View {
 }
 
 // MARK: - Custom Colors
-
-extension UIColor {
-    static let walletPrimary = UIColor(red: 139/255, green: 92/255, blue: 246/255, alpha: 1)   // #8B5CF6
-    static let walletIncome  = UIColor(red: 52/255, green: 211/255, blue: 153/255, alpha: 1)   // #34D399
-    static let walletWarning = UIColor(red: 251/255, green: 191/255, blue: 36/255, alpha: 1)   // #FBBF24
-    static let walletExpense = UIColor(red: 251/255, green: 113/255, blue: 133/255, alpha: 1)  // #FB7185
-}
+// Colors live in WalletColors.swift (shared across widgets).
 
 // MARK: - Widget Configuration
 

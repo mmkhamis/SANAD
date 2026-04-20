@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, Modal, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Users, X, Check, ChevronRight, MapPin, Calendar } from 'lucide-react-native';
+import { Users, X, Check, ChevronLeft, ChevronRight, MapPin, Calendar } from 'lucide-react-native';
 
 import { impactLight, notifySuccess } from '../../utils/haptics';
 import { useAuthStore } from '../../store/auth-store';
 import { useUpdateProfile } from '../../hooks/useUpdateProfile';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import type { AgeBand } from '../../types/index';
 
 // ─── Constants ───────────────────────────────────────────────────────
@@ -69,6 +71,9 @@ interface BenchmarkUnlockCardProps {
 
 export function BenchmarkUnlockCard({ onUnlock }: BenchmarkUnlockCardProps): React.ReactElement {
   const colors = useThemeColors();
+  const t = useT();
+  const { isRTL, textAlign, rowDir } = useRTL();
+  const ForwardChevron = isRTL ? ChevronLeft : ChevronRight;
   return (
     <Pressable
       onPress={() => { impactLight(); onUnlock(); }}
@@ -79,7 +84,7 @@ export function BenchmarkUnlockCard({ onUnlock }: BenchmarkUnlockCardProps): Rea
         borderColor: colors.primary + '20',
       }}
     >
-      <View className="flex-row items-center mb-2">
+      <View className="items-center mb-2" style={{ flexDirection: rowDir }}>
         <View
           style={{
             width: 36,
@@ -88,20 +93,21 @@ export function BenchmarkUnlockCard({ onUnlock }: BenchmarkUnlockCardProps): Rea
             backgroundColor: colors.primary + '15',
             alignItems: 'center',
             justifyContent: 'center',
-            marginRight: 12,
+            marginStart: 0,
+            marginEnd: 12,
           }}
         >
           <Users size={18} color={colors.primary} strokeWidth={2} />
         </View>
         <View className="flex-1">
-          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary }}>
-            See How You Compare
+          <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, textAlign }}>
+            {t('BENCHMARK_UNLOCK_TITLE')}
           </Text>
         </View>
-        <ChevronRight size={16} color={colors.primary} strokeWidth={2} />
+        <ForwardChevron size={16} color={colors.primary} strokeWidth={2} />
       </View>
-      <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginLeft: 48 }}>
-        Add your age and region to see how your spending compares to anonymous Wallet users like you.
+      <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginStart: 48, textAlign }}>
+        {t('BENCHMARK_UNLOCK_DESC')}
       </Text>
     </Pressable>
   );
@@ -178,7 +184,7 @@ export function DemographicsEditor({ visible, onClose }: DemographicsEditorProps
           {/* Value proposition */}
           <View className="mb-6">
             <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20 }}>
-              This helps us show you anonymous spending comparisons from Wallet users in your age group and region. Your data stays private.
+              This helps us show you anonymous spending comparisons from SANAD users in your age group and region. Your data stays private.
             </Text>
           </View>
 

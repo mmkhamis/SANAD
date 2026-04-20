@@ -15,6 +15,46 @@ import type {
 import { createTransaction, type CreateTransactionInput } from './transaction-service';
 import { FLATTENED_SUBCATEGORIES } from '../constants/category-taxonomy';
 
+// ─── Hallucination filter for voice transcription ────────────────────
+// When audio is silent/unclear, Whisper may echo parts of the prompt.
+// We detect that by checking for known prompt fragments and return null.
+
+const PROMPT_FRAGMENTS = [
+  'critical',
+  'transcribe only',
+  'never fabricate',
+  'if silent',
+  'return empty',
+  'franko',
+  'dafa3t',
+  'فلوس',
+  'مبلغ',
+  'expect:',
+  'possible merchants:',
+  'merchants:',
+  'currencies:',
+  'actions:',
+  'voice note',
+  'تسجيل صوتي',
+];
+
+function filterPromptHallucination(text: string): string | null {
+  if (!text || !text.trim()) return null;
+  const lower = text.trim().toLowerCase();
+
+  // If the transcription contains 2+ prompt fragments, it's hallucination
+  let hits = 0;
+  for (const frag of PROMPT_FRAGMENTS) {
+    if (lower.includes(frag)) hits++;
+    if (hits >= 2) return null;
+  }
+
+  // If it's extremely short (1-2 chars) and not a number, likely noise
+  if (lower.length <= 2 && !/\d/.test(lower)) return null;
+
+  return text.trim();
+}
+
 // ─── Parse text via Edge Function ────────────────────────────────────
 
 export interface ParseContext {
@@ -260,7 +300,11 @@ export async function transcribeVoiceNote(audioUri: string): Promise<string> {
   );
 
   if (!data?.text) throw new Error('No transcription returned');
-  return data.text;
+
+  // Filter out hallucinated prompt fragments that Whisper produces on silence
+  const cleaned = filterPromptHallucination(data.text);
+  if (!cleaned) throw new Error('No transcription returned');
+  return cleaned;
 }
 
 // ─── OCR receipt via Edge Function ───────────────────────────────────
@@ -269,7 +313,7 @@ export interface OCRResult {
   text: string;
   amount: number | null;
   currency: string | null;
-  transaction_type: 'income' | 'expense';
+  transaction_type: 'income' | 'expense' | 'transfer';
   category: string | null;
   merchant: string | null;
   date: string | null;

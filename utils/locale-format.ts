@@ -202,3 +202,11 @@ export function getTextDirection(): { writingDirection: 'rtl' | 'ltr' } {
 export function getWritingDirection(): 'rtl' | 'ltr' {
   return getLanguage() === 'ar' ? 'rtl' : 'ltr';
 }
+
+/**
+ * Returns `{ textAlign: 'right' }` when the app language is Arabic.
+ * Apply to Text styles to right-align text in Arabic mode.
+ */
+export function getTextAlign(): { textAlign: 'right' | 'left' } {
+  return { textAlign: getLanguage() === 'ar' ? 'right' : 'left' };
+}

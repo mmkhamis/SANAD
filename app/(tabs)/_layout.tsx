@@ -1,15 +1,18 @@
 import React from 'react';
 import { View, Platform } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Receipt, BarChart3, Home, Coins, User } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { LayoutGrid, BarChart3, Home, Coins, User } from 'lucide-react-native';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useWidgetSync } from '../../hooks/useWidgetSync';
 import { useT } from '../../lib/i18n';
+import { COLORS } from '../../constants/colors';
 
 const TAB_ICON_SIZE = 22;
 const TAB_ICON_STROKE = 1.8;
-const HOME_ICON_SIZE = 28;
+const HOME_ICON_SIZE = 26;
 
 export default function TabsLayout(): React.ReactElement {
   const colors = useThemeColors();
@@ -20,43 +23,77 @@ export default function TabsLayout(): React.ReactElement {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.isDark ? 'rgba(255,255,255,0.40)' : colors.textTertiary,
+        tabBarActiveTintColor: colors.isDark ? COLORS.claude.p200 : colors.primary,
+        tabBarInactiveTintColor: colors.isDark ? COLORS.claude.fg3 : colors.textTertiary,
         lazy: true,
         freezeOnBlur: true,
+        tabBarBackground: () => (
+          <View style={{ flex: 1, borderRadius: 28, overflow: 'hidden' }}>
+            <BlurView
+              intensity={colors.isDark ? 60 : 80}
+              tint={colors.isDark ? 'dark' : 'light'}
+              style={{ flex: 1 }}
+            >
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.isDark
+                    ? 'rgba(10,10,18,0.55)'   // Claude Design: rgba(10,10,18,0.55)
+                    : 'rgba(255,255,255,0.88)',
+                }}
+              />
+            </BlurView>
+            {/* Top-edge inset light */}
+            {colors.isDark ? (
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 0, left: 0, right: 0,
+                  height: 1,
+                  backgroundColor: 'rgba(255,255,255,0.06)',
+                  borderTopLeftRadius: 28,
+                  borderTopRightRadius: 28,
+                }}
+              />
+            ) : null}
+          </View>
+        ),
         tabBarStyle: {
           position: 'absolute',
-          bottom: Platform.OS === 'ios' ? 24 : 12,
-          left: 24,
-          right: 24,
-          height: 68,
-          borderRadius: 34,
-          backgroundColor: colors.isDark ? 'rgba(26,31,46,0.75)' : 'rgba(255,255,255,0.78)',
+          bottom: Platform.OS === 'ios' ? 24 : 14,
+          left: 14,
+          right: 14,
+          height: 72,
+          borderRadius: 28,
+          backgroundColor: 'transparent',
           borderTopWidth: 0,
           borderWidth: 1,
-          borderColor: colors.isDark ? 'rgba(51,65,85,0.20)' : 'rgba(226,232,240,0.6)',
-          paddingTop: 6,
-          paddingBottom: 6,
-          shadowColor: colors.isDark ? '#8B5CF6' : '#000',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: colors.isDark ? 0.15 : 0.10,
+          borderColor: colors.isDark ? COLORS.claude.strokeStrong : 'rgba(226,232,240,0.6)',
+          paddingTop: 10,
+          paddingBottom: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 20 },
+          shadowOpacity: colors.isDark ? 0.50 : 0.10,
           shadowRadius: 24,
-          elevation: 12,
+          elevation: 16,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '600',
+          fontSize: 10.5,
+          fontWeight: '500',
           letterSpacing: 0.2,
         },
       }}
     >
-      {/* 1 — Transactions */}
+      {/* 1 — Features */}
       <Tabs.Screen
-        name="transactions"
+        name="features"
         options={{
-          title: t('TAB_TRANSACTIONS'),
-          tabBarIcon: ({ color }) => (
-            <Receipt size={TAB_ICON_SIZE} color={color} strokeWidth={TAB_ICON_STROKE} />
+          title: t('TAB_FEATURES'),
+          tabBarIcon: ({ color, focused }) => (
+            <IconWrap focused={focused}>
+              <LayoutGrid size={TAB_ICON_SIZE} color={color} strokeWidth={TAB_ICON_STROKE} />
+            </IconWrap>
           ),
         }}
       />
@@ -66,8 +103,10 @@ export default function TabsLayout(): React.ReactElement {
         name="analytics"
         options={{
           title: t('TAB_ANALYTICS'),
-          tabBarIcon: ({ color }) => (
-            <BarChart3 size={TAB_ICON_SIZE} color={color} strokeWidth={TAB_ICON_STROKE} />
+          tabBarIcon: ({ color, focused }) => (
+            <IconWrap focused={focused}>
+              <BarChart3 size={TAB_ICON_SIZE} color={color} strokeWidth={TAB_ICON_STROKE} />
+            </IconWrap>
           ),
         }}
       />
@@ -85,50 +124,45 @@ export default function TabsLayout(): React.ReactElement {
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: 28,
+                transform: [{ translateY: -8 }],
               }}
             >
-              {/* Outer glow ring */}
+              {/* Outer purple halo */}
               <View
                 style={{
                   position: 'absolute',
-                  width: 72,
-                  height: 72,
-                  borderRadius: 36,
-                  backgroundColor: '#8B5CF6',
-                  opacity: 0.2,
+                  width: 76,
+                  height: 76,
+                  borderRadius: 38,
+                  backgroundColor: COLORS.claude.p500,
+                  opacity: 0.28,
                 }}
               />
-              {/* Shadow halo */}
+              {/* Main button w/ gradient + rim + glow shadow */}
               <View
                 style={{
-                  position: 'absolute',
                   width: 60,
                   height: 60,
                   borderRadius: 30,
-                  shadowColor: '#8B5CF6',
-                  shadowOffset: { width: 0, height: 6 },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 14,
+                  overflow: 'hidden',
+                  borderWidth: 1,
+                  borderColor: 'rgba(200,180,243,0.35)',
+                  shadowColor: COLORS.claude.p500,
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.55,
+                  shadowRadius: 16,
                   elevation: 10,
                 }}
-              />
-              {/* Main button */}
-              <View
-                style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: 30,
-                  backgroundColor: '#8B5CF6',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  shadowColor: '#8B5CF6',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.4,
-                  shadowRadius: 10,
-                  elevation: 8,
-                }}
               >
-                <Home size={HOME_ICON_SIZE} color="#FFFFFF" strokeWidth={2} />
+                <LinearGradient
+                  colors={[COLORS.claude.p400, COLORS.claude.p700]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                />
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <Home size={HOME_ICON_SIZE} color="#FFFFFF" strokeWidth={2} />
+                </View>
               </View>
             </View>
           ),
@@ -141,8 +175,10 @@ export default function TabsLayout(): React.ReactElement {
         name="assets"
         options={{
           title: t('TAB_COINS'),
-          tabBarIcon: ({ color }) => (
-            <Coins size={TAB_ICON_SIZE} color={color} strokeWidth={TAB_ICON_STROKE} />
+          tabBarIcon: ({ color, focused }) => (
+            <IconWrap focused={focused}>
+              <Coins size={TAB_ICON_SIZE} color={color} strokeWidth={TAB_ICON_STROKE} />
+            </IconWrap>
           ),
         }}
       />
@@ -152,13 +188,16 @@ export default function TabsLayout(): React.ReactElement {
         name="profile"
         options={{
           title: t('TAB_PROFILE'),
-          tabBarIcon: ({ color }) => (
-            <User size={TAB_ICON_SIZE} color={color} strokeWidth={TAB_ICON_STROKE} />
+          tabBarIcon: ({ color, focused }) => (
+            <IconWrap focused={focused}>
+              <User size={TAB_ICON_SIZE} color={color} strokeWidth={TAB_ICON_STROKE} />
+            </IconWrap>
           ),
         }}
       />
 
       {/* ── Hidden tabs — routes still accessible, just not in bottom bar ── */}
+      <Tabs.Screen name="transactions" options={{ href: null }} />
       <Tabs.Screen name="subscriptions" options={{ href: null }} />
       <Tabs.Screen name="goals" options={{ href: null }} />
       <Tabs.Screen name="community" options={{ href: null }} />
@@ -166,9 +205,30 @@ export default function TabsLayout(): React.ReactElement {
       <Tabs.Screen name="smart-input" options={{ href: null }} />
       <Tabs.Screen name="review" options={{ href: null }} />
       <Tabs.Screen name="trash" options={{ href: null }} />
+      <Tabs.Screen name="charity" options={{ href: null }} />
       <Tabs.Screen name="community-detail" options={{ href: null }} />
-      <Tabs.Screen name="create-split-event" options={{ href: null }} />
-      <Tabs.Screen name="split-event" options={{ href: null }} />
+      <Tabs.Screen name="create-split-event" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="split-event" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
+  );
+}
+
+/**
+ * Wraps an active icon with a subtle purple drop-shadow glow.
+ * Mirrors the CSS `filter: drop-shadow(0 0 8px var(--p-glow))` from the prototype.
+ */
+function IconWrap({ focused, children }: { focused: boolean; children: React.ReactNode }): React.ReactElement {
+  if (!focused) return <>{children}</> as React.ReactElement;
+  return (
+    <View
+      style={{
+        shadowColor: COLORS.claude.p500,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 8,
+      }}
+    >
+      {children}
+    </View>
   );
 }

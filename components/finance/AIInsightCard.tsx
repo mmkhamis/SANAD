@@ -36,12 +36,15 @@ import {
   AlertTriangle,
   PiggyBank,
   Info,
+  ChevronLeft,
   ChevronRight,
 } from 'lucide-react-native';
 
 import type { Insight } from '../../hooks/useInsights';
 import { useInsightStore } from '../../store/insight-store';
 import { impactLight } from '../../utils/haptics';
+import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 
 // ─── Constants ────────────────────────────────────────────────────────
 
@@ -158,6 +161,9 @@ export const AIInsightCard = React.memo(function AIInsightCard({
   onDetails,
 }: AIInsightCardProps): React.ReactElement | null {
   const { dismissedIds, dismiss, highlightNewId, highlightNew, expandedId, toggleExpanded } = useInsightStore();
+  const t = useT();
+  const { isRTL } = useRTL();
+  const ForwardChevron = isRTL ? ChevronLeft : ChevronRight;
 
   // Skip if dismissed
   if (dismissedIds.includes(insight.id)) return null;
@@ -295,7 +301,7 @@ export const AIInsightCard = React.memo(function AIInsightCard({
                     letterSpacing: 0.5,
                   }}
                 >
-                  {insight.type === 'alert' ? '⚠ Alert' : insight.type === 'saving' ? '💡 Saving Tip' : insight.type === 'trend' ? '📈 Trend' : insight.type === 'spending' ? '💸 Spending' : '📊 Budget'}
+                  {insight.type === 'alert' ? t('AI_INSIGHT_TYPE_ALERT') : insight.type === 'saving' ? t('AI_INSIGHT_TYPE_SAVING') : insight.type === 'trend' ? t('AI_INSIGHT_TYPE_TREND') : insight.type === 'spending' ? t('AI_INSIGHT_TYPE_SPENDING') : t('AI_INSIGHT_TYPE_BUDGET')}
                 </Text>
                 {insight.priority === 'high' ? (
                   <View
@@ -346,9 +352,9 @@ export const AIInsightCard = React.memo(function AIInsightCard({
                 }}
               >
                 <Text style={{ fontSize: 13, fontWeight: '600', color: '#2CE6C2', flex: 1 }}>
-                  View Details
+                  {t('AI_INSIGHT_VIEW_DETAILS')}
                 </Text>
-                <ChevronRight size={16} color="#2CE6C2" strokeWidth={2} />
+                <ForwardChevron size={16} color="#2CE6C2" strokeWidth={2} />
               </Pressable>
             ) : (
               <Text
@@ -358,7 +364,7 @@ export const AIInsightCard = React.memo(function AIInsightCard({
                   marginTop: 4,
                 }}
               >
-                Tap to expand · Long press to dismiss
+                {t('AI_INSIGHT_TAP_HINT')}
               </Text>
             )}
           </View>

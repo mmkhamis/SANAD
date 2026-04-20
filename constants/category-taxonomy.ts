@@ -106,7 +106,7 @@ export const CATEGORY_TAXONOMY = [
     budgetable: true,
     goalEligible: false,
     subcategories: [
-      { key: 'groceries', label: 'Groceries', icon: 'shopping-cart', aliases: ['groceries', 'supermarket', 'بقالة', 'سوبر ماركت'] },
+      { key: 'groceries', label: 'Groceries', icon: 'shopping-cart', aliases: ['groceries', 'supermarket', 'hypermarket', 'carrefour', 'spinneys', 'panda', 'lulu', 'gomla', 'elgomla', 'el gomla', 'بقالة', 'سوبر ماركت', 'هايبر', 'كارفور', 'سبينيس', 'بندة', 'الجملة', 'بيت الجملة'] },
       { key: 'bakery', label: 'Bakery', icon: 'croissant', aliases: ['bakery', 'bread', 'مخبوزات', 'خبز'] },
       { key: 'meat_seafood', label: 'Meat & Seafood', icon: 'fish', aliases: ['meat', 'seafood', 'لحوم', 'فراخ', 'سمك'] },
       { key: 'restaurants', label: 'Restaurants', icon: 'chef-hat', aliases: ['restaurant', 'dining out', 'مطعم'] },

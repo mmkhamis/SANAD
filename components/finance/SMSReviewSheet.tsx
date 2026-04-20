@@ -11,7 +11,8 @@ import { AccountPicker } from './AccountPicker';
 import { useReviewTransaction } from '../../hooks/useReviewTransactions';
 import { useCategories } from '../../hooks/useCategories';
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { useT } from '../../lib/i18n';
+import { useT, tFormat } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import type { Transaction, Category, Account } from '../../types/index';
 
 interface SMSReviewSheetProps {
@@ -27,6 +28,9 @@ export function SMSReviewSheet({
 }: SMSReviewSheetProps): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { isRTL, textAlign, rowDir } = useRTL();
+  const BackIcon = isRTL ? ChevronRight : ChevronLeft;
+  const ForwardIcon = isRTL ? ChevronLeft : ChevronRight;
   const insets = useSafeAreaInsets();
   const { mutateAsync: reviewAsync, isPending } = useReviewTransaction();
   const { data: allCategories } = useCategories();
@@ -123,7 +127,7 @@ export function SMSReviewSheet({
           <Pressable onPress={onClose} style={{ padding: 4 }}>
             <X size={22} color={colors.textSecondary} strokeWidth={2} />
           </Pressable>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary, textAlign }}>
             {t('SMS_REVIEW_HEADER' as any)} ({currentIndex + 1} / {total})
           </Text>
           <View style={{ width: 30 }} />
@@ -153,14 +157,15 @@ export function SMSReviewSheet({
                 fontWeight: '700',
                 color: isIncome ? colors.income : colors.expense,
                 marginBottom: 4,
+                textAlign,
               }}
             >
               {isIncome ? '+' : '-'}{formatAmount(tx.amount)}
             </Text>
-            <Text style={{ fontSize: 15, fontWeight: '500', color: colors.textPrimary, marginBottom: 2 }}>
+            <Text style={{ fontSize: 15, fontWeight: '500', color: colors.textPrimary, marginBottom: 2, textAlign }}>
               {tx.description}
             </Text>
-            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 8 }}>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 8, textAlign }}>
               {tx.date}{tx.merchant ? ` · ${tx.merchant}` : ''}
             </Text>
 
@@ -181,10 +186,10 @@ export function SMSReviewSheet({
           </View>
 
           {/* Category picker */}
-          <Text className="mb-2" style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary }}>
-            Category {suggestedCategoryName ? (
+          <Text className="mb-2" style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary, textAlign }}>
+            {t('CATEGORY')}{suggestedCategoryName ? ' ' : ''}{suggestedCategoryName ? (
               <Text style={{ fontSize: 12, color: colors.textTertiary }}>
-                (suggested: {suggestedCategoryName})
+                {tFormat('SMS_SUGGESTED_TEMPLATE', { name: suggestedCategoryName })}
               </Text>
             ) : null}
           </Text>
@@ -196,8 +201,8 @@ export function SMSReviewSheet({
           <View className="mb-4" />
 
           {/* Account picker */}
-          <Text className="mb-2" style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary }}>
-            Account <Text style={{ fontSize: 12, color: colors.textTertiary }}>(optional)</Text>
+          <Text className="mb-2" style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary, textAlign }}>
+            {t('ACCOUNT')} <Text style={{ fontSize: 12, color: colors.textTertiary }}>{t('ACCOUNT_OPTIONAL')}</Text>
           </Text>
           <AccountPicker
             selectedId={selectedAccount?.id ?? null}
@@ -206,19 +211,19 @@ export function SMSReviewSheet({
           <View className="mb-6" />
 
           {/* Navigation + actions */}
-          <View className="flex-row items-center justify-between mb-4">
+          <View className="items-center justify-between mb-4" style={{ flexDirection: rowDir }}>
             <Pressable
               onPress={goBack}
               disabled={currentIndex === 0}
-              className="flex-row items-center"
-              style={{ opacity: currentIndex === 0 ? 0.3 : 1 }}
+              className="items-center"
+              style={{ opacity: currentIndex === 0 ? 0.3 : 1, flexDirection: rowDir }}
             >
-              <ChevronLeft size={18} color={colors.textSecondary} />
+              <BackIcon size={18} color={colors.textSecondary} />
               <Text style={{ fontSize: 14, color: colors.textSecondary }}>{t('SMS_BACK' as any)}</Text>
             </Pressable>
-            <Pressable onPress={skip} className="flex-row items-center">
+            <Pressable onPress={skip} className="items-center" style={{ flexDirection: rowDir }}>
               <Text style={{ fontSize: 14, color: colors.textSecondary }}>{t('SMS_SKIP' as any)}</Text>
-              <ChevronRight size={18} color={colors.textSecondary} />
+              <ForwardIcon size={18} color={colors.textSecondary} />
             </Pressable>
           </View>
 

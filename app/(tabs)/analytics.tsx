@@ -6,9 +6,8 @@ import {
   RefreshControl,
   Pressable,
   Modal,
-  Dimensions,
+  useWindowDimensions,
   TouchableWithoutFeedback,
-  LayoutChangeEvent,
   PanResponder,
   type GestureResponderEvent,
   type PanResponderGestureState,
@@ -19,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   X,
+  ChevronLeft,
   ChevronRight,
   BarChart3,
   CreditCard,
@@ -37,7 +37,8 @@ import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
 import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { MonthPicker } from '../../components/ui/MonthPicker';
-import { MetallicShine } from '../../components/ui/MetallicShine';
+import { HeroCard } from '../../components/ui/HeroCard';
+import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { CurrencyAmount } from '../../components/ui/CurrencyAmount';
 import { SpendingBarChart } from '../../components/charts/SpendingBarChart';
 import { ExpenseTrendChart } from '../../components/charts/ExpenseTrendChart';
@@ -45,18 +46,24 @@ import { AIInsightCard } from '../../components/finance/AIInsightCard';
 import { HabitSection } from '../../components/finance/HabitSection';
 import { BudgetStatusRibbon } from '../../components/finance/BudgetStatusRibbon';
 import { BenchmarkUnlockCard, DemographicsEditor } from '../../components/finance/BenchmarkUnlockCard';
+import { SpendingAnalysisCard } from '../../components/finance/SpendingAnalysisCard';
+import { RegionBenchmarkCard } from '../../components/finance/RegionBenchmarkCard';
+import { SubscriptionSavingsCard } from '../../components/finance/SubscriptionSavingsCard';
 import { FeatureGate } from '../../components/ui/FeatureGate';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useBenchmarks } from '../../hooks/useBenchmarks';
 import { useHabitInsights } from '../../hooks/useHabits';
 import { useSubscriptions } from '../../hooks/useSubscriptions';
 import { useGoals } from '../../hooks/useGoals';
-import { formatCompactNumber } from '../../utils/currency';
+import { formatCompactNumberLocale } from '../../utils/currency';
+import { useLanguageStore } from '../../store/language-store';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { COLORS } from '../../constants/colors';
 import { SUBSCRIPTION_PRESETS } from '../../services/subscription-service';
 import { STRINGS } from '../../constants/strings';
 import { useT, useTranslateCategory } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import type {
   DashboardData,
   HabitInsights,
@@ -65,9 +72,6 @@ import type {
   GoalsSummary,
 } from '../../types/index';
 import type { Subscription, BillingCycle } from '../../services/subscription-service';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 32;
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -84,7 +88,7 @@ function toMonthly(amount: number, cycle: BillingCycle): number {
 }
 
 function getPresetLogo(name: string): string | null {
-  return SUBSCRIPTION_PRESETS.find((p) => p.name === name)?.logo ?? null;
+  return SUBSCRIPTION_PRESETS.find((p) => p.name === name || p.nameAr === name)?.logo ?? null;
 }
 
 function thisMonthEnd(): Date {
@@ -147,11 +151,16 @@ function AnalyticsSheet({
   title: string;
   children: React.ReactNode;
 }): React.ReactElement {
+  const { height: screenHeight } = useWindowDimensions();
   const colors = useThemeColors();
+  const { rowDir } = useRTL();
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(0);
   const scrollOffset = useRef(0);
   const isScrollAtTop = useRef(true);
+  // Keep a stable ref to screenHeight for the PanResponder closure
+  const screenHeightRef = useRef(screenHeight);
+  screenHeightRef.current = screenHeight;
 
   const dismiss = (): void => {
     onClose();
@@ -170,7 +179,7 @@ function AnalyticsSheet({
       },
       onPanResponderRelease: (_e: GestureResponderEvent, gs: PanResponderGestureState) => {
         if (gs.dy > 100 || gs.vy > 0.5) {
-          translateY.value = withTiming(SCREEN_HEIGHT, { duration: 250 }, () => {
+          translateY.value = withTiming(screenHeightRef.current, { duration: 250 }, () => {
             runOnJS(dismiss)();
           });
         } else {
@@ -212,7 +221,7 @@ function AnalyticsSheet({
             bottom: 0,
             left: 0,
             right: 0,
-            maxHeight: SCREEN_HEIGHT * 0.9,
+            maxHeight: screenHeight * 0.9,
             backgroundColor: colors.isDark ? '#1a1f2e' : '#FFFFFF',
             borderTopLeftRadius: 28,
             borderTopRightRadius: 28,
@@ -252,7 +261,7 @@ function AnalyticsSheet({
           {/* Header */}
           <View
             style={{
-              flexDirection: 'row',
+              flexDirection: rowDir,
               alignItems: 'center',
               justifyContent: 'space-between',
               paddingHorizontal: 20,
@@ -302,65 +311,19 @@ function AnalyticsSheet({
 
 function AnalyticsCard({
   onPress,
-  accentColor,
   children,
   delay = 0,
 }: {
   onPress: () => void;
-  accentColor: string;
+  /** @deprecated Accent color is no longer used — HeroCard provides the base wash. */
+  accentColor?: string;
   children: React.ReactNode;
   delay?: number;
 }): React.ReactElement {
-  const colors = useThemeColors();
-  const [cardW, setCardW] = useState(CARD_WIDTH);
-
-  const onLayout = (e: LayoutChangeEvent): void => {
-    const w = e.nativeEvent.layout.width;
-    if (w > 0) setCardW(w);
-  };
-
   return (
-    <Animated.View entering={FadeInDown.duration(400).delay(delay)}>
-      <Pressable
-        onPress={onPress}
-        onLayout={onLayout}
-        style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}
-      >
-        <View
-          style={{
-            marginHorizontal: 16,
-            marginTop: 12,
-            borderRadius: 24,
-            overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: colors.isDark ? 'rgba(139,92,246,0.15)' : colors.glassBorder,
-            shadowColor: colors.isDark ? '#8B5CF6' : '#000',
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: colors.isDark ? 0.15 : 0.06,
-            shadowRadius: 16,
-            elevation: 5,
-          }}
-        >
-          <HomeCardGradient padding={24}>
-            {/* Accent tint */}
-            <LinearGradient
-              colors={[`${accentColor}0A`, 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            />
-
-            {/* Animated metallic sweep */}
-            <MetallicShine
-              width={cardW}
-              borderRadius={24}
-              duration={4500}
-              intensity={colors.isDark ? 0.28 : 0.38}
-            />
-
-            {children}
-          </HomeCardGradient>
-        </View>
+    <Animated.View entering={FadeInDown.duration(400).delay(delay)} style={{ marginTop: 12 }}>
+      <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}>
+        <HeroCard>{children}</HeroCard>
       </Pressable>
     </Animated.View>
   );
@@ -378,9 +341,11 @@ function CardHeader({
   iconColor: string;
 }): React.ReactElement {
   const colors = useThemeColors();
+  const { isRTL, rowDir } = useRTL();
+  const ForwardChevron = isRTL ? ChevronLeft : ChevronRight;
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+    <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10 }}>
         <View
           style={{
             width: 32,
@@ -395,7 +360,7 @@ function CardHeader({
         </View>
         <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary }}>{title}</Text>
       </View>
-      <ChevronRight size={17} color={colors.textTertiary} strokeWidth={2} />
+      <ForwardChevron size={17} color={colors.textTertiary} strokeWidth={2} />
     </View>
   );
 }
@@ -436,6 +401,7 @@ function StatTile({
 
 function SectionLabel({ children }: { children: string }): React.ReactElement {
   const colors = useThemeColors();
+  const { textAlign } = useRTL();
   return (
     <Text
       style={{
@@ -447,6 +413,7 @@ function SectionLabel({ children }: { children: string }): React.ReactElement {
         paddingHorizontal: 16,
         marginTop: 20,
         marginBottom: 10,
+        textAlign,
       }}
     >
       {children}
@@ -495,6 +462,11 @@ function ComparisonRow({
   const colors = useThemeColors();
   const t = useT();
   const tc = useTranslateCategory();
+  const { rowDir, textAlign } = useRTL();
+  const primary = colors.isDark ? COLORS.claude.fg : colors.textPrimary;
+  const secondary = colors.isDark ? COLORS.claude.fg2 : colors.textSecondary;
+  const tertiary = colors.isDark ? COLORS.claude.fg3 : colors.textTertiary;
+  const trackColor = colors.isDark ? COLORS.claude.stroke : 'rgba(0,0,0,0.06)';
   const maxVal = Math.max(item.user_spend, item.benchmark_median, 1) * 1.15;
   const userRatio = Math.min(item.user_spend / maxVal, 1);
   const avgRatio = Math.min(item.benchmark_median / maxVal, 1);
@@ -503,14 +475,15 @@ function ComparisonRow({
   const diffAbs = Math.abs(Math.round(item.diff_percent));
 
   const userBarColor = isOver ? colors.expense : isUnder ? colors.income : colors.primary;
+  const typicalBarColor = colors.isDark ? 'rgba(200,180,243,0.40)' : 'rgba(100,116,139,0.35)';
 
   return (
     <View style={{ paddingVertical: 14 }}>
       {/* Category + badge */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <CategoryIcon name={item.category_icon ?? 'shopping-bag'} size={18} color={item.category_color ?? colors.textSecondary} />
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
+      <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8 }}>
+        <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 8, flex: 1 }}>
+          <CategoryIcon name={item.category_icon ?? 'shopping-bag'} size={18} color={item.category_color ?? secondary} />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: primary, textAlign, flexShrink: 1 }}>
             {tc(item.category_name)}
           </Text>
         </View>
@@ -518,8 +491,8 @@ function ComparisonRow({
           style={{
             paddingHorizontal: 8,
             paddingVertical: 3,
-            borderRadius: 6,
-            backgroundColor: isOver ? `${colors.expense}15` : isUnder ? `${colors.income}15` : `${colors.primary}12`,
+            borderRadius: 999,
+            backgroundColor: isOver ? `${colors.expense}18` : isUnder ? `${colors.income}18` : `${colors.primary}14`,
           }}
         >
           <Text
@@ -535,15 +508,16 @@ function ComparisonRow({
       </View>
 
       {/* You bar */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-        <Text style={{ width: 52, fontSize: 11, fontWeight: '500', color: colors.textSecondary }}>{t('YOU')}</Text>
+      <View style={{ flexDirection: rowDir, alignItems: 'center', marginBottom: 6, gap: 10 }}>
+        <Text style={{ width: 52, fontSize: 11, fontWeight: '500', color: secondary, textAlign }}>{t('YOU')}</Text>
         <View
           style={{
             flex: 1,
             height: 6,
             borderRadius: 3,
-            backgroundColor: colors.isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
+            backgroundColor: trackColor,
             overflow: 'hidden',
+            flexDirection: rowDir,
           }}
         >
           <View
@@ -555,25 +529,26 @@ function ComparisonRow({
             }}
           />
         </View>
-        <View style={{ marginLeft: 10, minWidth: 60, alignItems: 'flex-end' }}>
+        <View style={{ minWidth: 60, alignItems: 'flex-end' }}>
           {hidden ? (
-            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary }}>••••</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: secondary }}>••••</Text>
           ) : (
-            <CurrencyAmount value={item.user_spend} color={colors.textSecondary} fontSize={11} fontWeight="600" />
+            <CurrencyAmount value={item.user_spend} color={secondary} fontSize={11} fontWeight="600" />
           )}
         </View>
       </View>
 
       {/* Typical bar */}
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Text style={{ width: 52, fontSize: 11, fontWeight: '500', color: colors.textTertiary }}>{t('TYPICAL')}</Text>
+      <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10 }}>
+        <Text style={{ width: 52, fontSize: 11, fontWeight: '500', color: tertiary, textAlign }}>{t('TYPICAL')}</Text>
         <View
           style={{
             flex: 1,
             height: 6,
             borderRadius: 3,
-            backgroundColor: colors.isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
+            backgroundColor: trackColor,
             overflow: 'hidden',
+            flexDirection: rowDir,
           }}
         >
           <View
@@ -581,15 +556,15 @@ function ComparisonRow({
               width: `${avgRatio * 100}%`,
               height: 6,
               borderRadius: 3,
-              backgroundColor: colors.isDark ? 'rgba(148,163,184,0.45)' : 'rgba(100,116,139,0.35)',
+              backgroundColor: typicalBarColor,
             }}
           />
         </View>
-        <View style={{ marginLeft: 10, minWidth: 60, alignItems: 'flex-end' }}>
+        <View style={{ minWidth: 60, alignItems: 'flex-end' }}>
           {hidden ? (
-            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textTertiary }}>••••</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: tertiary }}>••••</Text>
           ) : (
-            <CurrencyAmount value={item.benchmark_median} color={colors.textTertiary} fontSize={11} fontWeight="600" />
+            <CurrencyAmount value={item.benchmark_median} color={tertiary} fontSize={11} fontWeight="600" />
           )}
         </View>
       </View>
@@ -619,6 +594,7 @@ const MoneyAnalysisCard = React.memo(function MoneyAnalysisCard({
   const colors = useThemeColors();
   const t = useT();
   const tc = useTranslateCategory();
+  const { rowDir } = useRTL();
   const topCat = dashboard.category_spending[0] ?? null;
   const onTrack = goalsSummary?.on_track_count ?? 0;
   const atRisk = (goalsSummary?.near_limit_count ?? 0) + (goalsSummary?.exceeded_count ?? 0);
@@ -628,7 +604,7 @@ const MoneyAnalysisCard = React.memo(function MoneyAnalysisCard({
       <CardHeader icon={BarChart3} title={t('MONEY_ANALYSIS')} iconColor={colors.primary} />
 
       {/* Stat tiles */}
-      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+      <View style={{ flexDirection: rowDir, gap: 10, marginBottom: 16 }}>
         <StatTile
           value={String(dashboard.summary.transaction_count)}
           label={t('TRANSACTIONS_LABEL')}
@@ -649,8 +625,8 @@ const MoneyAnalysisCard = React.memo(function MoneyAnalysisCard({
             end={{ x: 1, y: 0 }}
             style={{ height: 1, marginBottom: 14 }}
           />
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: goalsSummary ? 14 : 0 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', marginBottom: goalsSummary ? 14 : 0 }}>
+            <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10 }}>
               <CategoryIcon name={topCat.category_icon ?? 'shopping-bag'} size={22} color={topCat.category_color ?? colors.textSecondary} />
               <View>
                 <Text style={{ fontSize: 11, color: colors.textTertiary }}>{t('TOP_CATEGORY')}</Text>
@@ -677,7 +653,7 @@ const MoneyAnalysisCard = React.memo(function MoneyAnalysisCard({
             end={{ x: 1, y: 0 }}
             style={{ height: 1, marginBottom: 12 }}
           />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 8 }}>
             <Target size={13} color={colors.textTertiary} strokeWidth={2} />
             <Text style={{ fontSize: 12, color: colors.textSecondary }}>{t('BUDGETS')}:</Text>
             {onTrack > 0 ? (
@@ -715,11 +691,12 @@ function MoneyAnalysisSheetContent({
   const colors = useThemeColors();
   const t = useT();
   const tc = useTranslateCategory();
+  const { rowDir } = useRTL();
 
   return (
     <View style={{ paddingTop: 12 }}>
       {/* Summary stats */}
-      <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginBottom: 6 }}>
+      <View style={{ flexDirection: rowDir, gap: 10, paddingHorizontal: 16, marginBottom: 6 }}>
         <View
           style={{
             flex: 1,
@@ -833,6 +810,16 @@ function MoneyAnalysisSheetContent({
         </>
       ) : null}
 
+      {/* Region benchmark — you vs your peers */}
+      <View style={{ paddingHorizontal: 16 }}>
+        <RegionBenchmarkCard month={selectedMonth} />
+      </View>
+
+      {/* Subscription savings */}
+      <View style={{ paddingHorizontal: 16 }}>
+        <SubscriptionSavingsCard />
+      </View>
+
       {/* AI insight */}
       {dashboard.ai_insight ? (
         <View style={{ paddingVertical: 8 }}>
@@ -863,6 +850,9 @@ const SavingTipsCard = React.memo(function SavingTipsCard({
   const colors = useThemeColors();
   const t = useT();
   const tc = useTranslateCategory();
+  const { rowDir, textAlign } = useRTL();
+  const accent = COLORS.claude.green;
+
   const topOverspend = useMemo(() => {
     if (!benchmarkSummary?.has_data || !benchmarkSummary.comparisons.length) return null;
     return (
@@ -874,76 +864,53 @@ const SavingTipsCard = React.memo(function SavingTipsCard({
 
   const topCat = dashboard?.category_spending[0] ?? null;
 
-  // Potential saving: difference from peer median, or 5% of top category
   const savingAmount = topOverspend
     ? Math.max(0, topOverspend.user_spend - topOverspend.benchmark_median) * 0.05
     : topCat
     ? topCat.total * 0.05
     : 0;
 
+  const focusName = topOverspend
+    ? tc(topOverspend.category_name)
+    : topCat
+    ? tc(topCat.category_name)
+    : null;
+  const messagePrefix = topOverspend ? t('PEERS_SPEND_LESS') : topCat ? t('BIGGEST_SPEND') : '';
+  const messageSuffix = topOverspend ? t('PEERS_THAN_YOU') : topCat ? t('SMALL_CUT') : '';
+  const primary = colors.isDark ? COLORS.claude.fg : colors.textPrimary;
+  const secondary = colors.isDark ? COLORS.claude.fg2 : colors.textSecondary;
+  const tertiary = colors.isDark ? COLORS.claude.fg3 : colors.textTertiary;
+  const dividerColor = colors.isDark ? COLORS.claude.stroke : colors.glassBorder;
+
   return (
-    <AnalyticsCard onPress={onPress} accentColor="#34D399" delay={120}>
-      <CardHeader icon={Lightbulb} title={t('SAVING_TIPS')} iconColor="#34D399" />
+    <AnalyticsCard onPress={onPress} delay={120}>
+      <CardHeader icon={Lightbulb} title={t('SAVING_TIPS')} iconColor={accent} />
 
-      {topOverspend ? (
+      {focusName ? (
         <>
-          {/* Main message */}
-          <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 14 }}>
-            {t('PEERS_SPEND_LESS')}{' '}
-            <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{tc(topOverspend.category_name)}</Text>
-            {' '}{t('PEERS_THAN_YOU')}
+          <Text style={{ fontSize: 14, color: secondary, lineHeight: 20, marginBottom: 14, textAlign }}>
+            {messagePrefix}{' '}
+            <Text style={{ fontWeight: '700', color: primary }}>{focusName}</Text>
+            {messageSuffix ? ' ' + messageSuffix : ''}
           </Text>
 
-          <LinearGradient
-            colors={['transparent', colors.isDark ? 'rgba(100,116,139,0.2)' : 'rgba(203,213,225,0.4)', 'transparent']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{ height: 1, marginBottom: 14 }}
-          />
+          <View style={{ height: 1, backgroundColor: dividerColor, marginBottom: 14 }} />
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 12, color: colors.textTertiary }}>{t('IF_REDUCED_5')}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <TrendingDown size={14} color="#34D399" strokeWidth={2.5} />
+          <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 12, color: tertiary }}>{t('IF_REDUCED_5')}</Text>
+            <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 4 }}>
+              <TrendingDown size={14} color={accent} strokeWidth={2.5} />
               {hidden ? (
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#34D399' }}>••••</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: accent }}>••••</Text>
               ) : (
-                <CurrencyAmount value={savingAmount} color="#34D399" fontSize={16} fontWeight="700" />
+                <CurrencyAmount value={savingAmount} color={accent} fontSize={16} fontWeight="700" />
               )}
-              <Text style={{ fontSize: 12, color: colors.textTertiary }}>{t('PER_MONTH')}</Text>
-            </View>
-          </View>
-        </>
-      ) : topCat ? (
-        <>
-          <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 14 }}>
-            {t('BIGGEST_SPEND')}{' '}
-            <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{tc(topCat.category_name)}</Text>
-            {t('SMALL_CUT')}
-          </Text>
-
-          <LinearGradient
-            colors={['transparent', colors.isDark ? 'rgba(100,116,139,0.2)' : 'rgba(203,213,225,0.4)', 'transparent']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={{ height: 1, marginBottom: 14 }}
-          />
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={{ fontSize: 12, color: colors.textTertiary }}>{t('IF_REDUCED_5')}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <TrendingDown size={14} color="#34D399" strokeWidth={2.5} />
-              {hidden ? (
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#34D399' }}>••••</Text>
-              ) : (
-                <CurrencyAmount value={savingAmount} color="#34D399" fontSize={16} fontWeight="700" />
-              )}
-              <Text style={{ fontSize: 12, color: colors.textTertiary }}>{t('PER_MONTH')}</Text>
+              <Text style={{ fontSize: 12, color: tertiary }}>{t('PER_MONTH')}</Text>
             </View>
           </View>
         </>
       ) : (
-        <Text style={{ fontSize: 14, color: colors.textTertiary }}>
+        <Text style={{ fontSize: 14, color: tertiary, textAlign }}>
           {t('ADD_TXN_TIPS')}
         </Text>
       )}
@@ -969,6 +936,14 @@ function SavingTipsSheetContent({
   const colors = useThemeColors();
   const t = useT();
   const tc = useTranslateCategory();
+  const { rowDir, textAlign } = useRTL();
+  const accent = COLORS.claude.green;
+  const primary = colors.isDark ? COLORS.claude.fg : colors.textPrimary;
+  const secondary = colors.isDark ? COLORS.claude.fg2 : colors.textSecondary;
+  const tertiary = colors.isDark ? COLORS.claude.fg3 : colors.textTertiary;
+  const dividerColor = colors.isDark ? COLORS.claude.stroke : colors.glassBorder;
+  const accentSurfaceBg = colors.isDark ? 'rgba(126,212,168,0.10)' : 'rgba(126,212,168,0.12)';
+  const accentSurfaceBorder = colors.isDark ? 'rgba(126,212,168,0.22)' : 'rgba(126,212,168,0.30)';
 
   // Categories where user spends more than peers by >5%
   const overspending = useMemo(() => {
@@ -1000,28 +975,27 @@ function SavingTipsSheetContent({
                   <View
                     key={cat.category_id}
                     style={{
-                      flexDirection: 'row',
+                      flexDirection: rowDir,
                       alignItems: 'center',
+                      gap: 12,
                       paddingVertical: 13,
                       borderBottomWidth: isLast ? 0 : 1,
-                      borderBottomColor: colors.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                      borderBottomColor: dividerColor,
                     }}
                   >
-                    <View style={{ marginRight: 12 }}>
-                      <CategoryIcon name={cat.category_icon ?? 'shopping-bag'} size={20} color={cat.category_color ?? colors.textSecondary} />
-                    </View>
+                    <CategoryIcon name={cat.category_icon ?? 'shopping-bag'} size={20} color={cat.category_color ?? secondary} />
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: primary, textAlign }}>
                         {tc(cat.category_name)}
                       </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                        <Text style={{ fontSize: 11, color: colors.textTertiary }}>{t('FIVE_PCT_CUT')}</Text>
+                      <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 4, marginTop: 2 }}>
+                        <Text style={{ fontSize: 11, color: tertiary }}>{t('FIVE_PCT_CUT')}</Text>
                         {hidden ? (
-                          <Text style={{ fontSize: 11, fontWeight: '600', color: '#34D399' }}>••••/mo</Text>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: accent }}>••••</Text>
                         ) : (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                            <CurrencyAmount value={saving5pct} color="#34D399" fontSize={11} fontWeight="600" />
-                            <Text style={{ fontSize: 11, color: colors.textTertiary }}>{t('PER_MONTH_SHORT' as any)}</Text>
+                          <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 2 }}>
+                            <CurrencyAmount value={saving5pct} color={accent} fontSize={11} fontWeight="600" />
+                            <Text style={{ fontSize: 11, color: tertiary }}>{t('PER_MONTH_SHORT' as any)}</Text>
                           </View>
                         )}
                       </View>
@@ -1054,7 +1028,7 @@ function SavingTipsSheetContent({
   if (!benchmarkSummary.has_data) {
     return (
       <View style={{ padding: 48, alignItems: 'center' }}>
-        <Text style={{ fontSize: 15, color: colors.textTertiary, textAlign: 'center', lineHeight: 22 }}>
+        <Text style={{ fontSize: 15, color: tertiary, textAlign: 'center', lineHeight: 22 }}>
           {t('NOT_ENOUGH_DATA')}
         </Text>
       </View>
@@ -1076,33 +1050,33 @@ function SavingTipsSheetContent({
         <View
           style={{
             marginHorizontal: 16,
-            borderRadius: 18,
+            borderRadius: 20,
             overflow: 'hidden',
             padding: 20,
-            backgroundColor: colors.isDark ? 'rgba(52,211,153,0.06)' : 'rgba(52,211,153,0.07)',
+            backgroundColor: accentSurfaceBg,
             borderWidth: 1,
-            borderColor: colors.isDark ? 'rgba(52,211,153,0.15)' : 'rgba(52,211,153,0.2)',
+            borderColor: accentSurfaceBorder,
             marginBottom: 4,
           }}
         >
-          <Text style={{ fontSize: 12, color: '#34D399', fontWeight: '600', marginBottom: 4 }}>
+          <Text style={{ fontSize: 12, color: accent, fontWeight: '700', marginBottom: 6, textAlign, letterSpacing: 0.4 }}>
             {t('SAVING_OPPORTUNITY')}
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
-            <TrendingDown size={18} color="#34D399" strokeWidth={2.5} />
-            <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+          <View style={{ flexDirection: rowDir, alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+            <TrendingDown size={18} color={accent} strokeWidth={2.5} />
+            <Text style={{ fontSize: 13, color: secondary, flex: 1, textAlign, lineHeight: 19 }}>
               {t('CUT_OVERSPENDING')}{' '}
-              <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{topCategoryName}</Text>
+              <Text style={{ fontWeight: '700', color: primary }}>{topCategoryName}</Text>
               {' '}{t('CUT_OVERSPENDING_SUFFIX' as any)}
             </Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+          <View style={{ flexDirection: rowDir, alignItems: 'flex-end', gap: 6, marginTop: 8 }}>
             {hidden ? (
-              <Text style={{ fontSize: 26, fontWeight: '700', color: '#34D399' }}>••••</Text>
+              <Text style={{ fontSize: 26, fontWeight: '700', color: accent }}>••••</Text>
             ) : (
-              <CurrencyAmount value={annualSaving} color="#34D399" fontSize={26} fontWeight="700" />
+              <CurrencyAmount value={annualSaving} color={accent} fontSize={26} fontWeight="700" />
             )}
-            <Text style={{ fontSize: 14, color: colors.textTertiary, alignSelf: 'flex-end', marginBottom: 2 }}>
+            <Text style={{ fontSize: 13, color: tertiary, marginBottom: 4 }}>
               {t('PER_YEAR_LABEL' as any)}
             </Text>
           </View>
@@ -1123,29 +1097,29 @@ function SavingTipsSheetContent({
                   style={{
                     paddingVertical: 14,
                     borderBottomWidth: isLast ? 0 : 1,
-                    borderBottomColor: colors.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                    borderBottomColor: dividerColor,
                   }}
                 >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <CategoryIcon name={item.category_icon ?? 'shopping-bag'} size={18} color={item.category_color ?? colors.textSecondary} />
-                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
+                  <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, gap: 8 }}>
+                    <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 8, flex: 1 }}>
+                      <CategoryIcon name={item.category_icon ?? 'shopping-bag'} size={18} color={item.category_color ?? secondary} />
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: primary, textAlign, flexShrink: 1 }}>
                         {tc(item.category_name)}
                       </Text>
                     </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                      <TrendingDown size={12} color="#34D399" strokeWidth={2.5} />
+                    <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
+                      <TrendingDown size={12} color={accent} strokeWidth={2.5} />
                       {hidden ? (
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#34D399' }}>••••</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: accent }}>••••</Text>
                       ) : (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                          <CurrencyAmount value={potentialSaving} color="#34D399" fontSize={13} fontWeight="700" />
-                          <Text style={{ fontSize: 11, color: colors.textTertiary }}>{t('PER_MONTH_SHORT' as any)}</Text>
+                        <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 2 }}>
+                          <CurrencyAmount value={potentialSaving} color={accent} fontSize={13} fontWeight="700" />
+                          <Text style={{ fontSize: 11, color: tertiary }}>{t('PER_MONTH_SHORT' as any)}</Text>
                         </View>
                       )}
                     </View>
                   </View>
-                  <Text style={{ fontSize: 12, color: colors.textTertiary, paddingLeft: 26 }}>
+                  <Text style={{ fontSize: 12, color: tertiary, marginStart: 26, textAlign }}>
                     {t('COMPARED_MORE')}{' '}
                     <Text style={{ fontWeight: '600', color: colors.expense }}>
                       +{Math.round(item.diff_percent)}{t('MORE_PERCENT')}
@@ -1162,19 +1136,19 @@ function SavingTipsSheetContent({
           style={{
             marginHorizontal: 16,
             marginTop: 12,
-            borderRadius: 18,
+            borderRadius: 20,
             padding: 24,
             alignItems: 'center',
-            backgroundColor: colors.isDark ? 'rgba(52,211,153,0.06)' : 'rgba(52,211,153,0.07)',
+            backgroundColor: accentSurfaceBg,
             borderWidth: 1,
-            borderColor: colors.isDark ? 'rgba(52,211,153,0.15)' : 'rgba(52,211,153,0.2)',
+            borderColor: accentSurfaceBorder,
           }}
         >
           <Text style={{ fontSize: 24 }}>🎉</Text>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#34D399', marginTop: 8, textAlign: 'center' }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: accent, marginTop: 8, textAlign: 'center' }}>
             {t('GREAT_JOB')}
           </Text>
-          <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 4, textAlign: 'center', lineHeight: 20 }}>
+          <Text style={{ fontSize: 13, color: tertiary, marginTop: 4, textAlign: 'center', lineHeight: 20 }}>
             {t('SPENDING_BELOW')}
           </Text>
         </View>
@@ -1184,7 +1158,7 @@ function SavingTipsSheetContent({
       {allComparisons.length > 0 ? (
         <>
           <SectionLabel>{t('HOW_COMPARE')}</SectionLabel>
-          <Text style={{ fontSize: 13, color: colors.textSecondary, paddingHorizontal: 16, marginBottom: 10, lineHeight: 18 }}>
+          <Text style={{ fontSize: 13, color: secondary, paddingHorizontal: 16, marginBottom: 10, lineHeight: 18, textAlign }}>
             {t('HOW_COMPARE_DESC')}
           </Text>
           <ThinCard>
@@ -1195,7 +1169,7 @@ function SavingTipsSheetContent({
                   key={item.category_name}
                   style={{
                     borderBottomWidth: isLast ? 0 : 1,
-                    borderBottomColor: colors.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                    borderBottomColor: dividerColor,
                   }}
                 >
                   <ComparisonRow item={item} hidden={hidden} />
@@ -1210,7 +1184,7 @@ function SavingTipsSheetContent({
       {habitInsights && habitInsights.habits.length > 0 ? (
         <>
           <SectionLabel>{t('SPENDING_PATTERNS')}</SectionLabel>
-          <Text style={{ fontSize: 13, color: colors.textSecondary, paddingHorizontal: 16, marginBottom: 8, lineHeight: 18 }}>
+          <Text style={{ fontSize: 13, color: secondary, paddingHorizontal: 16, marginBottom: 8, lineHeight: 18, textAlign }}>
             {t('SPENDING_PATTERNS_DESC')}
           </Text>
           <FeatureGate feature="advancedHabits">
@@ -1235,6 +1209,7 @@ interface SubscriptionsCardProps {
 const SubscriptionsCard = React.memo(function SubscriptionsCard({ subs, hidden, onPress }: SubscriptionsCardProps): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { rowDir } = useRTL();
 
   const { active, thisMonth, thisMonthTotal, previews } = useMemo(() => {
     const active = subs.filter((s) => s.is_active);
@@ -1250,10 +1225,10 @@ const SubscriptionsCard = React.memo(function SubscriptionsCard({ subs, hidden, 
       <CardHeader icon={CreditCard} title={t('SUBSCRIPTIONS')} iconColor="#38BDF8" />
 
       {/* This month total + count */}
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+      <View style={{ flexDirection: rowDir, alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
         <View>
           <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 4 }}>{t('THIS_MONTH')}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+          <View style={{ flexDirection: rowDir, alignItems: 'baseline', gap: 3 }}>
             {hidden ? (
               <Text style={{ fontSize: 24, fontWeight: '700', color: colors.expense }}>••••</Text>
             ) : (
@@ -1280,7 +1255,7 @@ const SubscriptionsCard = React.memo(function SubscriptionsCard({ subs, hidden, 
             end={{ x: 1, y: 0 }}
             style={{ height: 1, marginBottom: 14 }}
           />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10 }}>
             {previews.map((sub) => {
               const logo = getPresetLogo(sub.name);
               return (
@@ -1335,8 +1310,8 @@ function SubscriptionsSheetContent({
 }): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
-
-  // Memoize all derived arrays/values so inline filter+reduce runs only when subs changes
+  const { rowDir } = useRTL();
+  const language = useLanguageStore((s) => s.language);
   const {
     active,
     paused,
@@ -1378,7 +1353,7 @@ function SubscriptionsSheetContent({
   return (
     <View style={{ paddingTop: 20 }}>
       {/* This month + yearly stats */}
-      <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginBottom: 24 }}>
+      <View style={{ flexDirection: rowDir, gap: 10, paddingHorizontal: 16, marginBottom: 24 }}>
         <View
           style={{
             flex: 1,
@@ -1439,7 +1414,7 @@ function SubscriptionsSheetContent({
             {monthly.length > 0 ? (
               <View
                 style={{
-                  flexDirection: 'row',
+                  flexDirection: rowDir,
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   paddingVertical: 12,
@@ -1448,7 +1423,7 @@ function SubscriptionsSheetContent({
                 }}
               >
                 <Text style={{ fontSize: 14, color: colors.textPrimary }}>{t('MONTHLY_LABEL')} ({monthly.length})</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
                   {hidden ? (
                     <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>••••</Text>
                   ) : (
@@ -1461,7 +1436,7 @@ function SubscriptionsSheetContent({
             {quarterly.length > 0 ? (
               <View
                 style={{
-                  flexDirection: 'row',
+                  flexDirection: rowDir,
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   paddingVertical: 12,
@@ -1470,7 +1445,7 @@ function SubscriptionsSheetContent({
                 }}
               >
                 <Text style={{ fontSize: 14, color: colors.textPrimary }}>{t('QUARTERLY_LABEL')} ({quarterly.length})</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
                   {hidden ? (
                     <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>••••</Text>
                   ) : (
@@ -1483,14 +1458,14 @@ function SubscriptionsSheetContent({
             {yearly.length > 0 ? (
               <View
                 style={{
-                  flexDirection: 'row',
+                  flexDirection: rowDir,
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   paddingVertical: 12,
                 }}
               >
                 <Text style={{ fontSize: 14, color: colors.textPrimary }}>{t('YEARLY_LABEL')} ({yearly.length})</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
                   {hidden ? (
                     <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>••••</Text>
                   ) : (
@@ -1519,7 +1494,7 @@ function SubscriptionsSheetContent({
                 <View
                   key={sub.id}
                   style={{
-                    flexDirection: 'row',
+                    flexDirection: rowDir,
                     alignItems: 'center',
                     paddingVertical: 11,
                     borderBottomWidth: isLast ? 0 : 1,
@@ -1576,7 +1551,7 @@ function SubscriptionsSheetContent({
                 <View
                   key={sub.id}
                   style={{
-                    flexDirection: 'row',
+                    flexDirection: rowDir,
                     alignItems: 'center',
                     paddingVertical: 11,
                     opacity: 0.55,
@@ -1609,7 +1584,7 @@ function SubscriptionsSheetContent({
                     <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>{t('PAUSED')}</Text>
                   </View>
                   <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textTertiary }}>
-                    {maskIfHidden(formatCompactNumber(sub.amount), hidden)}
+                    {maskIfHidden(formatCompactNumberLocale(sub.amount, language), hidden)}
                   </Text>
                 </View>
               );
@@ -1686,17 +1661,7 @@ function AnalyticsContent(): React.ReactElement {
         }
       >
         {/* Header */}
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: '700',
-            color: colors.textPrimary,
-            paddingHorizontal: 16,
-            marginBottom: 4,
-          }}
-        >
-          {t('ANALYTICS_TITLE')}
-        </Text>
+        <ScreenHeader title={t('ANALYTICS_TITLE')} subtitle={t('ANALYTICS_SUBTITLE' as any)} />
 
         {/* Month picker */}
         <MonthPicker month={selectedMonth} onMonthChange={setSelectedMonth} />
@@ -1718,6 +1683,18 @@ function AnalyticsContent(): React.ReactElement {
             </Text>
           </AnalyticsCard>
         )}
+
+        {/* ─── Spending Analysis — donut + stats ─── */}
+        {dashboard ? (
+          <SpendingAnalysisCard
+            data={dashboard.category_spending}
+            totalExpense={dashboard.summary.total_expense}
+            transactionCount={dashboard.summary.transaction_count}
+            habitInsights={habitInsights}
+            selectedMonth={selectedMonth}
+            hidden={hidden}
+          />
+        ) : null}
 
         {/* ─── Card 2: Saving Tips — gated: Pro / Max ─── */}
         <FeatureGate feature="savingTipsPersonalized" overlayBorderRadius={24}>

@@ -22,6 +22,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   TrendingUp,
   TrendingDown,
   Calendar as CalendarIcon,
@@ -44,7 +45,7 @@ import {
 } from 'date-fns';
 
 import { impactLight, impactMedium, notifySuccess } from '../../utils/haptics';
-import { formatShortDate, formatShortMonthYear, formatMonthYear, formatLongDate } from '../../utils/locale-format';
+import { formatShortDate, formatShortMonthYear, formatMonthYear, formatLongDate, getDayLabels } from '../../utils/locale-format';
 
 import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
 import { LoadingScreen } from '../../components/ui/LoadingScreen';
@@ -64,6 +65,8 @@ import { useCategories } from '../../hooks/useCategories';
 import { useCommunities, useCreateCommunity } from '../../hooks/useCommunity';
 import { formatAmount } from '../../utils/currency';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useResponsive } from '../../hooks/useResponsive';
+import { useRTL } from '../../hooks/useRTL';
 import { STRINGS } from '../../constants/strings';
 import { useT } from '../../lib/i18n';
 import type { Transaction, TransactionType, Category, Account } from '../../types/index';
@@ -131,7 +134,9 @@ function EditTransactionModal({
   onClose: () => void;
 }): React.ReactElement {
   const colors = useThemeColors();
+  const { hPad } = useResponsive();
   const t = useT();
+  const { textAlign, rowDir } = useRTL();
   const insets = useSafeAreaInsets();
   const { mutateAsync, isPending } = useUpdateTransaction();
   const { data: categories } = useCategories();
@@ -206,8 +211,7 @@ function EditTransactionModal({
       >
         {/* Header */}
         <View
-          className="flex-row items-center justify-between px-4 pb-3"
-          style={{ paddingTop: insets.top + 8, borderBottomWidth: 1, borderBottomColor: colors.border }}
+          style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 12, paddingTop: insets.top + 8, borderBottomWidth: 1, borderBottomColor: colors.border }}
         >
           <Pressable onPress={onClose} hitSlop={12} style={{ padding: 8 }}>
             <X size={22} color={colors.textSecondary} strokeWidth={2.5} />
@@ -219,14 +223,14 @@ function EditTransactionModal({
         </View>
 
         <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: insets.bottom + 20 }}
+          contentContainerStyle={{ paddingHorizontal: hPad, paddingTop: 20, paddingBottom: insets.bottom + 20 }}
           keyboardShouldPersistTaps="handled"
         >
           {/* Amount */}
-          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary }}>{t('AMOUNT')}</Text>
+          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary, textAlign }}>{t('AMOUNT')}</Text>
           <View className="rounded-xl px-4 mb-4" style={{ backgroundColor: colors.surfaceSecondary, height: 52, justifyContent: 'center' }}>
             <TextInput
-              style={{ fontSize: 22, fontWeight: '700', color: typeColor }}
+              style={{ fontSize: 22, fontWeight: '700', color: typeColor, textAlign }}
               placeholder={t('SMART_INPUT_AMOUNT_PLACEHOLDER' as any)}
               placeholderTextColor={colors.textTertiary}
               value={amount}
@@ -236,16 +240,16 @@ function EditTransactionModal({
           </View>
 
           {/* Type toggle */}
-          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary }}>{t('REVIEW_TRANSACTION_TYPE' as any)}</Text>
+          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary, textAlign }}>{t('REVIEW_TRANSACTION_TYPE' as any)}</Text>
           <View className="mb-4">
             <TypeToggle value={type} onChange={setType} />
           </View>
 
           {/* Description */}
-          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary }}>{t('DESCRIPTION')}</Text>
+          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary, textAlign }}>{t('DESCRIPTION')}</Text>
           <View className="rounded-xl px-4 mb-4" style={{ backgroundColor: colors.surfaceSecondary, height: 48, justifyContent: 'center' }}>
             <TextInput
-              style={{ fontSize: 15, color: colors.textPrimary }}
+              style={{ fontSize: 15, color: colors.textPrimary, textAlign }}
               placeholder={t('SMART_INPUT_DESC_PLACEHOLDER' as any)}
               placeholderTextColor={colors.textTertiary}
               value={description}
@@ -254,10 +258,10 @@ function EditTransactionModal({
           </View>
 
           {/* Merchant */}
-          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary }}>{t('SMART_INPUT_MERCHANT_PLACEHOLDER' as any)}</Text>
+          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary, textAlign }}>{t('SMART_INPUT_MERCHANT_PLACEHOLDER' as any)}</Text>
           <View className="rounded-xl px-4 mb-4" style={{ backgroundColor: colors.surfaceSecondary, height: 48, justifyContent: 'center' }}>
             <TextInput
-              style={{ fontSize: 15, color: colors.textPrimary }}
+              style={{ fontSize: 15, color: colors.textPrimary, textAlign }}
               placeholder={t('SMART_INPUT_MERCHANT_PLACEHOLDER' as any)}
               placeholderTextColor={colors.textTertiary}
               value={merchant}
@@ -266,7 +270,7 @@ function EditTransactionModal({
           </View>
 
           {/* Category */}
-          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary }}>{t('CATEGORY')}</Text>
+          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary, textAlign }}>{t('CATEGORY')}</Text>
           <View className="mb-4">
             <CategoryPicker
               type={type === 'transfer' ? 'expense' : type}
@@ -276,7 +280,7 @@ function EditTransactionModal({
           </View>
 
           {/* Account */}
-          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary }}>
+          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary, textAlign }}>
             {t('ACCOUNT')} <Text style={{ fontSize: 11, color: colors.textTertiary }}>({t('ACCOUNT_OPTIONAL')})</Text>
           </Text>
           <View className="mb-4">
@@ -287,10 +291,10 @@ function EditTransactionModal({
           </View>
 
           {/* Date */}
-          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary }}>{t('DATE')}</Text>
+          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary, textAlign }}>{t('DATE')}</Text>
           <View className="rounded-xl px-4 mb-4" style={{ backgroundColor: colors.surfaceSecondary, height: 48, justifyContent: 'center' }}>
             <TextInput
-              style={{ fontSize: 15, color: colors.textPrimary }}
+              style={{ fontSize: 15, color: colors.textPrimary, textAlign }}
               placeholder={t('SMART_INPUT_DATE_PLACEHOLDER' as any)}
               placeholderTextColor={colors.textTertiary}
               value={date}
@@ -299,12 +303,12 @@ function EditTransactionModal({
           </View>
 
           {/* Notes */}
-          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary }}>
+          <Text className="mb-1" style={{ fontSize: 12, fontWeight: '500', color: colors.textTertiary, textAlign }}>
             {t('NOTES_OPTIONAL')}
           </Text>
           <View className="rounded-xl px-4 py-3 mb-5" style={{ backgroundColor: colors.surfaceSecondary, minHeight: 64 }}>
             <TextInput
-              style={{ fontSize: 14, color: colors.textPrimary, textAlignVertical: 'top' }}
+              style={{ fontSize: 14, color: colors.textPrimary, textAlignVertical: 'top', textAlign }}
               placeholder={t('SMART_INPUT_NOTE_PLACEHOLDER' as any)}
               placeholderTextColor={colors.textTertiary}
               value={notes}
@@ -315,10 +319,9 @@ function EditTransactionModal({
 
           {/* Exclude from Insights */}
           <View
-            className="flex-row items-center justify-between rounded-xl px-4 mb-5"
-            style={{ backgroundColor: colors.surfaceSecondary, height: 52 }}
+            style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', borderRadius: 12, paddingHorizontal: 16, marginBottom: 20, backgroundColor: colors.surfaceSecondary, height: 52 }}
           >
-            <View className="flex-row items-center gap-2.5">
+            <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10 }}>
               <EyeOff size={18} color={colors.textTertiary} />
               <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary }}>
                 {t('EXCLUDE_INSIGHTS' as any)}
@@ -396,8 +399,6 @@ function UncategorizedBanner({
 
 // ─── Mini Calendar Grid ──────────────────────────────────────────────
 
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
 function MiniCalendar({
   month,
   selectedDay,
@@ -410,6 +411,7 @@ function MiniCalendar({
   transactions: Transaction[];
 }): React.ReactElement {
   const colors = useThemeColors();
+  const t = useT();
   const days = eachDayOfInterval({
     start: startOfMonth(month),
     end: endOfMonth(month),
@@ -437,8 +439,8 @@ function MiniCalendar({
     <View className="px-4 pb-2">
       {/* Weekday headers */}
       <View className="flex-row mb-1">
-        {WEEKDAY_LABELS.map((d) => (
-          <View key={d} style={{ flex: 1, alignItems: 'center' }}>
+        {([t('DAY_SUN' as any), t('DAY_MON' as any), t('DAY_TUE' as any), t('DAY_WED' as any), t('DAY_THU' as any), t('DAY_FRI' as any), t('DAY_SAT' as any)]).map((d, i) => (
+          <View key={i} style={{ flex: 1, alignItems: 'center' }}>
             <Text style={{ fontSize: 10, fontWeight: '600', color: colors.textTertiary }}>{d}</Text>
           </View>
         ))}
@@ -522,9 +524,11 @@ function MiniCalendar({
 
 // ─── Screen ──────────────────────────────────────────────────────────
 
-function TransactionsContent(): React.ReactElement {
+function TransactionsContent({ onClose, isModal = false }: { onClose?: () => void; isModal?: boolean } = {}): React.ReactElement {
   const colors = useThemeColors();
+  const { hPad } = useResponsive();
   const t = useT();
+  const { textAlign, rowDir, isRTL } = useRTL();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ filter?: string; category_id?: string; edit_id?: string }>();
@@ -759,29 +763,61 @@ function TransactionsContent(): React.ReactElement {
   const FixedHeader = (
     <View
       style={{
-        paddingTop: insets.top + 12,
+        paddingTop: isModal ? 8 : insets.top + 12,
         paddingBottom: 8,
         backgroundColor: colors.isDark ? 'rgba(26,31,46,0.92)' : 'rgba(255,255,255,0.95)',
         borderBottomWidth: 1,
         borderBottomColor: colors.glassBorder,
       }}
     >
-      {/* Title + calendar toggle */}
-      <View className="flex-row items-center justify-between px-4 mb-2">
-        <Text style={{ fontSize: 28, fontWeight: '700', color: colors.textPrimary }}>
-          Transactions
+      {/* Drag handle — shown only in modal mode */}
+      {isModal ? (
+        <View style={{ alignItems: 'center', paddingTop: 6, paddingBottom: 8 }}>
+          <View
+            style={{
+              width: 36,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: colors.isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)',
+            }}
+          />
+        </View>
+      ) : null}
+
+      {/* Title + calendar toggle (+ close button in modal) */}
+      <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: hPad, marginBottom: 8 }}>
+        <Text style={{ fontSize: isModal ? 24 : 28, fontWeight: '700', color: colors.textPrimary, textAlign }}>
+          {t('TAB_TRANSACTIONS')}
         </Text>
-        <Pressable
-          onPress={() => { impactLight(); setShowCalendar((prev) => !prev); }}
-          className="rounded-lg px-3 py-2"
-          style={{
-            backgroundColor: showCalendar ? colors.primary + '15' : colors.surfaceSecondary,
-            borderWidth: 1,
-            borderColor: showCalendar ? colors.primary + '30' : colors.borderLight,
-          }}
-        >
-          <CalendarIcon size={18} color={showCalendar ? colors.primary : colors.textSecondary} strokeWidth={2} />
-        </Pressable>
+        <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
+          <Pressable
+            onPress={() => { impactLight(); setShowCalendar((prev) => !prev); }}
+            style={{
+              width: 36, height: 36, borderRadius: 10,
+              alignItems: 'center', justifyContent: 'center',
+              backgroundColor: showCalendar ? colors.primary + '15' : colors.surfaceSecondary,
+              borderWidth: 1,
+              borderColor: showCalendar ? colors.primary + '30' : colors.borderLight,
+            }}
+          >
+            <CalendarIcon size={18} color={showCalendar ? colors.primary : colors.textSecondary} strokeWidth={2} />
+          </Pressable>
+          {isModal ? (
+            <Pressable
+              onPress={() => { impactLight(); onClose?.(); }}
+              hitSlop={12}
+              style={{
+                width: 36, height: 36, borderRadius: 10,
+                alignItems: 'center', justifyContent: 'center',
+                backgroundColor: colors.surfaceSecondary,
+                borderWidth: 1,
+                borderColor: colors.borderLight,
+              }}
+            >
+              <ChevronDown size={20} color={colors.textSecondary} strokeWidth={2} />
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       {/* Uncategorized banner */}
@@ -797,7 +833,7 @@ function TransactionsContent(): React.ReactElement {
 
       {/* Month navigator */}
       <View className="flex-row items-center justify-between px-4 mb-2">
-        <Pressable onPress={handleMonthBack} style={{ padding: 6 }}>
+        <Pressable onPress={isRTL ? handleMonthForward : handleMonthBack} style={{ padding: 6 }}>
           <ChevronLeft size={20} color={colors.textSecondary} strokeWidth={2} />
         </Pressable>
         <Pressable onPress={handleMonthReset}>
@@ -805,7 +841,7 @@ function TransactionsContent(): React.ReactElement {
             {formatMonthYear(selectedMonth)}
           </Text>
         </Pressable>
-        <Pressable onPress={handleMonthForward} style={{ padding: 6 }}>
+        <Pressable onPress={isRTL ? handleMonthBack : handleMonthForward} style={{ padding: 6 }}>
           <ChevronRight size={20} color={colors.textSecondary} strokeWidth={2} />
         </Pressable>
       </View>
@@ -836,7 +872,7 @@ function TransactionsContent(): React.ReactElement {
       ) : null}
 
       {/* Income / Expense summary */}
-      <View className="flex-row px-4 mb-2" style={{ gap: 8 }}>
+      <View className="px-4 mb-2" style={{ gap: 8, flexDirection: rowDir }}>
         <View className="flex-1 flex-row items-center rounded-xl px-3 py-2.5" style={{
           backgroundColor: colors.isDark ? 'rgba(15,23,42,0.60)' : 'rgba(241,245,249,0.8)',
           borderWidth: 1,
@@ -860,7 +896,7 @@ function TransactionsContent(): React.ReactElement {
       </View>
 
       {/* Filter row */}
-      <View className="flex-row gap-2 px-4 pb-1">
+      <View className="gap-2 px-4 pb-1" style={{ flexDirection: rowDir }}>
         {FILTER_TAB_KEYS.map((tab) => {
           const isActive = activeFilter === tab.key;
           return (
@@ -1064,8 +1100,21 @@ function TransactionsContent(): React.ReactElement {
   );
 }
 
+export function TransactionsPageContent({
+  onClose,
+  isModal = false,
+}: {
+  onClose?: () => void;
+  isModal?: boolean;
+} = {}): React.ReactElement {
+  return (
+    <ErrorBoundary>
+      <TransactionsContent onClose={onClose} isModal={isModal} />
+    </ErrorBoundary>
+  );
+}
+
 export default function TransactionsScreen(): React.ReactElement {
-  const colors = useThemeColors();
   return (
     <ErrorBoundary>
       <TransactionsContent />

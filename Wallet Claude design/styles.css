@@ -1,0 +1,385 @@
+/* ============================================================
+   Wallet — Premium Fintech Design System
+   Dark, Arabic-first, purple primary
+   ============================================================ */
+
+:root {
+  /* Surfaces (cool navy-black) */
+  --bg-0: #07080F;
+  --bg-1: #0B0C17;
+  --bg-2: #11131F;
+  --bg-3: #161827;
+
+  /* Glass layers */
+  --glass-1: rgba(255, 255, 255, 0.03);
+  --glass-2: rgba(255, 255, 255, 0.055);
+  --glass-3: rgba(255, 255, 255, 0.08);
+  --stroke: rgba(255, 255, 255, 0.07);
+  --stroke-strong: rgba(255, 255, 255, 0.12);
+
+  /* Text */
+  --fg: #F4F4F8;
+  --fg-2: rgba(244, 244, 248, 0.72);
+  --fg-3: rgba(244, 244, 248, 0.50);
+  --fg-4: rgba(244, 244, 248, 0.32);
+
+  /* Brand — purple primary */
+  --p-50:  oklch(96% 0.02 290);
+  --p-200: oklch(82% 0.08 290);
+  --p-400: oklch(70% 0.16 290);
+  --p-500: oklch(64% 0.19 290);
+  --p-600: oklch(58% 0.21 290);
+  --p-700: oklch(48% 0.18 290);
+  --p-glow: oklch(64% 0.19 290 / 0.35);
+
+  /* Semantic */
+  --green:  oklch(72% 0.14 160);
+  --green-2: oklch(62% 0.14 160);
+  --amber:  oklch(78% 0.14 75);
+  --red:    oklch(68% 0.20 20);
+  --blue:   oklch(70% 0.14 230);
+
+  /* Radii */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+
+  /* Shadows */
+  --sh-1: 0 1px 2px rgba(0,0,0,0.4);
+  --sh-2: 0 4px 16px rgba(0,0,0,0.35);
+  --sh-glow: 0 8px 32px var(--p-glow);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #0a0a12;
+  font-family: "IBM Plex Sans Arabic", "SF Pro Text", -apple-system, system-ui, sans-serif;
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  direction: rtl;
+}
+
+/* ============================================================
+   Typography
+   ============================================================ */
+.num {
+  font-family: "SF Pro Display", "IBM Plex Sans Arabic", system-ui;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  letter-spacing: -0.02em;
+}
+.num-ar {
+  font-family: "IBM Plex Sans Arabic", system-ui;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+.t-h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+.t-h2 { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.t-h3 { font-size: 17px; font-weight: 600; }
+.t-body { font-size: 15px; font-weight: 400; line-height: 1.4; }
+.t-cap { font-size: 12.5px; font-weight: 500; color: var(--fg-3); letter-spacing: 0.01em; }
+.t-micro { font-size: 11px; font-weight: 500; color: var(--fg-4); letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* ============================================================
+   Phone canvas
+   ============================================================ */
+.phone-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(1200px 600px at 20% -10%, oklch(35% 0.11 290 / 0.28), transparent 60%),
+    radial-gradient(900px 500px at 100% 100%, oklch(40% 0.08 230 / 0.18), transparent 55%),
+    linear-gradient(180deg, #0B0C17 0%, #07080F 100%);
+}
+
+/* ============================================================
+   Glass card
+   ============================================================ */
+.card {
+  position: relative;
+  border-radius: var(--r-lg);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.045) 0%, rgba(255,255,255,0.02) 100%);
+  border: 1px solid var(--stroke);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 1px 2px rgba(0,0,0,0.25);
+}
+.card-hero {
+  position: relative;
+  border-radius: var(--r-xl);
+  background:
+    radial-gradient(120% 80% at 100% 0%, oklch(55% 0.18 290 / 0.30) 0%, transparent 60%),
+    radial-gradient(110% 90% at 0% 100%, oklch(50% 0.12 230 / 0.18) 0%, transparent 65%),
+    linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
+  border: 1px solid var(--stroke);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 12px 40px rgba(0,0,0,0.35);
+}
+.card-section {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--stroke);
+  border-radius: var(--r-lg);
+}
+
+/* Inner stat tile (on a card) */
+.tile {
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: var(--r-md);
+  padding: 12px 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+/* Icon chip — module color accents */
+.chip {
+  width: 36px; height: 36px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.chip-purple {
+  background: linear-gradient(135deg, oklch(58% 0.21 290 / 0.28), oklch(48% 0.18 290 / 0.12));
+  border: 1px solid oklch(70% 0.18 290 / 0.35);
+  color: oklch(82% 0.12 290);
+  box-shadow: 0 4px 16px oklch(55% 0.2 290 / 0.25);
+}
+.chip-green {
+  background: linear-gradient(135deg, oklch(62% 0.14 160 / 0.28), oklch(50% 0.12 160 / 0.10));
+  border: 1px solid oklch(70% 0.12 160 / 0.32);
+  color: oklch(80% 0.10 160);
+}
+.chip-blue {
+  background: linear-gradient(135deg, oklch(60% 0.14 230 / 0.25), oklch(50% 0.12 230 / 0.10));
+  border: 1px solid oklch(70% 0.12 230 / 0.30);
+  color: oklch(80% 0.10 230);
+}
+.chip-amber {
+  background: linear-gradient(135deg, oklch(72% 0.14 75 / 0.28), oklch(60% 0.12 75 / 0.10));
+  border: 1px solid oklch(78% 0.12 75 / 0.35);
+  color: oklch(85% 0.10 75);
+}
+.chip-red {
+  background: linear-gradient(135deg, oklch(62% 0.20 20 / 0.22), oklch(50% 0.18 20 / 0.10));
+  border: 1px solid oklch(70% 0.18 20 / 0.30);
+  color: oklch(80% 0.14 20);
+}
+
+/* ============================================================
+   Buttons + pills
+   ============================================================ */
+.btn {
+  border: 0; cursor: pointer;
+  font-family: inherit; font-weight: 600;
+  border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: transform 0.1s, filter 0.15s;
+}
+.btn:active { transform: scale(0.96); }
+.btn-primary {
+  background: linear-gradient(180deg, var(--p-500), var(--p-700));
+  color: white;
+  box-shadow: 0 6px 20px var(--p-glow), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.btn-ghost {
+  background: rgba(255,255,255,0.05);
+  color: var(--fg);
+  border: 1px solid var(--stroke);
+}
+.btn-text {
+  background: transparent; color: var(--p-200);
+  font-size: 13px; font-weight: 500;
+}
+
+.pill {
+  padding: 4px 10px; border-radius: 999px;
+  font-size: 11px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.pill-purple { background: oklch(55% 0.2 290 / 0.18); color: oklch(82% 0.12 290); border: 1px solid oklch(70% 0.18 290 / 0.3); }
+.pill-green { background: oklch(55% 0.14 160 / 0.18); color: oklch(82% 0.11 160); border: 1px solid oklch(70% 0.12 160 / 0.3); }
+.pill-red { background: oklch(55% 0.2 20 / 0.15); color: oklch(78% 0.14 20); border: 1px solid oklch(68% 0.18 20 / 0.3); }
+
+/* Segmented control */
+.segmented {
+  display: flex; gap: 2px; padding: 3px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+}
+.segmented > button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--fg-3);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.segmented > button.active {
+  background: linear-gradient(180deg, var(--p-500), var(--p-700));
+  color: white;
+  box-shadow: 0 4px 14px var(--p-glow);
+}
+
+/* ============================================================
+   Header / large title
+   ============================================================ */
+.screen-header {
+  padding: 20px 20px 12px;
+  display: flex; align-items: flex-end; justify-content: space-between;
+}
+.screen-title {
+  font-size: 30px; font-weight: 700; letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+.screen-subtitle { color: var(--fg-3); font-size: 13px; margin-top: 4px; }
+
+/* ============================================================
+   Bottom tab bar (floating)
+   ============================================================ */
+.tabbar {
+  position: absolute; bottom: 14px; left: 14px; right: 14px;
+  height: 72px;
+  border-radius: 28px;
+  padding: 8px;
+  background: rgba(10, 10, 18, 0.55);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid var(--stroke-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 20px 40px rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.tab {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 4px;
+  color: var(--fg-3);
+  font-size: 10.5px; font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s;
+  background: transparent; border: 0;
+  font-family: inherit;
+}
+.tab.active { color: var(--p-200); }
+.tab.active svg { filter: drop-shadow(0 0 8px var(--p-glow)); }
+.tab-center {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: linear-gradient(180deg, var(--p-400), var(--p-700));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow:
+    0 8px 24px var(--p-glow),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  cursor: pointer;
+  margin: 0 6px;
+  transform: translateY(-8px);
+}
+
+/* FAB */
+.fab {
+  position: absolute;
+  bottom: 104px;
+  left: 20px;
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--p-400), var(--p-700));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow:
+    0 10px 28px var(--p-glow),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  cursor: pointer;
+  border: 1px solid oklch(72% 0.14 290 / 0.5);
+}
+
+/* ============================================================
+   Charts
+   ============================================================ */
+.spark path.stroke { stroke-width: 2; fill: none; }
+.spark path.fill { opacity: 0.28; }
+
+/* Donut ring legend dot */
+.legend-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block;
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2.4s infinite;
+}
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--p-glow); }
+  50% { box-shadow: 0 0 0 8px transparent; }
+}
+
+/* Hide scrollbars in phone */
+.phone-scroll::-webkit-scrollbar { display: none; }
+.phone-scroll { scrollbar-width: none; }
+
+/* Scroll snap for carousel */
+.h-snap {
+  display: flex; gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 0 20px 4px;
+}
+.h-snap > * { scroll-snap-align: start; flex-shrink: 0; }
+.h-snap::-webkit-scrollbar { display: none; }
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--stroke), transparent);
+  margin: 12px 0;
+}
+
+/* Tweak panel */
+.tweaks-panel {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 280px;
+  background: rgba(15, 15, 25, 0.92);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--stroke-strong);
+  border-radius: 16px;
+  padding: 14px;
+  z-index: 1000;
+  color: var(--fg);
+  font-family: "SF Pro Text", system-ui;
+  direction: ltr;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.tweaks-panel h3 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--fg-3); }
+.tweak-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; font-size: 13px; }
+.tweak-row label { color: var(--fg-2); }
+.tweak-row select, .tweak-row input[type=range] {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--stroke);
+  border-radius: 8px; color: var(--fg);
+  font-family: inherit; font-size: 12px;
+  padding: 4px 8px;
+}

@@ -3,7 +3,10 @@ import { View, Text } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useRTL } from '../../hooks/useRTL';
+import { useT } from '../../lib/i18n';
 import { formatAmount, formatPercentage } from '../../utils/currency';
+import { COLORS } from '../../constants/colors';
 import type { PortfolioSummary } from '../../types/index';
 
 interface AssetDonutChartProps {
@@ -17,12 +20,7 @@ const ASSET_COLORS: Record<'gold' | 'silver' | 'crypto' | 'stock', string> = {
   stock: '#3B82F6',
 };
 
-const ASSET_LABELS: Record<'gold' | 'silver' | 'crypto' | 'stock', string> = {
-  gold: 'Gold',
-  silver: 'Silver',
-  crypto: 'Crypto',
-  stock: 'Stocks',
-};
+
 
 interface PieDataItem {
   value: number;
@@ -33,7 +31,16 @@ interface PieDataItem {
 
 export function AssetDonutChart({ portfolio }: AssetDonutChartProps): React.ReactElement {
   const colors = useThemeColors();
+  const { textAlign } = useRTL();
+  const t = useT();
   const { breakdown, total_value } = portfolio;
+
+  const ASSET_LABELS: Record<'gold' | 'silver' | 'crypto' | 'stock', string> = {
+    gold: t('GOLD'),
+    silver: t('SILVER'),
+    crypto: t('CRYPTO'),
+    stock: t('STOCKS'),
+  };
 
   const segments: { key: keyof typeof ASSET_COLORS; value: number; color: string; label: string }[] = [];
   if (breakdown.gold > 0) segments.push({ key: 'gold', value: breakdown.gold, color: ASSET_COLORS.gold, label: ASSET_LABELS.gold });
@@ -55,7 +62,7 @@ export function AssetDonutChart({ portfolio }: AssetDonutChartProps): React.Reac
     const fontSize = formatted.length > 8 ? 12 : formatted.length > 6 ? 14 : 16;
     return (
       <View className="items-center justify-center" style={{ width: 80, alignSelf: 'center' }}>
-        <Text style={{ fontSize: 10, color: colors.textSecondary }}>Total</Text>
+        <Text style={{ fontSize: 10, color: colors.textSecondary }}>{t('PORTFOLIO_TOTAL_LABEL')}</Text>
         <Text
           numberOfLines={1}
           adjustsFontSizeToFit
@@ -68,16 +75,25 @@ export function AssetDonutChart({ portfolio }: AssetDonutChartProps): React.Reac
   };
 
   return (
-    <View className="mx-4 mt-3 rounded-2xl p-4" style={{ backgroundColor: colors.surface }}>
+    <View
+      className="mx-4 mt-3"
+      style={{
+        borderRadius: 20,
+        padding: 18,
+        backgroundColor: colors.isDark ? COLORS.claude.glass1 : colors.surface,
+        borderWidth: 1,
+        borderColor: colors.isDark ? COLORS.claude.stroke : colors.glassBorder,
+      }}
+    >
       <Text
         style={{
           fontSize: 16,
-          fontWeight: '600',
-          color: colors.textPrimary,
+          fontWeight: '700',
+          color: colors.isDark ? COLORS.claude.fg : colors.textPrimary,
           marginBottom: 16,
         }}
       >
-        Portfolio Allocation
+        {t('PORTFOLIO_ALLOCATION_TITLE')}
       </Text>
 
       <View className="items-center mb-4">
@@ -90,7 +106,7 @@ export function AssetDonutChart({ portfolio }: AssetDonutChartProps): React.Reac
           centerLabelComponent={centerLabel}
           focusOnPress
           toggleFocusOnPress
-          innerCircleColor={colors.surface}
+          innerCircleColor={colors.isDark ? COLORS.claude.glass1 : colors.surface}
         />
       </View>
 
@@ -109,7 +125,7 @@ export function AssetDonutChart({ portfolio }: AssetDonutChartProps): React.Reac
                 <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
                   {formatAmount(s.value)}
                 </Text>
-                <Text style={{ fontSize: 12, color: colors.textSecondary, width: 45, textAlign: 'right' }}>
+                <Text style={{ fontSize: 12, color: colors.textSecondary, width: 45, textAlign }}>
                   {formatPercentage(pct)}
                 </Text>
               </View>

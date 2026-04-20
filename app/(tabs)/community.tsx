@@ -11,12 +11,15 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppScreen } from '../../components/ui/AppScreen';
+import { useResponsive } from '../../hooks/useResponsive';
 import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
 import { Image } from 'expo-image';
 import { Users, Plus, ChevronRight, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useRTL } from '../../hooks/useRTL';
 import { useT } from '../../lib/i18n';
 import { SmartInputButton } from '../../components/ui/SmartInputButton';
 import {
@@ -37,6 +40,7 @@ function CommunityCard({
   onPress: () => void;
 }): React.ReactElement {
   const colors = useThemeColors();
+  const { isRTL } = useRTL();
   const t = useT();
   return (
     <Pressable
@@ -111,7 +115,7 @@ function CommunityCard({
           </View>
         )}
       </View>
-      <ChevronRight size={16} color={colors.textDim} />
+      <ChevronRight size={16} color={colors.textDim} style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
     </Pressable>
   );
 }
@@ -185,6 +189,7 @@ export default function CommunityScreen(): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
   const router = useRouter();
+  const { hPad } = useResponsive();
   const [showCreate, setShowCreate] = useState(false);
   const { data: communities, isLoading, isError, refetch } = useCommunities();
 
@@ -195,8 +200,8 @@ export default function CommunityScreen(): React.ReactElement {
 
   return (
     <ErrorBoundary>
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 }}>
+    <AppScreen backgroundColor={colors.background} noKeyboard horizontalPadding={0}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: hPad, paddingTop: 8, paddingBottom: 16 }}>
         <View>
           <Text style={{ color: colors.textPrimary, fontSize: 28, fontWeight: '700', letterSpacing: -0.7 }}>{t('COMMUNITY')}</Text>
           <Text style={{ color: colors.textDim, fontSize: 13, marginTop: 2, fontWeight: '500' }}>{t('COMMUNITY_SUBTITLE')}</Text>
@@ -221,7 +226,7 @@ export default function CommunityScreen(): React.ReactElement {
         <FlashList<CommunityWithMembers>
           data={communities}
           keyExtractor={(item) => item.id}
-          style={{ paddingHorizontal: 20, paddingBottom: 24 }}
+          style={{ paddingHorizontal: hPad, paddingBottom: 24 }}
           renderItem={({ item }: ListRenderItemInfo<CommunityWithMembers>) => (
             <CommunityCard community={item} onPress={() => handleCommunityPress(item)} />
           )}
@@ -239,7 +244,7 @@ export default function CommunityScreen(): React.ReactElement {
           }}
         />
       </View>
-    </SafeAreaView>
+    </AppScreen>
     </ErrorBoundary>
   );
 }

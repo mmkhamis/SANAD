@@ -10,7 +10,8 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT, useTranslateCategory } from '../../lib/i18n';
 import { formatShortDate } from '../../utils/locale-format';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
-import { formatCompactNumber } from '../../utils/currency';
+import { formatCompactNumberLocale } from '../../utils/currency';
+import { useLanguageStore } from '../../store/language-store';
 import { impactLight } from '../../utils/haptics';
 import { CurrencyAmount } from '../ui/CurrencyAmount';
 import { CategoryIcon } from '../ui/CategoryIcon';
@@ -29,6 +30,7 @@ const BudgetCard = React.memo(function BudgetCard({ goal, isActive, onPress }: B
   const colors = useThemeColors();
   const hidden = usePrivacyStore((s) => s.hidden);
   const tc = useTranslateCategory();
+  const language = useLanguageStore((s) => s.language);
 
   const percentage = goal.percent_used;
   const isOverBudget = percentage > 100;
@@ -136,7 +138,7 @@ const BudgetCard = React.memo(function BudgetCard({ goal, isActive, onPress }: B
           numberOfLines={1}
           style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 10, minHeight: 14 }}
         >
-          {maskIfHidden(formatCompactNumber(goal.actual_spent), hidden)} / {maskIfHidden(formatCompactNumber(goal.budget.amount), hidden)}
+          {maskIfHidden(formatCompactNumberLocale(goal.actual_spent, language), hidden)} / {maskIfHidden(formatCompactNumberLocale(goal.budget.amount, language), hidden)}
         </Text>
 
         {/* Spacer to push progress bar to bottom */}
@@ -179,6 +181,7 @@ const CategoryDetail = React.memo(function CategoryDetail({ goal, transactions, 
   const t = useT();
   const tc = useTranslateCategory();
   const router = useRouter();
+  const language = useLanguageStore((s) => s.language);
 
   const relatedIds = new Set(goal.related_category_ids);
   const categoryTxns = transactions.filter(
@@ -218,7 +221,7 @@ const CategoryDetail = React.memo(function CategoryDetail({ goal, transactions, 
               {tc(goal.budget.category_name)}
             </Text>
             <Text style={{ fontSize: 12, color: colors.textTertiary }}>
-              {maskIfHidden(formatCompactNumber(goal.actual_spent), hidden)} of {maskIfHidden(formatCompactNumber(goal.budget.amount), hidden)}
+              {maskIfHidden(formatCompactNumberLocale(goal.actual_spent, language), hidden)} {t('OF' as any)} {maskIfHidden(formatCompactNumberLocale(goal.budget.amount, language), hidden)}
             </Text>
           </View>
         </View>

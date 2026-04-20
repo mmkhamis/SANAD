@@ -8,9 +8,20 @@
  */
 
 import { getActiveCurrency as _getStoreCurrency, getActiveLocale as _getStoreLocale } from '../store/settings-store';
+import { useLanguageStore } from '../store/language-store';
 
 const DEFAULT_CURRENCY = 'SAR';
 const DEFAULT_LOCALE = 'en-SA';
+
+// Convert Western (0-9) digits to Arabic-Indic (٠-٩).
+// Used everywhere user-facing numbers are formatted while language === 'ar'.
+const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+function toArabicDigits(s: string): string {
+  return s.replace(/\d/g, (d) => AR_DIGITS[parseInt(d, 10)]);
+}
+function arabicizeIfNeeded(s: string): string {
+  return useLanguageStore.getState().language === 'ar' ? toArabicDigits(s) : s;
+}
 
 /** Module-level mirror of the store values for non-React callers (services, formatters). */
 let _activeCurrency = DEFAULT_CURRENCY;
@@ -37,6 +48,8 @@ interface FormatAmountOptions {
   locale?: string;
   showSign?: boolean;
   compact?: boolean;
+  /** When true, render as an integer with no decimal digits. */
+  integer?: boolean;
 }
 
 export function formatAmount(
@@ -48,13 +61,14 @@ export function formatAmount(
     locale = _activeLocale,
     showSign = false,
     compact = false,
+    integer = false,
   } = options;
 
   const formatter = new Intl.NumberFormat(locale, {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: integer ? 0 : 2,
+    maximumFractionDigits: integer ? 0 : 2,
     ...(compact && { notation: 'compact' }),
     ...(showSign && { signDisplay: 'always' }),
   });
@@ -64,11 +78,12 @@ export function formatAmount(
   // Hermes doesn't support formatToParts, so we use string replacement.
   const formatted = formatter.format(amount);
   const symbol = _getCurrencySymbolForStrip(currency);
-  return formatted
+  const stripped = formatted
     .replace(symbol, '')
     .replace(currency, '')
     .replace(/^\s+|\s+$/g, '')
     .trim();
+  return arabicizeIfNeeded(stripped);
 }
 
 export function formatAmountShort(amount: number, currency?: string): string {
@@ -106,11 +121,37 @@ export function formatCompactNumber(value: number): string {
 }
 
 /**
+ * Locale-aware compact number.
+ * Arabic mode: Arabic-Indic digits + Arabic unit words (ألف / مليون / مليار).
+ * English mode: delegates to formatCompactNumber (k / M / B).
+ */
+export function formatCompactNumberLocale(value: number, language: string): string {
+  if (language !== 'ar') return formatCompactNumber(value);
+
+  const abs = Math.abs(value);
+  // Arabic typography: negative sign goes AFTER the number (e.g. ٥٠٠-)
+  const sign = value < 0 ? '-' : '';
+  const ar = (n: number | string): string =>
+    String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[parseInt(d, 10)]);
+
+  if (abs < 10_000) {
+    return ar(Math.floor(abs).toLocaleString('en-US')) + sign;
+  }
+  if (abs < 1_000_000) {
+    return ar((abs / 1_000).toFixed(2)) + ' ألف' + sign;
+  }
+  if (abs < 1_000_000_000) {
+    return ar((abs / 1_000_000).toFixed(2)) + ' مليون' + sign;
+  }
+  return ar((abs / 1_000_000_000).toFixed(2)) + ' مليار' + sign;
+}
+
+/**
  * Like formatCompactNumber but plain number only (no currency symbol).
  * The UI layer renders the SVG currency icon separately.
  */
 export function formatCompactAmount(value: number): string {
-  return formatCompactNumber(value);
+  return arabicizeIfNeeded(formatCompactNumber(value));
 }
 
 // Currency symbol map for platforms where Intl.NumberFormat doesn't support
@@ -139,5 +180,5 @@ function _getCurrencySymbolForStrip(currency: string): string {
 }
 
 export function formatPercentage(value: number): string {
-  return `${value.toFixed(1)}%`;
+  return arabicizeIfNeeded(`${value.toFixed(1)}%`);
 }

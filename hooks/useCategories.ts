@@ -28,6 +28,7 @@ export function useCategories(): UseCategoriesResult {
   const { data, isLoading, isError, error, refetch } = useQuery<Category[], Error>({
     queryKey: QUERY_KEYS.categories,
     queryFn: fetchCategories,
+    staleTime: 15 * 60 * 1000,
     enabled: useAuthStore.getState().isAuthenticated,
   });
 
@@ -40,6 +41,7 @@ export function useCategoriesByType(type: TransactionType): UseCategoriesResult 
   const { data, isLoading, isError, error, refetch } = useQuery<Category[], Error>({
     queryKey: [...QUERY_KEYS.categories, type],
     queryFn: () => fetchCategoriesByType(type),
+    staleTime: 15 * 60 * 1000,
     enabled: useAuthStore.getState().isAuthenticated,
   });
 
@@ -59,6 +61,7 @@ export function useGroupedCategoriesByType(type: TransactionType): UseGroupedCat
   const { data, isLoading, isError, error } = useQuery<GroupedCategories[], Error>({
     queryKey: [...QUERY_KEYS.categories, 'grouped', type],
     queryFn: () => fetchGroupedCategoriesByType(type),
+    staleTime: 15 * 60 * 1000,
     enabled: useAuthStore.getState().isAuthenticated,
   });
 
@@ -101,7 +104,18 @@ export function useDeleteCategory(): UseDeleteCategoryResult {
 
   const { mutate, isPending, isError, error } = useMutation({
     mutationFn: deleteCategory,
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: QUERY_KEYS.categories });
+      const prev = qc.getQueryData(QUERY_KEYS.categories);
+      qc.setQueryData(QUERY_KEYS.categories, (old: any) =>
+        Array.isArray(old) ? old.filter((c: any) => c.id !== id) : old,
+      );
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      if (context?.prev) qc.setQueryData(QUERY_KEYS.categories, context.prev);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.categories });
     },
   });

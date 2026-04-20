@@ -17,6 +17,7 @@ import { Plus, X, Search, TrendingUp, TrendingDown } from 'lucide-react-native';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import { useWatchlist, useStockQuotes, useAddToWatchlist, useRemoveFromWatchlist } from '../../hooks/useWatchlist';
 import { useCreateAsset } from '../../hooks/useAssets';
 import { searchStockCatalog, type StockCatalogEntry } from '../../services/watchlist-service';
@@ -43,6 +44,7 @@ function StockRow({
 }): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { rowDir } = useRTL();
   const isPositive = quote.change >= 0;
   const changeColor = isPositive ? '#34C759' : '#FF3B30';
 
@@ -61,7 +63,7 @@ function StockRow({
         }
       }}
       style={({ pressed }) => ({
-        flexDirection: 'row',
+        flexDirection: rowDir,
         alignItems: 'center',
         paddingVertical: 12,
         paddingHorizontal: 16,
@@ -69,7 +71,7 @@ function StockRow({
       })}
     >
       {/* LEFT: Name */}
-      <View style={{ flex: 1, minWidth: 0, marginRight: 8 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text
           style={{
             fontSize: 16,
@@ -95,7 +97,7 @@ function StockRow({
       </View>
 
       {/* CENTER: Sparkline */}
-      <View style={{ marginRight: 12 }}>
+      <View style={{ marginHorizontal: 12 }}>
         <AssetSparkline
           assetCode={quote.symbol}
           color={changeColor}
@@ -526,6 +528,7 @@ interface StockWatchlistProps {
 export function StockWatchlist({ ownedStockAssets }: StockWatchlistProps): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { textAlign, rowDir } = useRTL();
   const { data: watchlist, isLoading: loadingWatchlist } = useWatchlist();
   const { data: quotes, isLoading: loadingQuotes } = useStockQuotes(watchlist);
   const { mutateAsync: removeAsync } = useRemoveFromWatchlist();
@@ -621,7 +624,7 @@ export function StockWatchlist({ ownedStockAssets }: StockWatchlistProps): React
       {/* Section Header */}
       <View
         style={{
-          flexDirection: 'row',
+          flexDirection: rowDir,
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: 16,
@@ -636,13 +639,14 @@ export function StockWatchlist({ ownedStockAssets }: StockWatchlistProps): React
               fontWeight: '700',
               color: colors.textPrimary,
               letterSpacing: -0.4,
+              textAlign,
             }}
           >
-            Stocks
+            {t('ASSETS_STOCKS' as any)}
           </Text>
           {!hasUserStocks ? (
-            <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
-              Popular · Add your favorites
+            <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2, textAlign }}>
+              {t('STOCKS_SUBTITLE' as any)}
             </Text>
           ) : null}
         </View>
@@ -653,8 +657,9 @@ export function StockWatchlist({ ownedStockAssets }: StockWatchlistProps): React
           }}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={{
-            flexDirection: 'row',
+            flexDirection: rowDir,
             alignItems: 'center',
+            gap: 4,
             paddingHorizontal: 12,
             paddingVertical: 6,
             borderRadius: 16,
@@ -667,10 +672,9 @@ export function StockWatchlist({ ownedStockAssets }: StockWatchlistProps): React
               fontSize: 12,
               fontWeight: '700',
               color: '#FFFFFF',
-              marginLeft: 4,
             }}
           >
-            Add
+            {t('ADD')}
           </Text>
         </Pressable>
       </View>

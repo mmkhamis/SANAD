@@ -9,6 +9,7 @@ import { formatAmount } from '../../utils/currency';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { impactLight, impactMedium, notifySuccess } from '../../utils/haptics';
 import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import { SUBSCRIPTION_PRESETS, type Subscription } from '../../services/subscription-service';
 
 interface SubscriptionCardProps {
@@ -33,14 +34,20 @@ export const SubscriptionCard = React.memo(function SubscriptionCard({
   const colors = useThemeColors();
   const hidden = usePrivacyStore((s) => s.hidden);
   const t = useT();
+  const { isRTL, rowDir, textAlign } = useRTL();
   const cycleLabels: Record<string, string> = {
     monthly: t('SUBS_BILLING_MONTHLY_SHORT' as any),
     quarterly: t('SUBS_BILLING_QUARTERLY_SHORT' as any),
     yearly: t('SUBS_BILLING_YEARLY_SHORT' as any),
   };
   const cycleLabel = cycleLabels[sub.billing_cycle] ?? cycleLabels.monthly;
-  const preset = SUBSCRIPTION_PRESETS.find((p) => p.name === sub.name);
+  const preset = SUBSCRIPTION_PRESETS.find((p) => p.name === sub.name || p.nameAr === sub.name);
   const logo = preset?.logo;
+  /** Localized display name: English name in EN, Arabic name in AR. Falls
+      back to the stored subscription name when no preset is matched. */
+  const displayName = preset
+    ? (isRTL ? preset.nameAr : preset.name)
+    : sub.name;
 
   const handleDelete = (): void => {
     Alert.alert(t('SUBS_DELETE_TITLE' as any), t('SUBS_DELETE_CONFIRM' as any), [
@@ -118,7 +125,7 @@ export const SubscriptionCard = React.memo(function SubscriptionCard({
           />
         ) : null}
         {/* Content */}
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flexDirection: rowDir, alignItems: 'center' }}>
           {/* Icon */}
           <View
             style={{
@@ -127,7 +134,7 @@ export const SubscriptionCard = React.memo(function SubscriptionCard({
               borderRadius: 14,
               alignItems: 'center',
               justifyContent: 'center',
-              marginRight: 12,
+              marginEnd: 12,
               backgroundColor: sub.color + '18',
             }}
           >
@@ -138,16 +145,16 @@ export const SubscriptionCard = React.memo(function SubscriptionCard({
             )}
           </View>
           {/* Name + category + next date */}
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textPrimary }}>
-              {sub.name}
+          <View style={{ flex: 1, marginEnd: 8 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textPrimary, textAlign, writingDirection: isRTL ? 'rtl' : 'ltr' }}>
+              {displayName}
             </Text>
-            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2, textAlign, writingDirection: isRTL ? 'rtl' : 'ltr' }}>
               {sub.category} · Next: {sub.next_billing_date ? new Date(sub.next_billing_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
             </Text>
           </View>
           {/* Amount */}
-          <View style={{ alignItems: 'flex-end' }}>
+          <View style={{ alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: colors.expense }}>
               {maskIfHidden(formatAmount(sub.amount), hidden)}
               <Text style={{ fontSize: 11, fontWeight: '500', color: colors.textTertiary }}>{cycleLabel}</Text>
@@ -155,20 +162,20 @@ export const SubscriptionCard = React.memo(function SubscriptionCard({
           </View>
         </View>
         {/* Action buttons */}
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+        <View style={{ flexDirection: rowDir, justifyContent: isRTL ? 'flex-start' : 'flex-end', gap: 10, marginTop: 10 }}>
           {sub.is_active ? (
-            <Pressable onPress={handleMarkPaid} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Pressable onPress={handleMarkPaid} style={{ flexDirection: rowDir, alignItems: 'center', gap: 4 }}>
               <CheckCircle size={14} color={colors.income} strokeWidth={2} />
               <Text style={{ fontSize: 11, fontWeight: '600', color: colors.income }}>{t('SUBS_PAID' as any)}</Text>
             </Pressable>
           ) : null}
-          <Pressable onPress={handleToggle} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Pressable onPress={handleToggle} style={{ flexDirection: rowDir, alignItems: 'center', gap: 4 }}>
             {sub.is_active
               ? <><Pause size={14} color={colors.textTertiary} strokeWidth={2} /><Text style={{ fontSize: 11, fontWeight: '600', color: colors.textTertiary }}>{t('SUBS_PAUSE' as any)}</Text></>
               : <><Play size={14} color={colors.income} strokeWidth={2} /><Text style={{ fontSize: 11, fontWeight: '600', color: colors.income }}>{t('SUBS_RESUME' as any)}</Text></>
             }
           </Pressable>
-          <Pressable onPress={handleDelete} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Pressable onPress={handleDelete} style={{ flexDirection: rowDir, alignItems: 'center', gap: 4 }}>
             <Trash2 size={14} color={colors.expense} strokeWidth={2} />
             <Text style={{ fontSize: 11, fontWeight: '600', color: colors.expense }}>{t('DELETE')}</Text>
           </Pressable>

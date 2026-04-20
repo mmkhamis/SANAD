@@ -23,6 +23,11 @@ interface MetallicShineProps {
   duration?: number;
   /** Base opacity of the shine (0–1). Default: 0.35 */
   intensity?: number;
+  /**
+   * 'shine' (default) — sweeping white highlight for dark cards.
+   * 'shadow' — sweeping dark shadow band for light-mode silver cards.
+   */
+  tint?: 'shine' | 'shadow';
 }
 
 // ─── Module-level global animation driver ────────────────────────────────────
@@ -64,6 +69,7 @@ export const MetallicShine = React.memo(function MetallicShine({
   width = Dimensions.get('window').width,
   borderRadius = 16,
   intensity = 0.35,
+  tint = 'shine',
 }: MetallicShineProps): React.ReactElement {
   // Start the single global animation on first mount (no-op on subsequent mounts)
   React.useEffect(() => {
@@ -82,6 +88,8 @@ export const MetallicShine = React.memo(function MetallicShine({
     ],
   }));
 
+  const isShadow = tint === 'shadow';
+
   return (
     <Animated.View
       style={[
@@ -98,14 +106,16 @@ export const MetallicShine = React.memo(function MetallicShine({
         breatheStyle,
       ]}
     >
-      {/* Top-down soft white glow */}
+      {/* Top-edge ambient tone */}
       <LinearGradient
-        colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.02)', 'transparent']}
+        colors={isShadow
+          ? ['rgba(15,23,42,0.05)', 'rgba(15,23,42,0.01)', 'transparent']
+          : ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.02)', 'transparent']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
       />
-      {/* Sweeping metallic band */}
+      {/* Sweeping band */}
       <Animated.View
         style={[
           {
@@ -119,7 +129,9 @@ export const MetallicShine = React.memo(function MetallicShine({
         ]}
       >
         <LinearGradient
-          colors={['transparent', 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0.3)', 'rgba(255,255,255,0.15)', 'transparent']}
+          colors={isShadow
+            ? ['transparent', 'rgba(15,23,42,0.06)', 'rgba(15,23,42,0.11)', 'rgba(15,23,42,0.06)', 'transparent']
+            : ['transparent', 'rgba(200,180,243,0.10)', 'rgba(200,180,243,0.18)', 'rgba(200,180,243,0.10)', 'transparent']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{ width: '100%', height: '100%' }}

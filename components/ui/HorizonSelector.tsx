@@ -4,6 +4,7 @@ import { View, Text, Pressable } from 'react-native';
 import { impactLight } from '../../utils/haptics';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 
 export type HorizonMonths = 1 | 2 | 3 | 6;
 
@@ -24,10 +25,11 @@ interface HorizonSelectorProps {
 export function HorizonSelector({ selected, onChange }: HorizonSelectorProps): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { rowDir } = useRTL();
   return (
     <View
-      className="flex-row rounded-xl overflow-hidden"
-      style={{ backgroundColor: colors.surfaceSecondary }}
+      className="rounded-xl overflow-hidden"
+      style={{ backgroundColor: colors.surfaceSecondary, flexDirection: rowDir }}
     >
       {OPTION_VALUES.map((value) => {
         const isActive = value === selected;

@@ -19,4 +19,12 @@ export const TYPOGRAPHY = {
   tight: 1.25,
   normal: 1.5,
   relaxed: 1.75,
+
+  // ─── Claude Design scale (h1/h2/h3/body/caption/micro) ──
+  h1:      { fontSize: 30, fontWeight: '700' as const, lineHeight: 34, letterSpacing: -0.6 },
+  h2:      { fontSize: 20, fontWeight: '600' as const, letterSpacing: -0.2 },
+  h3:      { fontSize: 17, fontWeight: '600' as const },
+  body:    { fontSize: 15, fontWeight: '400' as const, lineHeight: 21 },
+  caption: { fontSize: 12, fontWeight: '500' as const, letterSpacing: 0.1 },
+  micro:   { fontSize: 11, fontWeight: '500' as const, letterSpacing: 0.4 },
 } as const;

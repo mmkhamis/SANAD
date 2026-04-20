@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useMemo } from 'react';
-import { View, Text, Pressable, ScrollView, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { View, Text, Pressable, Modal, ScrollView, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
 import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
@@ -8,8 +8,9 @@ import { useRouter } from 'expo-router';
 import { format, differenceInDays, parseISO, addMonths } from 'date-fns';
 import { Image } from 'expo-image';
 import {
-  Plus, Repeat, Eye, EyeOff, CalendarClock, AlertTriangle,
+  Eye, EyeOff, AlertTriangle,
   Wallet, ArrowUpRight, ArrowDownRight, MessageSquareWarning,
+  Sparkles, ChevronLeft, ChevronRight,
 } from 'lucide-react-native';
 
 import { impactLight } from '../../utils/haptics';
@@ -19,18 +20,20 @@ import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
 import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { FloatingCard } from '../../components/ui/FloatingCard';
-import { GlassCard } from '../../components/ui/GlassCard';
-import { SoftGlowButton } from '../../components/ui/SoftGlowButton';
 import { SmartInputFAB } from '../../components/ui/SmartInputFAB';
-import { MetallicShine } from '../../components/ui/MetallicShine';
 import { MonthPicker } from '../../components/ui/MonthPicker';
 import { HorizonSelector, type HorizonMonths } from '../../components/ui/HorizonSelector';
-import { TransactionRow } from '../../components/finance/TransactionRow';
+import { HeroCard } from '../../components/ui/HeroCard';
+import { ChipIcon, chipIconColor } from '../../components/ui/ChipIcon';
+import { GradientDivider } from '../../components/ui/GradientDivider';
+import { SectionHeader } from '../../components/ui/SectionHeader';
+import { Card } from '../../components/ui/Card';
+import { AccountChip } from '../../components/ui/AccountChip';
+import { PillBadge } from '../../components/ui/PillBadge';
 import { SMSReviewSheet } from '../../components/finance/SMSReviewSheet';
 import { BudgetStatusRibbon } from '../../components/finance/BudgetStatusRibbon';
-import { HabitInsightCard } from '../../components/finance/HabitInsightCard';
 import { CurrencyAmount } from '../../components/ui/CurrencyAmount';
+import { CategoryIcon } from '../../components/ui/CategoryIcon';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useUnreviewedTransactions } from '../../hooks/useReviewTransactions';
 import { usePortfolioSummary } from '../../hooks/useAssets';
@@ -39,19 +42,25 @@ import { useSubscriptions } from '../../hooks/useSubscriptions';
 import { useCommitmentsDue } from '../../hooks/useCommitments';
 import { useGoals } from '../../hooks/useGoals';
 import { useHabitInsights } from '../../hooks/useHabits';
-import { formatCompactNumber } from '../../utils/currency';
+import { formatCompactNumberLocale } from '../../utils/currency';
+import { useLanguageStore } from '../../store/language-store';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { COLORS } from '../../constants/colors';
+import { useRTL } from '../../hooks/useRTL';
 import { STRINGS } from '../../constants/strings';
 import { useT } from '../../lib/i18n';
 import { useTranslateCategory } from '../../lib/i18n';
 import type { Transaction, Commitment } from '../../types/index';
 import { type Subscription, SUBSCRIPTION_PRESETS } from '../../services/subscription-service';
+import { ALL_BANK_PRESETS } from '../../constants/bank-presets';
+import { findBrand } from '../../constants/brand-presets';
 import { useAuthStore } from '../../store/auth-store';
+import { TransactionsPageContent } from './transactions';
 
 // ─── Constants ───────────────────────────────────────────────────────
-// Computed once at module level to avoid Dimensions.get() calls inside renderItem.
-const TX_BLOCK_WIDTH = Dimensions.get('window').width - 32;
+// TX_BLOCK_WIDTH is computed inside DashboardContent using useWindowDimensions
+// so it responds correctly to orientation changes and large-screen layouts.
 
 // ─── Section item types for FlashList ────────────────────────────────
 
@@ -61,8 +70,7 @@ type SectionType =
   | { type: 'hero-balance' }
   | { type: 'budget-status' }
   | { type: 'habit-insight' }
-  | { type: 'commitments-header' }
-  | { type: 'commitment-item'; commitment: Commitment }
+  | { type: 'commitments-block'; commitments: Commitment[]; total: number }
   | { type: 'upcoming-block'; subscriptions: Subscription[] }
   | { type: 'transactions-block'; transactions: Transaction[] }
   | { type: 'bottom-spacer' };
@@ -72,6 +80,7 @@ type SectionType =
 const CommitmentRow = React.memo(function CommitmentRow({ commitment }: { commitment: Commitment }): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { isRTL, rowDir } = useRTL();
   const hidden = usePrivacyStore((s) => s.hidden);
   const dueDate = parseISO(commitment.next_due_date);
   const daysUntil = differenceInDays(dueDate, new Date());
@@ -85,50 +94,36 @@ const CommitmentRow = React.memo(function CommitmentRow({ commitment }: { commit
   return (
     <View
       style={{
-        flexDirection: 'row',
+        flexDirection: rowDir,
         alignItems: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 10,
-        borderRadius: 16,
-        overflow: 'hidden',
-        backgroundColor: colors.isDark ? 'rgba(15,23,42,0.40)' : 'rgba(241,245,249,0.6)',
-        borderWidth: 1,
-        borderColor: isOverdue ? colors.expense + '30' : isUrgent ? colors.warning + '25' : (colors.isDark ? 'rgba(139,92,246,0.10)' : 'rgba(226,232,240,0.5)'),
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        gap: 12,
       }}
     >
       <View
         style={{
-          height: 40,
-          width: 40,
-          borderRadius: 12,
+          height: 36,
+          width: 36,
+          borderRadius: 10,
           alignItems: 'center',
           justifyContent: 'center',
-          marginRight: 10,
           backgroundColor: (commitment.category_color ?? colors.textTertiary) + '18',
         }}
       >
-        <Text style={{ fontSize: 18 }}>{commitment.category_icon ?? '📋'}</Text>
+        <Text style={{ fontSize: 16 }}>{commitment.category_icon ?? '📋'}</Text>
       </View>
-      <View style={{ flex: 1, marginRight: 10 }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>{commitment.name}</Text>
-        <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 13.5, fontWeight: '600', color: colors.textPrimary, textAlign: isRTL ? 'right' : 'left' }}>{commitment.name}</Text>
+        <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg3 : colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }}>
           {recurrenceLabel} · {t('DUE')} {formatShortDate(dueDate)}
         </Text>
       </View>
-      <View style={{ alignItems: 'flex-end' }}>
-        {hidden ? (
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>••••</Text>
-        ) : (
-          <CurrencyAmount value={commitment.amount} color={colors.expense} fontSize={13} />
-        )}
-        {isOverdue ? (
-          <Text style={{ fontSize: 11, fontWeight: '600', color: colors.expense }}>{t('OVERDUE')}</Text>
-        ) : isUrgent ? (
-          <Text style={{ fontSize: 11, fontWeight: '600', color: colors.warning }}>
-            {daysUntil === 0 ? t('TODAY') : daysUntil === 1 ? t('TOMORROW') : `${daysUntil}d`}
-          </Text>
-        ) : null}
-      </View>
+      {hidden ? (
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>••••</Text>
+      ) : (
+        <CurrencyAmount value={commitment.amount} color={colors.expense} fontSize={14} />
+      )}
     </View>
   );
 });
@@ -138,6 +133,7 @@ const CommitmentRow = React.memo(function CommitmentRow({ commitment }: { commit
 const UpcomingPaymentRow = React.memo(function UpcomingPaymentRow({ sub }: { sub: Subscription }): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { isRTL, rowDir } = useRTL();
   const hidden = usePrivacyStore((s) => s.hidden);
   const daysUntil = differenceInDays(parseISO(sub.next_billing_date), new Date());
   const isUrgent = daysUntil <= 3;
@@ -148,75 +144,62 @@ const UpcomingPaymentRow = React.memo(function UpcomingPaymentRow({ sub }: { sub
   const subIcon = sub.icon || '💳';
   const subColor = sub.color || colors.primary;
   const iconBg = colors.isDark ? subColor + '30' : subColor + '18';
-  const preset = SUBSCRIPTION_PRESETS.find((p) => p.name === sub.name);
+  const preset = SUBSCRIPTION_PRESETS.find((p) => p.name === sub.name || p.nameAr === sub.name);
   const logo = preset?.logo ?? null;
 
   return (
     <View
       style={{
-        flexDirection: 'row',
+        flexDirection: rowDir,
         alignItems: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 10,
-        borderRadius: 16,
-        overflow: 'hidden',
-        backgroundColor: colors.isDark ? 'rgba(15,23,42,0.40)' : 'rgba(241,245,249,0.6)',
-        borderWidth: 1,
-        borderColor: isUrgent ? colors.expense + '30' : isDueSoon ? colors.warning + '25' : (colors.isDark ? 'rgba(139,92,246,0.10)' : 'rgba(226,232,240,0.5)'),
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        gap: 12,
       }}
     >
       <View
         style={{
-          height: 40,
-          width: 40,
-          borderRadius: 12,
+          height: 36,
+          width: 36,
+          borderRadius: 10,
           alignItems: 'center',
           justifyContent: 'center',
-          marginRight: 10,
           backgroundColor: iconBg,
         }}
       >
         {logo ? (
           <Image
             source={{ uri: logo }}
-            style={{ width: 22, height: 22, borderRadius: 4 }}
+            style={{ width: 20, height: 20, borderRadius: 4 }}
             contentFit="contain"
           />
         ) : (
-          <Text style={{ fontSize: 18 }}>{subIcon}</Text>
+          <Text style={{ fontSize: 16 }}>{subIcon}</Text>
         )}
       </View>
-      <View style={{ flex: 1, marginRight: 10 }}>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>{sub.name}</Text>
-        <Text style={{ fontSize: 12, color: colors.textSecondary }}>
-          {formatShortDate(parseISO(sub.next_billing_date))} · {sub.billing_cycle}
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 13.5, fontWeight: '600', color: colors.textPrimary, textAlign: isRTL ? 'right' : 'left' }}>{sub.name}</Text>
+        <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg3 : colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }}>
+          {sub.billing_cycle} · {formatShortDate(parseISO(sub.next_billing_date))}
         </Text>
       </View>
-      <View className="items-end">
-        {hidden ? (
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>••••</Text>
-        ) : (
-          <CurrencyAmount value={sub.amount} color={colors.expense} fontSize={14} />
-        )}
-        <Text
-          style={{
-            fontSize: 11,
-            fontWeight: '600',
-            color: isUrgent ? colors.expense : isDueSoon ? colors.warning : colors.textTertiary,
-          }}
-        >
-          {dateLabel}
-        </Text>
-      </View>
+      {hidden ? (
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>••••</Text>
+      ) : (
+        <CurrencyAmount value={sub.amount} color={colors.textPrimary} fontSize={14} />
+      )}
     </View>
   );
 });
 // ─── Dashboard ───────────────────────────────────────────────────────
 
 function DashboardContent(): React.ReactElement {
+  const { width: screenWidth } = useWindowDimensions();
   const colors = useThemeColors();
   const t = useT();
   const tc = useTranslateCategory();
+  const { isRTL, textAlign, rowDir } = useRTL();
+  const language = useLanguageStore((s) => s.language);
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const { data, isLoading, isError, error, refetch } = useDashboard(selectedMonth);
   const scrollY = useSharedValue(0);
@@ -233,10 +216,13 @@ function DashboardContent(): React.ReactElement {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [reviewVisible, setReviewVisible] = useState(false);
+  const [showTxnModal, setShowTxnModal] = useState(false);
   const [horizon, setHorizon] = useState<HorizonMonths>(1);
   const hidden = usePrivacyStore((s) => s.hidden);
   const togglePrivacy = usePrivacyStore((s) => s.toggle);
-  const userName = useAuthStore((s) => s.user?.full_name ?? '');
+  const userNameEn = useAuthStore((s) => s.user?.full_name ?? '');
+  const userNameAr = useAuthStore((s) => s.user?.name_ar ?? '');
+  const userName = isRTL && userNameAr ? userNameAr : userNameEn;
   const firstName = userName.split(' ')[0];
 
   const unreviewedCount = unreviewed?.length ?? 0;
@@ -270,15 +256,10 @@ function DashboardContent(): React.ReactElement {
       s.push({ type: 'hero-balance' });
     }
 
-
-
     // Commitments due this month
     const dueItems = commitmentsDue?.this_month ?? [];
     if (dueItems.length > 0) {
-      s.push({ type: 'commitments-header' });
-      for (const c of dueItems) {
-        s.push({ type: 'commitment-item', commitment: c });
-      }
+      s.push({ type: 'commitments-block', commitments: dueItems, total: commitmentsDue?.total_due_this_month ?? 0 });
     }
 
     s.push({ type: 'upcoming-block', subscriptions: upcomingSubs });
@@ -346,26 +327,44 @@ function DashboardContent(): React.ReactElement {
         return (
           <View
             style={{
-              paddingTop: insets.top + 16,
+              paddingTop: insets.top + 12,
               paddingBottom: 4,
               paddingHorizontal: 20,
-              flexDirection: 'row',
-              alignItems: 'center',
+              flexDirection: rowDir,
+              alignItems: 'flex-start',
               justifyContent: 'space-between',
             }}
           >
-            <View>
-              <Text style={{ fontSize: 28, fontWeight: '700', color: colors.textPrimary }}>
-                {STRINGS.DASHBOARD_TITLE}
+            <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+              <Text style={{ fontSize: 13, color: colors.isDark ? COLORS.claude.fg3 : colors.textSecondary, textAlign }}>
+                {t('WELCOME_BACK')}
               </Text>
-              <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
-                {t('WELCOME_BACK')}{firstName ? `, ${firstName}` : ''}
-              </Text>
+              {firstName ? (
+                <Text style={{ fontSize: 22, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.3, marginTop: 2, textAlign }}>
+                  {firstName} <Text style={{ color: colors.isDark ? COLORS.claude.p200 : colors.primary }}>{userName.split(' ').slice(1).join(' ')}</Text>
+                </Text>
+              ) : (
+                <Text style={{ fontSize: 22, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.3, marginTop: 2, textAlign }}>
+                  {t('DASHBOARD_TITLE')}
+                </Text>
+              )}
             </View>
-            <Pressable onPress={() => { impactLight(); togglePrivacy(); }} style={{ padding: 8 }}>
+            <Pressable
+              onPress={() => { impactLight(); togglePrivacy(); }}
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                borderWidth: 1,
+                borderColor: colors.isDark ? COLORS.claude.stroke : 'rgba(0,0,0,0.08)',
+              }}
+            >
               {hidden
-                ? <EyeOff size={22} color={colors.textTertiary} strokeWidth={2} />
-                : <Eye size={22} color={colors.textTertiary} strokeWidth={2} />
+                ? <EyeOff size={18} color={colors.isDark ? COLORS.claude.fg2 : colors.textTertiary} strokeWidth={2} />
+                : <Eye size={18} color={colors.isDark ? COLORS.claude.fg2 : colors.textTertiary} strokeWidth={2} />
               }
             </Pressable>
           </View>
@@ -380,320 +379,167 @@ function DashboardContent(): React.ReactElement {
       case 'hero-balance': {
         const accts = (accounts ?? []).filter((a) => a.include_in_total);
         const totalBalance = data.computed_balance;
-        const netWorth = totalBalance + (portfolio?.total_value ?? 0);
-        const balancePrev = data.summary.total_income - data.summary.total_expense;
-        const balanceChangePercent = totalBalance > 0 && balancePrev !== 0
-          ? ((totalBalance / Math.abs(balancePrev)) * 100 - 100)
-          : 0;
-        const isPositiveChange = balanceChangePercent >= 0;
 
         return (
           <Animated.View entering={FadeInDown.duration(400).delay(80)}>
-            <Pressable
-              onPress={() => { impactLight(); router.push('/(tabs)/profile'); }}
-            >
-              <View
-                style={{
-                  marginHorizontal: 16,
-                  marginTop: 8,
-                  borderRadius: 24,
-                  overflow: 'hidden',
-                  borderWidth: 1,
-                  borderColor: colors.isDark ? 'rgba(139,92,246,0.15)' : colors.glassBorder,
-                  shadowColor: colors.isDark ? '#8B5CF6' : '#000',
-                  shadowOffset: { width: 0, height: 6 },
-                  shadowOpacity: colors.isDark ? 0.15 : 0.06,
-                  shadowRadius: 16,
-                  elevation: 5,
-                }}
-              >
-                {/* Gradient background for the hero card */}
-                <LinearGradient
-                  colors={colors.isDark
-                    ? ['rgba(25,32,48,0.92)', 'rgba(18,26,42,0.96)', 'rgba(32,44,62,0.94)']
-                    : ['#FFFFFF', '#F4F6F8', '#EBEEF2', '#FFFFFF']}
-                  start={colors.isDark ? { x: 0, y: 0 } : { x: 0, y: 0 }}
-                  end={colors.isDark ? { x: 1, y: 1 } : { x: 1, y: 1 }}
-                  style={{ padding: 24 }}
-                >
-                  {/* Metallic sheen overlay */}
-                  <LinearGradient
-                    colors={colors.isDark
-                      ? ['rgba(255,255,255,0.04)', 'transparent', 'rgba(255,255,255,0.02)', 'transparent']
-                      : ['rgba(255,255,255,0.8)', 'rgba(220,225,235,0.3)', 'rgba(255,255,255,0.6)', 'rgba(200,210,225,0.15)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                  />
-                  {/* Subtle shimmer overlay from bottom-right */}
-                  {colors.isDark ? (
-                    <LinearGradient
-                      colors={['transparent', 'rgba(217,70,239,0.03)', 'rgba(139,92,246,0.08)']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                    />
-                  ) : null}
-
-                  {/* Top row: wallet icon + label + trend pill */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                      <View
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 10,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: colors.isDark ? 'rgba(139,92,246,0.15)' : colors.primary + '12',
-                        }}
-                      >
-                        <Wallet size={16} color={colors.primaryLight} strokeWidth={2} />
-                      </View>
-                      <Text style={{ fontSize: 13, color: colors.textSecondary }}>{t('CURRENT_BALANCE')}</Text>
-                    </View>
+              <HeroCard style={{ marginTop: 8 }}>
+                  {/* Label row — just the "Current Balance" caption.
+                      Wallet chip icon, change pill, and View-Profile link all
+                      removed per user request. */}
+                  <View style={{ flexDirection: rowDir, alignItems: 'center', marginBottom: 10 }}>
+                    <Text style={{ fontSize: 13, color: colors.isDark ? COLORS.claude.fg3 : colors.textSecondary, fontWeight: '500' }}>{t('CURRENT_BALANCE')}</Text>
                   </View>
 
                   {/* Large balance amount */}
-                  <View style={{ marginTop: 4 }}>
+                  <View style={{ marginBottom: 18, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
                     {hidden ? (
-                      <Text style={{ fontSize: 36, fontWeight: '700', color: colors.isDark ? '#FFFFFF' : colors.textPrimary, letterSpacing: -0.5 }}>••••</Text>
+                      <Text style={{ fontSize: 46, fontWeight: '700', color: colors.isDark ? COLORS.claude.fg : colors.textPrimary, letterSpacing: -1 }}>••••</Text>
                     ) : (
-                      <CurrencyAmount value={totalBalance} color={colors.isDark ? '#FFFFFF' : colors.textPrimary} fontSize={36} fontWeight="700" />
+                      <CurrencyAmount value={totalBalance} color={colors.isDark ? COLORS.claude.fg : colors.textPrimary} fontSize={46} fontWeight="700" />
                     )}
                   </View>
 
-                  {/* Subtle divider */}
-                  <LinearGradient
-                    colors={['transparent', colors.isDark ? 'rgba(100,116,139,0.3)' : 'rgba(203,213,225,0.5)', 'transparent']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={{ height: 1, marginVertical: 14 }}
-                  />
-
-                  {/* 3 compact metrics */}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Pressable
-                      style={{ flex: 1 }}
-                      onPress={() => { impactLight(); router.push({ pathname: '/(tabs)/transactions', params: { filter: 'expense' } }); }}
-                    >
-                      <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 3 }}>{t('SPENDING')}</Text>
+                  {/* Stats row: assets / income / expenses */}
+                  <View style={{ flexDirection: rowDir, justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+                      <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg4 : colors.textTertiary, marginBottom: 4, fontWeight: '500' }}>{t('TOTAL_ASSETS')}</Text>
                       {hidden ? (
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.expense }}>••••</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>••••</Text>
                       ) : (
-                        <CurrencyAmount value={data.summary.total_expense} color={colors.expense} fontSize={15} />
+                        <CurrencyAmount value={portfolio?.total_value ?? 0} color={colors.isDark ? COLORS.claude.fg : colors.textPrimary} fontSize={16} />
                       )}
-                    </Pressable>
-                    <Pressable
-                      style={{ flex: 1, alignItems: 'center' }}
-                      onPress={() => { impactLight(); router.push({ pathname: '/(tabs)/transactions', params: { filter: 'income' } }); }}
-                    >
-                      <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 3 }}>{t('INCOME')}</Text>
+                    </View>
+                    <View style={{ flex: 1, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg4 : colors.textTertiary, marginBottom: 4, fontWeight: '500' }}>{t('INCOME')}</Text>
                       {hidden ? (
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.income }}>••••</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.income }}>••••</Text>
                       ) : (
-                        <CurrencyAmount value={data.summary.total_income} color={colors.income} fontSize={15} />
+                        <CurrencyAmount value={data.summary.total_income} color={colors.isDark ? COLORS.claude.greenText : colors.income} fontSize={16} />
                       )}
-                    </Pressable>
-                    <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 3 }}>{t('TOTAL_ASSETS')}</Text>
+                    </View>
+                    <View style={{ flex: 1, alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
+                      <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg4 : colors.textTertiary, marginBottom: 4, fontWeight: '500' }}>{t('SPENDING')}</Text>
                       {hidden ? (
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#FFFFFF' }}>••••</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.expense }}>••••</Text>
                       ) : (
-                        <CurrencyAmount value={portfolio?.total_value ?? 0} color={colors.isDark ? '#FFFFFF' : colors.textPrimary} fontSize={15} />
+                        <CurrencyAmount value={data.summary.total_expense} color={colors.isDark ? COLORS.claude.redText : colors.expense} fontSize={16} showSign />
                       )}
                     </View>
                   </View>
 
-                  {/* Account chips — grouped by type */}
+                  {/* Account chips — horizontal scroll so long lists don't wrap
+                      and break the card height. Uses native RTL content inversion
+                      so the order reads correctly in Arabic. */}
                   {accts.length > 0 ? (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                      {(() => {
-                        const grouped = new Map<string, { icon: string; label: string; total: number }>();
-                        for (const acct of accts) {
-                          const icon = acct.type === 'cash' ? '💵' : acct.type === 'bank' ? '🏦' : acct.type === 'savings' ? '🐖' : '💳';
-                          const label = acct.type === 'cash' ? t('CASH') : acct.type === 'bank' ? t('BANK') : acct.type === 'savings' ? t('SAVINGS') : t('CREDIT');
-                          const existing = grouped.get(acct.type);
-                          if (existing) {
-                            existing.total += acct.current_balance;
-                          } else {
-                            grouped.set(acct.type, { icon, label, total: acct.current_balance });
-                          }
-                        }
-                        return Array.from(grouped.entries()).map(([type, { icon, label, total }]) => (
-                          <View
-                            key={type}
-                            style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              gap: 4,
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              borderRadius: 10,
-                              backgroundColor: colors.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
-                            }}
-                          >
-                            <Text style={{ fontSize: 12 }}>{icon}</Text>
-                            <Text style={{ fontSize: 11, color: colors.textTertiary, fontWeight: '500' }}>{label}</Text>
-                            {hidden ? (
-                              <Text style={{ fontSize: 11, color: colors.textSecondary }}>••••</Text>
-                            ) : (
-                              <CurrencyAmount value={total} color={colors.textSecondary} fontSize={11} />
-                            )}
-                          </View>
-                        ));
-                      })()}
-                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      nestedScrollEnabled
+                      directionalLockEnabled
+                      style={{ marginTop: 16, marginHorizontal: -22 }}
+                      contentContainerStyle={{ paddingHorizontal: 22, gap: 8 }}
+                    >
+                      {accts.map((acct) => {
+                        const preset = ALL_BANK_PRESETS.find(
+                          (b) => b.nameEn === acct.name || b.nameAr === acct.name
+                        );
+                        return (
+                          <AccountChip
+                            key={acct.id}
+                            bankName={acct.name}
+                            amount={hidden ? 0 : acct.current_balance}
+                            logo={preset?.logo ?? null}
+                            color={
+                              preset?.color ??
+                              (acct.type === 'bank' ? '#4A7AE8'
+                              : acct.type === 'cash' ? COLORS.claude.green
+                              : acct.type === 'savings' ? COLORS.claude.amber
+                              : COLORS.claude.p500)
+                            }
+                          />
+                        );
+                      })}
+                    </ScrollView>
                   ) : null}
-                </LinearGradient>
-              </View>
-            </Pressable>
+              </HeroCard>
           </Animated.View>
         );
       }
 
       case 'budget-status':
         return goalsSummary && goalsSummary.goals.length > 0 ? (
-          <View style={{
-            marginHorizontal: 16,
-            marginTop: 14,
-            borderRadius: 24,
-            overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: colors.isDark ? 'rgba(139,92,246,0.15)' : 'rgba(203,213,225,0.5)',
-            shadowColor: colors.isDark ? '#8B5CF6' : '#000',
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: colors.isDark ? 0.15 : 0.06,
-            shadowRadius: 16,
-            elevation: 5,
-          }}>
-            {/* Gradient background matching hero balance card */}
-            <LinearGradient
-              colors={colors.isDark
-                ? ['rgba(25,32,48,0.92)', 'rgba(18,26,42,0.96)', 'rgba(32,44,62,0.94)']
-                : ['#FFFFFF', '#F4F6F8', '#EBEEF2', '#FFFFFF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ padding: 24 }}
-            >
-              {/* Metallic sheen overlay */}
-              <LinearGradient
-                colors={colors.isDark
-                  ? ['rgba(255,255,255,0.04)', 'transparent', 'rgba(255,255,255,0.02)', 'transparent']
-                  : ['rgba(255,255,255,0.8)', 'rgba(220,225,235,0.3)', 'rgba(255,255,255,0.6)', 'rgba(200,210,225,0.15)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-              />
-              {/* Subtle shimmer overlay from bottom-right */}
-              {colors.isDark ? (
-                <LinearGradient
-                  colors={['transparent', 'rgba(217,70,239,0.03)', 'rgba(139,92,246,0.08)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                />
-              ) : null}
-              {/* Budget Status Ribbon - all categories + detail panel */}
-              <BudgetStatusRibbon goals={goalsSummary.goals} transactions={data.month_expense_transactions} />
-            </LinearGradient>
-          </View>
+          <Card style={{ marginHorizontal: 16, marginTop: 14 }}>
+            <BudgetStatusRibbon goals={goalsSummary.goals} transactions={data.month_expense_transactions} />
+          </Card>
         ) : null;
 
-      case 'habit-insight':
-        return habitInsights && habitInsights.habits.length > 0 ? (
-          <Animated.View entering={FadeInDown.duration(350).delay(100)} style={{ marginTop: 14 }}>
-            <HabitInsightCard
-              habit={habitInsights.habits[0]}
-              totalHabitSpend={habitInsights.totalHabitSpend}
-              habitPercentage={habitInsights.habitPercentage}
-            />
-          </Animated.View>
-        ) : null;
+      case 'habit-insight': {
+        if (!habitInsights || habitInsights.habits.length === 0) return null;
+        const topHabit = habitInsights.habits[0];
+        return (
+          <Pressable
+            onPress={() => { impactLight(); router.push('/(tabs)/analytics'); }}
+            style={{ marginHorizontal: 16, marginTop: 14 }}
+          >
+            <Card noPadding>
+              {/* Purple accent gradient overlay */}
+              {colors.isDark ? (
+                <LinearGradient
+                  colors={['rgba(122,71,235,0.14)', 'rgba(255,255,255,0.02)']}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 0.6, y: 0.5 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 20 }}
+                />
+              ) : null}
+              <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}>
+                <ChipIcon variant="purple" size={40}>
+                  <Sparkles size={18} color={chipIconColor('purple')} strokeWidth={2} />
+                </ChipIcon>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13.5, fontWeight: '600', color: colors.textPrimary, marginBottom: 2 }}>
+                    {topHabit.name} — {topHabit.frequency}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.isDark ? COLORS.claude.fg3 : colors.textSecondary, lineHeight: 17 }}>
+                    {t('HABIT_SPEND')}: {maskIfHidden(formatCompactNumberLocale(habitInsights.totalHabitSpend, language), hidden)}
+                  </Text>
+                </View>
+                {isRTL
+                  ? <ChevronLeft size={16} color={colors.isDark ? COLORS.claude.fg4 : colors.textTertiary} strokeWidth={2} />
+                  : <ChevronRight size={16} color={colors.isDark ? COLORS.claude.fg4 : colors.textTertiary} strokeWidth={2} />
+                }
+              </View>
+            </Card>
+          </Pressable>
+        );
+      }
 
       case 'upcoming-block': {
         const subs = item.subscriptions;
         return (
-          <View style={{
-            marginHorizontal: 16,
-            marginTop: 14,
-            borderRadius: 24,
-            overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: colors.isDark ? 'rgba(139,92,246,0.15)' : 'rgba(203,213,225,0.5)',
-            shadowColor: colors.isDark ? '#8B5CF6' : '#000',
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: colors.isDark ? 0.15 : 0.06,
-            shadowRadius: 16,
-            elevation: 5,
-          }}>
-            {/* Gradient background matching hero balance card */}
-            <LinearGradient
-              colors={colors.isDark
-                ? ['rgba(25,32,48,0.92)', 'rgba(18,26,42,0.96)', 'rgba(32,44,62,0.94)']
-                : ['#FFFFFF', '#F4F6F8', '#EBEEF2', '#FFFFFF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ padding: 24 }}
-            >
-              {/* Metallic sheen overlay */}
-              <LinearGradient
-                colors={colors.isDark
-                  ? ['rgba(255,255,255,0.04)', 'transparent', 'rgba(255,255,255,0.02)', 'transparent']
-                  : ['rgba(255,255,255,0.8)', 'rgba(220,225,235,0.3)', 'rgba(255,255,255,0.6)', 'rgba(200,210,225,0.15)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-              />
-              {/* Subtle shimmer overlay from bottom-right */}
-              {colors.isDark ? (
-                <LinearGradient
-                  colors={['transparent', 'rgba(217,70,239,0.03)', 'rgba(139,92,246,0.08)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                />
-              ) : null}
-              {/* Content */}
-              <View>
-                {/* Header */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 10,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: colors.isDark ? 'rgba(139,92,246,0.15)' : colors.primary + '12',
-                      }}
-                    >
-                      <Repeat size={14} color={colors.primary} strokeWidth={2} />
-                    </View>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
-                      {t('UPCOMING_PAYMENTS')}
-                    </Text>
-                  </View>
-                  <Pressable onPress={() => { impactLight(); router.push('/(tabs)/subscriptions'); }}>
-                    <Text style={{ fontSize: 12, fontWeight: '500', color: colors.primary }}>
-                      {STRINGS.SEE_ALL}
-                    </Text>
-                  </Pressable>
-                </View>
+          <View style={{ marginHorizontal: 16, marginTop: 14 }}>
+            <SectionHeader
+              title={t('UPCOMING_PAYMENTS')}
+              action={t('SEE_ALL')}
+              onAction={() => { impactLight(); router.push('/(tabs)/subscriptions'); }}
+            />
+            <Card noPadding>
+              <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 }}>
                 <HorizonSelector selected={horizon} onChange={setHorizon} />
                 {subs.length > 0 ? (
                   <Text style={{ fontSize: 12, fontWeight: '600', color: colors.expense, marginTop: 8 }}>
-                    Total: {maskIfHidden(formatCompactNumber(upcomingTotal), hidden)}
+                    {t('SUBS_MONTHLY_TOTAL')}: {maskIfHidden(formatCompactNumberLocale(upcomingTotal, language), hidden)}
                   </Text>
                 ) : null}
               </View>
 
-              {/* Subscription rows inside the same card */}
+              {/* Subscription rows */}
               {subs.length > 0 ? (
-                <View style={{ paddingTop: 10, gap: 6 }}>
-                  {subs.map((sub) => (
-                    <UpcomingPaymentRow key={sub.id} sub={sub} />
+                <View>
+                  {subs.map((sub, i) => (
+                    <React.Fragment key={sub.id}>
+                      {i > 0 ? <GradientDivider /> : null}
+                      <UpcomingPaymentRow sub={sub} />
+                    </React.Fragment>
                   ))}
                 </View>
               ) : (
@@ -703,267 +549,146 @@ function DashboardContent(): React.ReactElement {
                   </Text>
                 </View>
               )}
-            </LinearGradient>
+            </Card>
           </View>
         );
       }
 
-      case 'commitments-header': {
-        const total = commitmentsDue?.total_due_this_month ?? 0;
+      case 'commitments-block': {
+        const total = item.total;
+        const commitments = item.commitments;
         return (
-          <View style={{
-            marginHorizontal: 16,
-            marginTop: 14,
-            borderRadius: 24,
-            overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: colors.isDark ? 'rgba(139,92,246,0.15)' : 'rgba(203,213,225,0.5)',
-            shadowColor: colors.isDark ? '#8B5CF6' : '#000',
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: colors.isDark ? 0.15 : 0.06,
-            shadowRadius: 16,
-            elevation: 5,
-          }}>
-            {/* Gradient background matching hero balance card */}
-            <LinearGradient
-              colors={colors.isDark
-                ? ['rgba(25,32,48,0.92)', 'rgba(18,26,42,0.96)', 'rgba(32,44,62,0.94)']
-                : ['#FFFFFF', '#F4F6F8', '#EBEEF2', '#FFFFFF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ padding: 24 }}
-            >
-              {/* Metallic sheen overlay */}
-              <LinearGradient
-                colors={colors.isDark
-                  ? ['rgba(255,255,255,0.04)', 'transparent', 'rgba(255,255,255,0.02)', 'transparent']
-                  : ['rgba(255,255,255,0.8)', 'rgba(220,225,235,0.3)', 'rgba(255,255,255,0.6)', 'rgba(200,210,225,0.15)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-              />
-              {/* Subtle shimmer overlay from bottom-right */}
-              {colors.isDark ? (
-                <LinearGradient
-                  colors={['transparent', 'rgba(217,70,239,0.03)', 'rgba(139,92,246,0.08)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                />
-              ) : null}
-              {/* Content */}
-              <View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 10,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: colors.isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.12)',
-                      }}
-                    >
-                      <CalendarClock size={14} color={colors.warning} strokeWidth={2} />
-                    </View>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
-                      {t('COMMITMENTS_THIS_MONTH')}
-                    </Text>
-                  </View>
+          <View style={{ marginHorizontal: 16, marginTop: 14 }}>
+            <SectionHeader title={t('COMMITMENTS_THIS_MONTH')} />
+            <Card noPadding>
+              {/* Total due banner */}
+              <View
+                style={{
+                  flexDirection: rowDir,
+                  alignItems: 'center',
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  marginHorizontal: 14,
+                  marginTop: 14,
+                  marginBottom: 4,
+                  backgroundColor: colors.isDark ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.10)',
+                }}
+              >
+                <AlertTriangle size={14} color={colors.warning} strokeWidth={2} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.warning, marginLeft: isRTL ? 0 : 6, marginRight: isRTL ? 6 : 0 }}>
+                  {maskIfHidden(formatCompactNumberLocale(total, language), hidden)} {t('DUE_THIS_MONTH')}
+                </Text>
+              </View>
+              {/* Commitment rows */}
+              {commitments.map((c, i) => (
+                <React.Fragment key={c.id}>
+                  {i > 0 ? <GradientDivider /> : null}
+                  <CommitmentRow commitment={c} />
+                </React.Fragment>
+              ))}
+            </Card>
+          </View>
+        );
+      }
+
+      // ─── Transactions Block: clean rows with dividers ───
+      case 'transactions-block': {
+        const txns = item.transactions.slice(0, 10);
+        return (
+          <View style={{ marginTop: 18, marginHorizontal: 16 }}>
+            <SectionHeader
+              title={t('RECENT_TRANSACTIONS')}
+              action={t('SEE_ALL')}
+              onAction={() => { impactLight(); router.push('/(tabs)/transactions'); }}
+            />
+            <Card noPadding>
+              {txns.length > 0 ? (
+                <View>
+                  {txns.map((tx, i) => (
+                    <React.Fragment key={tx.id}>
+                      {i > 0 ? <GradientDivider /> : null}
+                      <Pressable
+                        onPress={() => { impactLight(); router.push({ pathname: '/(tabs)/transactions', params: { edit_id: tx.id } }); }}
+                        style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                      >
+                        <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 }}>
+                          {(() => {
+                            const brand = findBrand(tx.merchant) ?? findBrand(tx.description);
+                            if (brand?.logo) {
+                              return (
+                                <View
+                                  style={{
+                                    height: 36,
+                                    width: 36,
+                                    borderRadius: 10,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: colors.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                                  }}
+                                >
+                                  <Image
+                                    source={{ uri: brand.logo }}
+                                    style={{ width: 22, height: 22, borderRadius: 4 }}
+                                    contentFit="contain"
+                                  />
+                                </View>
+                              );
+                            }
+                            return (
+                              <View
+                                style={{
+                                  height: 36,
+                                  width: 36,
+                                  borderRadius: 10,
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  backgroundColor: (tx.category_color ?? colors.textTertiary) + '18',
+                                }}
+                              >
+                                <CategoryIcon
+                                  name={tx.category_icon ?? 'smartphone'}
+                                  size={18}
+                                  color={tx.category_color ?? colors.textSecondary}
+                                />
+                              </View>
+                            );
+                          })()}
+                          <View style={{ flex: 1 }}>
+                            <Text numberOfLines={1} style={{ fontSize: 13.5, fontWeight: '600', color: colors.textPrimary, textAlign }}>
+                              {(() => {
+                                const brand = findBrand(tx.merchant) ?? findBrand(tx.description);
+                                if (brand) return isRTL ? brand.nameAr : brand.nameEn;
+                                return tx.description;
+                              })()}
+                            </Text>
+                            <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg3 : colors.textSecondary, marginTop: 1, textAlign }}>
+                              {tc(tx.category_name ?? '') || t('UNCATEGORIZED')} · {formatShortDate(parseISO(tx.date))}
+                            </Text>
+                          </View>
+                          {hidden ? (
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: tx.type === 'income' ? colors.income : tx.type === 'transfer' ? colors.info : colors.expense }}>{"\u2022\u2022\u2022\u2022"}</Text>
+                          ) : (
+                            <CurrencyAmount
+                              value={Math.abs(tx.amount)}
+                              color={tx.type === 'income' ? (colors.isDark ? COLORS.claude.greenText : colors.income) : tx.type === 'transfer' ? colors.info : colors.expense}
+                              fontSize={14}
+                              showSign={tx.type === 'income'}
+                            />
+                          )}
+                        </View>
+                      </Pressable>
+                    </React.Fragment>
+                  ))}
                 </View>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    borderRadius: 12,
-                    paddingHorizontal: 12,
-                    paddingVertical: 8,
-                    backgroundColor: colors.isDark ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.10)',
-                  }}
-                >
-                  <AlertTriangle size={14} color={colors.warning} strokeWidth={2} />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.warning, marginLeft: 6 }}>
-                    {maskIfHidden(formatCompactNumber(total), hidden)} {t('DUE_THIS_MONTH')}
+              ) : (
+                <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 13, color: colors.textTertiary }}>
+                    {t('NO_TRANSACTIONS_MONTH')}
                   </Text>
                 </View>
-              </View>
-            </LinearGradient>
-          </View>
-        );
-      }
-
-      case 'commitment-item':
-        return <CommitmentRow commitment={item.commitment} />;
-
-      // ─── Transactions Block: each tx in its own gradient card ───
-      case 'transactions-block': {
-        // Cap at 10 — user can tap "See All" for the full list.
-        // This avoids rendering 20+ items inside a non-virtualized ScrollView.
-        const txns = item.transactions.slice(0, 10);
-        const txBlockWidth = TX_BLOCK_WIDTH;
-        return (
-          <View style={{
-            marginTop: 10,
-            marginHorizontal: 16,
-            borderRadius: 24,
-            overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: colors.isDark ? 'rgba(139,92,246,0.15)' : 'rgba(203,213,225,0.5)',
-            shadowColor: colors.isDark ? '#8B5CF6' : '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: colors.isDark ? 0.12 : 0.06,
-            shadowRadius: 10,
-            elevation: 3,
-          }}>
-            {/* GlassCard-like background gradient */}
-            <LinearGradient
-              colors={colors.isDark
-                ? ['rgba(25,32,48,0.92)', 'rgba(18,26,42,0.96)', 'rgba(32,44,62,0.94)']
-                : ['#FFFFFF', '#F4F6F8', '#EBEEF2', '#FFFFFF']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            />
-            {/* Static metallic sheen */}
-            <LinearGradient
-              colors={colors.isDark
-                ? ['rgba(255,255,255,0.03)', 'transparent', 'rgba(255,255,255,0.015)']
-                : ['rgba(255,255,255,0.9)', 'rgba(215,220,230,0.2)', 'rgba(255,255,255,0.5)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            />
-            {/* Animated diagonal glass sheen — sweeps across */}
-            <MetallicShine
-              width={txBlockWidth}
-              borderRadius={24}
-              duration={5000}
-              intensity={colors.isDark ? 0.25 : 0.4}
-            />
-            {/* Dark-mode purple shimmer overlay */}
-            {colors.isDark ? (
-              <LinearGradient
-                colors={['transparent', 'rgba(217,70,239,0.02)', 'rgba(139,92,246,0.05)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-              />
-            ) : null}
-            <View style={{ paddingTop: 14, paddingBottom: 8 }}>
-            {/* Section header */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, paddingHorizontal: 16 }}>
-              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
-                {STRINGS.RECENT_TRANSACTIONS}
-              </Text>
-              <Pressable onPress={() => { impactLight(); router.push('/(tabs)/transactions'); }}>
-                <Text style={{ fontSize: 13, fontWeight: '500', color: colors.primary }}>
-                  {STRINGS.SEE_ALL}
-                </Text>
-              </Pressable>
-            </View>
-
-            {txns.length > 0 ? (
-              <ScrollView
-                horizontal={false}
-                showsVerticalScrollIndicator={false}
-                style={{ maxHeight: 360 }}
-                contentContainerStyle={{ paddingHorizontal: 8, gap: 8 }}
-              >
-                {txns.map((tx) => (
-                  <Pressable
-                    key={tx.id}
-                    onPress={() => { impactLight(); router.push({ pathname: '/(tabs)/transactions', params: { edit_id: tx.id } }); }}
-                    style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-                  >
-                    <View
-                      style={{
-                        borderRadius: 20,
-                        overflow: 'hidden',
-                        borderWidth: 1,
-                        borderColor: colors.isDark ? 'rgba(139,92,246,0.15)' : colors.glassBorder,
-                        shadowColor: colors.isDark ? '#8B5CF6' : '#000',
-                        shadowOffset: { width: 0, height: 3 },
-                        shadowOpacity: colors.isDark ? 0.10 : 0.04,
-                        shadowRadius: 8,
-                        elevation: 3,
-                      }}
-                    >
-                      <LinearGradient
-                        colors={colors.isDark
-                          ? ['rgba(25,32,48,0.92)', 'rgba(18,26,42,0.96)', 'rgba(32,44,62,0.94)']
-                          : ['#FFFFFF', '#F4F6F8', '#EBEEF2', '#FFFFFF']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={{ paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}
-                      >
-                        {/* Metallic sheen */}
-                        <LinearGradient
-                          colors={colors.isDark
-                            ? ['rgba(255,255,255,0.03)', 'transparent', 'rgba(255,255,255,0.015)']
-                            : ['rgba(255,255,255,0.9)', 'rgba(215,220,230,0.2)', 'rgba(255,255,255,0.5)']}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                        />
-                        {colors.isDark ? (
-                          <LinearGradient
-                            colors={['transparent', 'rgba(217,70,239,0.02)', 'rgba(139,92,246,0.05)']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-                          />
-                        ) : null}
-                        {/* Category icon */}
-                        <View
-                          style={{
-                            height: 38,
-                            width: 38,
-                            borderRadius: 19,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            marginRight: 12,
-                            backgroundColor: (tx.category_color ?? colors.textTertiary) + '20',
-                          }}
-                        >
-                          <Text style={{ fontSize: 17 }}>{tx.category_icon ?? '📱'}</Text>
-                        </View>
-                        {/* Description + category */}
-                        <View style={{ flex: 1, marginRight: 10 }}>
-                          <Text
-                            numberOfLines={1}
-                            style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}
-                          >
-                            {tx.description}
-                          </Text>
-                          <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1 }}>
-                            {tc(tx.category_name ?? '') || t('UNCATEGORIZED')} · {formatShortDate(parseISO(tx.date))}
-                          </Text>
-                        </View>
-                        {/* Amount on the same line */}
-                        {hidden ? (
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: tx.type === 'income' ? colors.income : tx.type === 'transfer' ? colors.info : colors.expense }}>{"\u2022\u2022\u2022\u2022"}</Text>
-                        ) : (
-                          <CurrencyAmount
-                            value={Math.abs(tx.amount)}
-                            color={tx.type === 'income' ? colors.income : tx.type === 'transfer' ? colors.info : colors.expense}
-                            fontSize={14}
-                            showSign={tx.type === 'income'}
-                          />
-                        )}
-                      </LinearGradient>
-                    </View>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, color: colors.textTertiary }}>
-                  {t('NO_TRANSACTIONS_MONTH')}
-                </Text>
-              </View>
-            )}
-            </View>
+              )}
+            </Card>
           </View>
         );
       }
@@ -978,13 +703,26 @@ function DashboardContent(): React.ReactElement {
 
   const getItemType = (item: SectionType): string => item.type;
 
-  const BgWrapper = colors.isDark ? LinearGradient : View;
-  const bgProps = colors.isDark
-    ? { colors: [...colors.gradientBg], style: { flex: 1 } }
-    : { style: { flex: 1, backgroundColor: colors.background } };
-
   return (
-    <BgWrapper {...(bgProps as any)}>
+    <View style={{ flex: 1, backgroundColor: colors.isDark ? COLORS.claude.bg0 : colors.background }}>
+      {/* Ambient purple glow — top-left */}
+      {colors.isDark ? (
+        <LinearGradient
+          colors={['rgba(91,47,199,0.28)', 'transparent']}
+          start={{ x: 0.2, y: 0 }}
+          end={{ x: 0.8, y: 0.5 }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '60%' }}
+        />
+      ) : null}
+      {/* Ambient blue glow — bottom-right */}
+      {colors.isDark ? (
+        <LinearGradient
+          colors={['transparent', 'rgba(60,120,190,0.18)']}
+          start={{ x: 0, y: 0.4 }}
+          end={{ x: 1, y: 1 }}
+          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '55%' }}
+        />
+      ) : null}
       {/* Compact sticky balance bar */}
       <Animated.View
         style={[
@@ -1004,7 +742,7 @@ function DashboardContent(): React.ReactElement {
       >
         <LinearGradient
           colors={colors.isDark
-            ? ['rgba(15,20,32,0.97)', 'rgba(15,20,32,0.92)', 'rgba(15,20,32,0)']
+            ? ['rgba(7,8,15,0.97)', 'rgba(7,8,15,0.92)', 'rgba(7,8,15,0)']
             : ['rgba(248,250,252,0.97)', 'rgba(248,250,252,0.92)', 'rgba(248,250,252,0)']}
           style={{
             position: 'absolute',
@@ -1014,8 +752,8 @@ function DashboardContent(): React.ReactElement {
             bottom: -12,
           }}
         />
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 8 }}>
             <View
               style={{
                 width: 28,
@@ -1023,7 +761,9 @@ function DashboardContent(): React.ReactElement {
                 borderRadius: 8,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: colors.isDark ? 'rgba(139,92,246,0.15)' : colors.primary + '12',
+                backgroundColor: colors.isDark ? COLORS.claude.chip.purpleBgStart : colors.primary + '12',
+                borderWidth: 1,
+                borderColor: colors.isDark ? COLORS.claude.chip.purpleBorder : 'transparent',
               }}
             >
               <Wallet size={14} color={colors.primaryLight} strokeWidth={2} />
@@ -1034,8 +774,8 @@ function DashboardContent(): React.ReactElement {
               <CurrencyAmount value={compactBalance} color={colors.textPrimary} fontSize={18} fontWeight="700" />
             )}
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10 }}>
+            <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
               <ArrowDownRight size={11} color={colors.expense} strokeWidth={2.5} />
               {hidden ? (
                 <Text style={{ fontSize: 11, fontWeight: '600', color: colors.expense }}>••••</Text>
@@ -1043,7 +783,7 @@ function DashboardContent(): React.ReactElement {
                 <CurrencyAmount value={compactExpense} color={colors.expense} fontSize={11} fontWeight="600" />
               )}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
               <ArrowUpRight size={11} color={colors.income} strokeWidth={2.5} />
               {hidden ? (
                 <Text style={{ fontSize: 11, fontWeight: '600', color: colors.income }}>••••</Text>
@@ -1065,7 +805,6 @@ function DashboardContent(): React.ReactElement {
         data={sections}
         renderItem={renderItem}
         getItemType={getItemType}
-        estimatedItemSize={100}
         drawDistance={300}
         showsVerticalScrollIndicator={false}
         refreshing={false}
@@ -1117,7 +856,21 @@ function DashboardContent(): React.ReactElement {
         onScan={() => router.push('/(tabs)/smart-input?mode=scan')}
         onManual={() => router.push('/(tabs)/smart-input?mode=manual')}
       />
-    </BgWrapper>
+
+      {/* Transactions modal — slides up from "See All" in recent transactions */}
+      <Modal
+        visible={showTxnModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowTxnModal(false)}
+        statusBarTranslucent
+      >
+        <TransactionsPageContent
+          onClose={() => setShowTxnModal(false)}
+          isModal
+        />
+      </Modal>
+    </View>
   );
 }
 

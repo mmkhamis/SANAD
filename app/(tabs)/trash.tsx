@@ -8,7 +8,8 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft, RotateCcw, Trash2, Receipt, Coins } from 'lucide-react-native';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
+import { useT, tFormat } from '../../lib/i18n';
 import { formatAmount } from '../../utils/currency';
 import { formatTimeAgo } from '../../utils/locale-format';
 import { impactLight, impactMedium, notifySuccess, notifyError } from '../../utils/haptics';
@@ -32,6 +33,7 @@ type TrashItem =
 
 export default function TrashScreen(): React.ReactElement {
   const colors = useThemeColors();
+  const { isRTL } = useRTL();
   const t = useT();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -86,7 +88,7 @@ export default function TrashScreen(): React.ReactElement {
 
     Alert.alert(
       t('TRASH_DELETE_PERMANENTLY' as any),
-      `${label} ${t('TRASH_DELETE_CONFIRM_SUFFIX' as any)}`,
+      tFormat('TRASH_DELETE_CONFIRM_TEMPLATE', { label }),
       [
         { text: t('CANCEL'), style: 'cancel' },
         {
@@ -129,7 +131,7 @@ export default function TrashScreen(): React.ReactElement {
         }}
       >
         <Pressable onPress={() => router.back()} style={{ padding: 4, marginRight: 12 }}>
-          <ArrowLeft size={22} color={colors.textPrimary} strokeWidth={2} />
+          <ArrowLeft size={22} color={colors.textPrimary} strokeWidth={2} style={{ transform: [{ scaleX: isRTL ? -1 : 1 }] }} />
         </Pressable>
         <View className="flex-1">
           <Text style={{ fontSize: 20, fontWeight: '700', color: colors.textPrimary }}>

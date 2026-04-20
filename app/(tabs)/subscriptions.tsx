@@ -21,6 +21,7 @@ import { impactLight, impactMedium, notifySuccess } from '../../utils/haptics';
 import { SmartInputButton } from '../../components/ui/SmartInputButton';
 import { formatAmount } from '../../utils/currency';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useResponsive } from '../../hooks/useResponsive';
 import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
 import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { ErrorState } from '../../components/ui/ErrorState';
@@ -28,6 +29,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { HorizonSelector, type HorizonMonths } from '../../components/ui/HorizonSelector';
 import { FeatureGate } from '../../components/ui/FeatureGate';
 import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import {
   useSubscriptions,
@@ -73,8 +75,10 @@ function AddSubscriptionModal({
   onClose: () => void;
 }): React.ReactElement {
   const colors = useThemeColors();
+  const { hPad } = useResponsive();
   const insets = useSafeAreaInsets();
   const t = useT();
+  const { isRTL } = useRTL();
   const { mutateAsync, isPending } = useCreateSubscription();
 
   const [step, setStep] = useState<'preset' | 'form'>('preset');
@@ -101,7 +105,7 @@ function AddSubscriptionModal({
 
   const handlePresetSelect = (preset: SubscriptionPreset): void => {
     impactLight();
-    setName(preset.name);
+    setName(isRTL ? preset.nameAr : preset.name);
     setIcon(preset.icon);
     setColor(preset.color);
     setCategory(preset.category);
@@ -152,6 +156,13 @@ function AddSubscriptionModal({
     ? SUBSCRIPTION_PRESETS.filter((p) => p.category === filterCat)
     : SUBSCRIPTION_PRESETS;
 
+  const catLabel = (cat: string): string => {
+    const key = `SUB_CAT_${cat.toUpperCase()}` as const;
+    const translated = t(key as any);
+    // t() returns the key itself when missing; fall back to original category
+    return translated === key ? cat : translated;
+  };
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <KeyboardAvoidingView
@@ -191,7 +202,7 @@ function AddSubscriptionModal({
                   className="rounded-lg px-3 py-2 mr-2"
                   style={{ backgroundColor: filterCat === cat ? colors.primary : colors.surfaceSecondary }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: filterCat === cat ? '#fff' : colors.textSecondary }}>{cat}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: filterCat === cat ? '#fff' : colors.textSecondary }}>{catLabel(cat)}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -215,7 +226,7 @@ function AddSubscriptionModal({
                     <Text style={{ fontSize: 28, marginBottom: 4 }}>{preset.icon}</Text>
                   )}
                   <Text numberOfLines={1} style={{ fontSize: 12, fontWeight: '600', color: colors.textPrimary, textAlign: 'center' }}>
-                    {preset.name}
+                    {isRTL ? preset.nameAr : preset.name}
                   </Text>
                 </Pressable>
               ))}
@@ -235,14 +246,14 @@ function AddSubscriptionModal({
           </ScrollView>
         ) : (
           <ScrollView
-            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 20, paddingBottom: insets.bottom + 20 }}
+            contentContainerStyle={{ paddingHorizontal: hPad, paddingTop: 20, paddingBottom: insets.bottom + 20 }}
             keyboardShouldPersistTaps="handled"
           >
             {/* Preview */}
             <View className="items-center mb-6">
               <View className="h-16 w-16 rounded-2xl items-center justify-center mb-2" style={{ backgroundColor: color + '20' }}>
                 {(() => {
-                  const preset = SUBSCRIPTION_PRESETS.find((p) => p.name === name);
+                  const preset = SUBSCRIPTION_PRESETS.find((p) => p.name === name || p.nameAr === name);
                   return preset?.logo ? (
                     <Image source={{ uri: preset.logo }} style={{ width: 36, height: 36, borderRadius: 6 }} contentFit="contain" />
                   ) : (
@@ -355,6 +366,7 @@ function SubscriptionsContent(): React.ReactElement {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const t = useT();
+  const { textAlign, rowDir } = useRTL();
   const { data: subs, isLoading, isError, error, refetch } = useSubscriptions();
   const { mutateAsync: deleteSub } = useDeleteSubscription();
   const { mutateAsync: toggleSub } = useToggleSubscription();
@@ -426,8 +438,8 @@ function SubscriptionsContent(): React.ReactElement {
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 120 }}
       >
         {/* Header */}
-        <View className="flex-row items-center justify-between px-4 mb-1">
-          <Text style={{ fontSize: 28, fontWeight: '700', color: colors.textPrimary }}>
+        <View className="flex-row items-center justify-between px-4 mb-1" style={{ flexDirection: rowDir }}>
+          <Text style={{ fontSize: 28, fontWeight: '700', color: colors.textPrimary, textAlign }}>
             {t('SUBS_HEADER' as any)}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -590,9 +602,7 @@ function SubscriptionsContent(): React.ReactElement {
 export default function SubscriptionsScreen(): React.ReactElement {
   return (
     <ErrorBoundary>
-      <FeatureGate feature="fullSubscriptions">
-        <SubscriptionsContent />
-      </FeatureGate>
+      <SubscriptionsContent />
     </ErrorBoundary>
   );
 }

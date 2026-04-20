@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
 import { QUERY_KEYS } from '../lib/query-client';
@@ -18,5 +18,6 @@ export function useExpenseTrend(
     queryKey: QUERY_KEYS.expenseTrend(mode, resolvedMonth),
     queryFn: () => fetchExpenseTrend(mode, resolvedMonth),
     staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 }

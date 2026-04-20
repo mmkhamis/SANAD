@@ -3,11 +3,22 @@ import { View, Text } from 'react-native';
 import { BarChart } from 'react-native-gifted-charts';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
-import { useTranslateCategory } from '../../lib/i18n';
+import { useT, useTranslateCategory } from '../../lib/i18n';
 import { CategoryIcon } from '../ui/CategoryIcon';
-import { STRINGS } from '../../constants/strings';
+import { useRTL } from '../../hooks/useRTL';
 import { formatAmount, formatPercentage } from '../../utils/currency';
+import { COLORS } from '../../constants/colors';
 import type { CategorySpending } from '../../types/index';
+
+// Claude Design category palette — oklch-approx hex values.
+// Rotates across slices to match the prototype's donut/bar visual language.
+const CLAUDE_CHART_PALETTE = [
+  '#E89B6E', // warm orange (mطاعم)
+  '#A278EA', // purple (تسوق)
+  '#6FB4E8', // blue (تنقل)
+  '#7FD6A8', // green (ترفيه)
+  '#9AA0C0', // neutral (أخرى)
+];
 
 interface SpendingBarChartProps {
   data: CategorySpending[];
@@ -29,15 +40,17 @@ export function SpendingBarChart({
   barWidth = 36,
 }: SpendingBarChartProps): React.ReactElement {
   const colors = useThemeColors();
+  const t = useT();
   const tc = useTranslateCategory();
+  const { rowDir, textAlign } = useRTL();
   if (data.length === 0) {
     return (
       <View className="mx-4 mb-4 rounded-2xl p-4" style={{ backgroundColor: colors.surface }}>
-        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 12 }}>
-          {STRINGS.SPENDING_BY_CATEGORY}
+        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 12, textAlign }}>
+          {t('SPENDING_BY_CATEGORY')}
         </Text>
         <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', paddingVertical: 24 }}>
-          {STRINGS.NO_TRANSACTIONS_DESC}
+          {t('NO_TRANSACTIONS_DESC')}
         </Text>
       </View>
     );
@@ -48,22 +61,31 @@ export function SpendingBarChart({
 
   const barData: BarDataItem[] = top5.map((item, index) => ({
     value: item.total,
-    frontColor: item.category_color || colors.chart[index % colors.chart.length],
+    frontColor: item.category_color || CLAUDE_CHART_PALETTE[index % CLAUDE_CHART_PALETTE.length],
     label: '',
     topLabelComponent: () => (
-      <Text style={{ fontSize: 10, color: colors.textSecondary, marginBottom: 2 }}>
+      <Text style={{ fontSize: 10, color: colors.isDark ? COLORS.claude.fg3 : colors.textSecondary, marginBottom: 2, fontWeight: '500' }}>
         {formatAmount(item.total, { compact: true })}
       </Text>
     ),
   }));
 
   return (
-    <View className="mx-4 mb-4 rounded-2xl p-4" style={{ backgroundColor: colors.surface }}>
-      <View className="flex-row items-center justify-between mb-4">
-        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
-          {STRINGS.SPENDING_BY_CATEGORY}
+    <View
+      className="mx-4 mb-4"
+      style={{
+        borderRadius: 20,
+        padding: 18,
+        backgroundColor: colors.isDark ? COLORS.claude.glass1 : colors.surface,
+        borderWidth: 1,
+        borderColor: colors.isDark ? COLORS.claude.stroke : colors.glassBorder,
+      }}
+    >
+      <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.isDark ? COLORS.claude.fg : colors.textPrimary }}>
+          {t('SPENDING_BY_CATEGORY')}
         </Text>
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
+        <Text style={{ fontSize: 14, fontWeight: '700', color: colors.isDark ? COLORS.claude.p200 : colors.primary }}>
           {formatAmount(totalExpense, { compact: true })}
         </Text>
       </View>
@@ -79,8 +101,8 @@ export function SpendingBarChart({
           barBorderTopRightRadius={6}
           xAxisThickness={1}
           yAxisThickness={0}
-          xAxisColor={colors.border}
-          yAxisTextStyle={{ fontSize: 10, color: colors.textTertiary }}
+          xAxisColor={colors.isDark ? COLORS.claude.stroke : colors.border}
+          yAxisTextStyle={{ fontSize: 10, color: colors.isDark ? COLORS.claude.fg4 : colors.textTertiary }}
           hideRules
           animationDuration={0}
           height={160}
@@ -113,7 +135,7 @@ export function SpendingBarChart({
               <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
                 {formatAmount(item.total)}
               </Text>
-              <Text style={{ fontSize: 12, color: colors.textSecondary, width: 45, textAlign: 'right' }}>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, width: 45, textAlign }}>
                 {formatPercentage(item.percentage)}
               </Text>
             </View>

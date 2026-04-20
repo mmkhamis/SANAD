@@ -11,6 +11,7 @@ import {
 } from 'lucide-react-native';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useRTL } from '../../hooks/useRTL';
 import { formatCompactAmount, formatAmount } from '../../utils/currency';
 import { impactLight } from '../../utils/haptics';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
@@ -51,6 +52,7 @@ const DAY_NAMES_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function HabitRow({ habit, rank }: { habit: SpendingHabit; rank: number }): React.ReactElement {
   const colors = useThemeColors();
+  const { rowDir, textAlign, isRTL } = useRTL();
   const hidden = usePrivacyStore((s) => s.hidden);
   const freqColor = FREQ_COLORS[habit.frequency] ?? colors.primaryLight;
   const freqLabels = useFreqLabels();
@@ -59,7 +61,7 @@ function HabitRow({ habit, rank }: { habit: SpendingHabit; rank: number }): Reac
   return (
     <View
       style={{
-        flexDirection: 'row',
+        flexDirection: rowDir,
         alignItems: 'center',
         paddingVertical: 12,
         borderBottomWidth: 1,
@@ -75,21 +77,21 @@ function HabitRow({ habit, rank }: { habit: SpendingHabit; rank: number }): Reac
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: colors.isDark ? 'rgba(139,92,246,0.1)' : colors.primary + '0D',
-          marginRight: 12,
+          marginEnd: 12,
         }}
       >
         <Text style={{ fontSize: 16 }}>{habit.icon ?? `#${rank}`}</Text>
       </View>
 
       {/* Name + meta */}
-      <View style={{ flex: 1, marginRight: 8 }}>
+      <View style={{ flex: 1, marginEnd: 8 }}>
         <Text
           numberOfLines={1}
-          style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}
+          style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary, textAlign }}
         >
           {habit.name}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+        <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 6, marginTop: 3 }}>
           {/* Frequency badge */}
           <View
             style={{
@@ -115,11 +117,11 @@ function HabitRow({ habit, rank }: { habit: SpendingHabit; rank: number }): Reac
       </View>
 
       {/* Amount + annualized */}
-      <View style={{ alignItems: 'flex-end' }}>
+      <View style={{ alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
         <Text style={{ fontSize: 14, fontWeight: '700', color: colors.expense }}>
           {maskIfHidden(formatCompactAmount(habit.totalSpend), hidden)}
         </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 }}>
+        <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 2, marginTop: 2 }}>
           {habit.momChange != null ? (
             <>
               {habit.momChange > 0 ? (
@@ -190,6 +192,7 @@ interface HabitSectionProps {
 /** Rich habit analytics section for the Analytics tab. */
 export function HabitSection({ insights }: HabitSectionProps): React.ReactElement | null {
   const colors = useThemeColors();
+  const { rowDir } = useRTL();
   const hidden = usePrivacyStore((s) => s.hidden);
   const t = useT();
   const [expanded, setExpanded] = React.useState(false);
@@ -201,7 +204,7 @@ export function HabitSection({ insights }: HabitSectionProps): React.ReactElemen
   return (
     <View className="mx-4 mt-3 mb-2">
       {/* Section header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+      <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <View
           style={{
             width: 28,

@@ -4,7 +4,7 @@ import { View, Text, type TextStyle } from 'react-native';
 import { CurrencyIcon, hasCurrencyIcon } from './CurrencyIcon';
 import { useSettingsStore } from '../../store/settings-store';
 import { useLanguageStore } from '../../store/language-store';
-import { formatCompactNumber } from '../../utils/currency';
+import { formatCompactNumberLocale } from '../../utils/currency';
 
 interface CurrencyAmountProps {
   value: number;
@@ -19,6 +19,10 @@ interface CurrencyAmountProps {
 /**
  * Renders a compact amount with an SVG currency icon instead of text like "EGP".
  * Falls back to the Intl symbol text when no SVG icon exists.
+ *
+ * Arabic layout (RTL): currency icon/symbol on the LEFT, number in the middle,
+ * sign (if negative) on the RIGHT → "[icon] 500 -"
+ * LTR layout: sign on left, number, icon on right → "- 500 [icon]"
  */
 export const CurrencyAmount = React.memo(function CurrencyAmount({
   value,
@@ -33,10 +37,24 @@ export const CurrencyAmount = React.memo(function CurrencyAmount({
   const hasIcon = hasCurrencyIcon(currency);
   const resolvedIconSize = iconSize ?? Math.round(fontSize * 0.65);
   const sign = showSign ? (value >= 0 ? '+' : '-') : (value < 0 ? '-' : '');
-  const displayNumber = formatCompactNumber(Math.abs(value));
+  const displayNumber = formatCompactNumberLocale(Math.abs(value), language);
   const iconColor = '#9CA3AF';
+  const isArabic = language === 'ar';
 
   if (hasIcon) {
+    if (isArabic) {
+      // Arabic: [icon] [number] [sign]
+      return (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+          <CurrencyIcon currency={currency} size={resolvedIconSize} color={iconColor} />
+          <Text style={{ fontSize, fontWeight, color }}>{displayNumber}</Text>
+          {sign ? (
+            <Text style={{ fontSize, fontWeight, color }}>{sign}</Text>
+          ) : null}
+        </View>
+      );
+    }
+    // LTR: [sign] [number] [icon]
     return (
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
         {sign ? (
@@ -50,6 +68,14 @@ export const CurrencyAmount = React.memo(function CurrencyAmount({
 
   // Fallback: use text symbol from Intl
   const symbol = getTextSymbol(currency, language);
+  if (isArabic) {
+    // Arabic: symbol [number][sign]
+    return (
+      <Text style={{ fontSize, fontWeight, color }}>
+        {symbol} {displayNumber}{sign}
+      </Text>
+    );
+  }
   return (
     <Text style={{ fontSize, fontWeight, color }}>
       {sign}{symbol} {displayNumber}

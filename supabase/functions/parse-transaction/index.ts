@@ -3,6 +3,7 @@
 // Uses rule-based classification for bank SMS, OpenAI for everything else.
 
 import { verifyAuth } from '../_shared/auth.ts';
+import { normalizeParsedTransactions } from '../_shared/ai-output-normalizers.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -431,6 +432,7 @@ USER'S EXPENSE CATEGORIES: ${expenseCatList}
 USER'S INCOME CATEGORIES: ${incomeCatList}
 
 RULES:
+0. Return valid JSON only. No markdown, no comments, no extra keys.
 1. Extract EACH transaction mentioned. The input may describe ONE or MULTIPLE transactions.
 2. For each transaction return:
    - "amount": the monetary amount as a number
@@ -453,6 +455,7 @@ RULES:
    - "bought coffee from Starbucks" → merchant="Starbucks", category=dining/coffee
    - "paid 100 from bank account" → account_name=match to user's bank account
    - Do NOT use the user's account name as a merchant. "from my account"/"from bank"/"from cash" = SOURCE ACCOUNT.
+   - If merchant/category/account is unclear, return null for that field (do not invent).
 
 4. Arabic bank SMS:
    - "تم إضافة" = income, "تم خصم" = expense
@@ -462,6 +465,12 @@ RULES:
 5. Arabic casual verbs:
    - "حولي", "حوّل لي", "وصلي" = income
    - "حولت", "دفعت", "ارسلت" = expense
+
+6. Category discipline:
+   - "category" MUST be EXACTLY one of the listed categories.
+   - If unsure, use the closest safe fallback from the same type list:
+     expense/transfer => "Miscellaneous" (if available), income => "Other Income" (if available).
+   - Never output a category that is not in the provided lists.
 
 Return JSON only:
 {
@@ -542,20 +551,19 @@ async function callOpenAI(
     ? (parsed as LLMMultiResult).transactions
     : [parsed as LLMResult];
 
-  const validTypes = ['income', 'expense', 'transfer'];
-  for (const item of items) {
-    if (!validTypes.includes(item.transaction_type)) {
-      item.transaction_type = 'expense';
-      item.needs_review = true;
-    }
-    if (typeof item.amount !== 'number' || item.amount <= 0) {
-      item.needs_review = true;
-    }
-    item.confidence = Math.min(Math.max(item.confidence ?? 0.5, 0), 1);
-    item.needs_review = item.needs_review || item.confidence < 0.7;
+  const expenseCategoryNames = categories
+    .filter((category) => category.type === 'expense')
+    .map((category) => category.name);
+  const incomeCategoryNames = categories
+    .filter((category) => category.type === 'income')
+    .map((category) => category.name);
+
+  const normalized = normalizeParsedTransactions(items, expenseCategoryNames, incomeCategoryNames);
+  if (normalized.length === 0) {
+    throw new Error('No valid transactions extracted');
   }
 
-  return items;
+  return normalized;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────

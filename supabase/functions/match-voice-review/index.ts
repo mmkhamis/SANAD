@@ -3,6 +3,7 @@
 // Uses GPT to understand EN/AR instructions and match to transactions.
 
 import { verifyAuth } from '../_shared/auth.ts';
+import { normalizeVoiceReviewMatches } from '../_shared/ai-output-normalizers.ts';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -55,7 +56,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     const categoryList = available_categories.join(', ');
 
-    const systemPrompt = `You are a bilingual (English + Arabic) financial assistant for a mobile wallet app.
+    const systemPrompt = `You are a bilingual (English + Arabic) financial assistant for SANAD, a mobile finance app.
 
 The user is reviewing pending SMS transactions and will tell you — by voice — which category each transaction belongs to.
 
@@ -77,6 +78,9 @@ Parse the user's voice instruction and return a JSON array of matches. The user 
 الاولى/الاولي/الأولى = 1, التانية/الثانية = 2, التالتة/الثالثة = 3, الرابعة = 4, الخامسة = 5, السادسة = 6, السابعة = 7, الثامنة = 8, التاسعة = 9, العاشرة = 10
 
 ## Rules:
+- Return valid JSON only. No markdown, no explanations.
+- Use only categories from "Available categories".
+- One output object per matched transaction index (no duplicates).
 - Match the user's category description to the CLOSEST available category from the list. If no exact match, pick the best fit.
 - transaction_type: "income" for salary/received/deposit, "transfer" for transfers, "expense" for everything else.
 - If a transaction cannot be confidently matched, DO NOT include it.
@@ -132,8 +136,10 @@ Parse the user's voice instruction and return a JSON array of matches. The user 
       matches = [];
     }
 
+    const normalizedMatches = normalizeVoiceReviewMatches(matches, available_categories);
+
     return new Response(
-      JSON.stringify({ matches }),
+      JSON.stringify({ matches: normalizedMatches }),
       { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } },
     );
   } catch (err) {

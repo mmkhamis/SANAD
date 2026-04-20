@@ -8,12 +8,15 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useExpenseTrend } from '../../hooks/useExpenseTrend';
 import { formatCompactAmount } from '../../utils/currency';
 import { impactLight } from '../../utils/haptics';
+import { COLORS } from '../../constants/colors';
+import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import type { ExpenseTrendMode } from '../../types/index';
 
-const MODES: { key: ExpenseTrendMode; label: string }[] = [
-  { key: 'day', label: 'Daily' },
-  { key: 'week', label: 'Weekly' },
-  { key: 'month', label: 'Monthly' },
+const MODE_KEYS: { key: ExpenseTrendMode; labelKey: 'TREND_DAILY' | 'TREND_WEEKLY' | 'TREND_MONTHLY' }[] = [
+  { key: 'day', labelKey: 'TREND_DAILY' },
+  { key: 'week', labelKey: 'TREND_WEEKLY' },
+  { key: 'month', labelKey: 'TREND_MONTHLY' },
 ];
 
 interface ExpenseTrendChartProps {
@@ -22,6 +25,8 @@ interface ExpenseTrendChartProps {
 
 export function ExpenseTrendChart({ month }: ExpenseTrendChartProps): React.ReactElement {
   const colors = useThemeColors();
+  const t = useT();
+  const { rowDir } = useRTL();
   const [mode, setMode] = useState<ExpenseTrendMode>('day');
   const { data: points, isLoading } = useExpenseTrend(mode, month);
 
@@ -45,16 +50,16 @@ export function ExpenseTrendChart({ month }: ExpenseTrendChartProps): React.Reac
       style={{
         marginHorizontal: 16,
         marginBottom: 12,
-        borderRadius: 24,
+        borderRadius: 20,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: colors.isDark ? 'rgba(139,92,246,0.15)' : colors.glassBorder,
+        borderColor: colors.isDark ? COLORS.claude.stroke : colors.glassBorder,
       }}
     >
       <LinearGradient
         colors={
           colors.isDark
-            ? ['rgba(25,32,48,0.92)', 'rgba(18,26,42,0.96)', 'rgba(32,44,62,0.94)']
+            ? [COLORS.claude.glass1, COLORS.claude.glass2, COLORS.claude.glass1]
             : ['#FFFFFF', '#F4F6F8', '#EBEEF2', '#FFFFFF']
         }
         start={{ x: 0, y: 0 }}
@@ -74,7 +79,7 @@ export function ExpenseTrendChart({ month }: ExpenseTrendChartProps): React.Reac
         />
         {colors.isDark ? (
           <LinearGradient
-            colors={['transparent', 'rgba(217,70,239,0.03)', 'rgba(139,92,246,0.08)']}
+            colors={['transparent', 'rgba(139,92,246,0.04)', 'rgba(139,92,246,0.10)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
@@ -82,8 +87,8 @@ export function ExpenseTrendChart({ month }: ExpenseTrendChartProps): React.Reac
         ) : null}
 
         {/* Header row */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 8 }}>
             <View
               style={{
                 width: 32,
@@ -97,7 +102,7 @@ export function ExpenseTrendChart({ month }: ExpenseTrendChartProps): React.Reac
               <TrendingDown size={16} color={colors.expense} strokeWidth={2} />
             </View>
             <View>
-              <Text style={{ fontSize: 13, color: colors.textSecondary }}>Expense Trend</Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary }}>{t('EXPENSE_TREND')}</Text>
               <Text style={{ fontSize: 18, fontWeight: '700', color: colors.isDark ? '#FFFFFF' : colors.textPrimary }}>
                 {formatCompactAmount(Math.round(totalExpense * 100) / 100)}
               </Text>
@@ -107,14 +112,14 @@ export function ExpenseTrendChart({ month }: ExpenseTrendChartProps): React.Reac
           {/* Mode pills */}
           <View
             style={{
-              flexDirection: 'row',
+              flexDirection: rowDir,
               borderRadius: 12,
               overflow: 'hidden',
               borderWidth: 1,
-              borderColor: colors.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+              borderColor: colors.isDark ? COLORS.claude.stroke : 'rgba(0,0,0,0.06)',
             }}
           >
-            {MODES.map((m) => {
+            {MODE_KEYS.map((m) => {
               const active = m.key === mode;
               return (
                 <Pressable
@@ -132,10 +137,10 @@ export function ExpenseTrendChart({ month }: ExpenseTrendChartProps): React.Reac
                     style={{
                       fontSize: 11,
                       fontWeight: active ? '700' : '500',
-                      color: active ? colors.primaryLight : colors.textTertiary,
+                      color: active ? (colors.isDark ? COLORS.claude.p200 : colors.primaryLight) : (colors.isDark ? COLORS.claude.fg3 : colors.textTertiary),
                     }}
                   >
-                    {m.label}
+                    {t(m.labelKey)}
                   </Text>
                 </Pressable>
               );
@@ -150,7 +155,7 @@ export function ExpenseTrendChart({ month }: ExpenseTrendChartProps): React.Reac
           </View>
         ) : lineData.length === 0 ? (
           <View style={{ height: 160, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: 13, color: colors.textTertiary }}>No expenses yet</Text>
+            <Text style={{ fontSize: 13, color: colors.textTertiary }}>{t('NO_EXPENSES_YET')}</Text>
           </View>
         ) : (
           <View style={{ marginLeft: -8 }}>
@@ -174,11 +179,11 @@ export function ExpenseTrendChart({ month }: ExpenseTrendChartProps): React.Reac
               textShiftX={-8}
               xAxisThickness={1}
               yAxisThickness={0}
-              xAxisColor={colors.isDark ? 'rgba(255,255,255,0.06)' : colors.borderLight}
-              yAxisTextStyle={{ fontSize: 9, color: colors.textTertiary }}
-              xAxisLabelTextStyle={{ fontSize: mode === 'day' ? 8 : 10, color: colors.textTertiary }}
+              xAxisColor={colors.isDark ? COLORS.claude.stroke : colors.borderLight}
+              yAxisTextStyle={{ fontSize: 9, color: colors.isDark ? COLORS.claude.fg4 : colors.textTertiary }}
+              xAxisLabelTextStyle={{ fontSize: mode === 'day' ? 8 : 10, color: colors.isDark ? COLORS.claude.fg4 : colors.textTertiary }}
               rulesType="dashed"
-              rulesColor={colors.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}
+              rulesColor={colors.isDark ? COLORS.claude.stroke : 'rgba(0,0,0,0.04)'}
               dashWidth={4}
               dashGap={4}
               height={140}
@@ -205,12 +210,12 @@ export function ExpenseTrendChart({ month }: ExpenseTrendChartProps): React.Reac
                 pointerLabelComponent: (items: { value: number }[]) => (
                   <View
                     style={{
-                      backgroundColor: colors.isDark ? 'rgba(30,38,55,0.95)' : 'rgba(255,255,255,0.95)',
+                      backgroundColor: colors.isDark ? 'rgba(22,24,39,0.94)' : 'rgba(255,255,255,0.95)',
                       paddingHorizontal: 8,
                       paddingVertical: 4,
                       borderRadius: 8,
                       borderWidth: 1,
-                      borderColor: colors.isDark ? 'rgba(139,92,246,0.2)' : colors.glassBorder,
+                      borderColor: colors.isDark ? COLORS.claude.strokeStrong : colors.glassBorder,
                     }}
                   >
                     <Text style={{ fontSize: 11, fontWeight: '600', color: lineColor }}>

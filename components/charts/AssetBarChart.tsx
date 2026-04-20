@@ -4,7 +4,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BarChart } from 'react-native-gifted-charts';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import { formatAmount } from '../../utils/currency';
+import { COLORS } from '../../constants/colors';
 import type { PortfolioSummary } from '../../types/index';
 
 const ASSET_COLORS: Record<'gold' | 'silver' | 'crypto' | 'stock', string> = {
@@ -30,6 +33,8 @@ interface BarDataItem {
 
 export function AssetBarChart({ portfolio }: { portfolio: PortfolioSummary }): React.ReactElement {
   const colors = useThemeColors();
+  const t = useT();
+  const { textAlign } = useRTL();
   const { breakdown, total_value } = portfolio;
 
   const segments: { key: keyof typeof ASSET_COLORS; value: number; color: string; label: string }[] = [];
@@ -54,9 +59,10 @@ export function AssetBarChart({ portfolio }: { portfolio: PortfolioSummary }): R
   }));
 
   return (
-    <View className="mx-4 mt-3 rounded-2xl overflow-hidden" style={{
+    <View className="mx-4 mt-3 overflow-hidden" style={{
+      borderRadius: 20,
       borderWidth: 1,
-      borderColor: colors.isDark ? 'rgba(139,92,246,0.15)' : 'rgba(203,213,225,0.5)',
+      borderColor: colors.isDark ? COLORS.claude.stroke : 'rgba(203,213,225,0.5)',
       shadowColor: colors.isDark ? '#8B5CF6' : '#000',
       shadowOffset: { width: 0, height: 6 },
       shadowOpacity: colors.isDark ? 0.15 : 0.06,
@@ -65,7 +71,7 @@ export function AssetBarChart({ portfolio }: { portfolio: PortfolioSummary }): R
     }}>
       <LinearGradient
         colors={colors.isDark
-          ? ['rgba(25,32,48,0.92)', 'rgba(18,26,42,0.96)', 'rgba(32,44,62,0.94)']
+          ? [COLORS.claude.glass1, COLORS.claude.glass2, COLORS.claude.glass1]
           : ['#FFFFFF', '#F4F6F8', '#EBEEF2', '#FFFFFF']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -83,7 +89,7 @@ export function AssetBarChart({ portfolio }: { portfolio: PortfolioSummary }): R
         {/* Subtle shimmer */}
         {colors.isDark ? (
           <LinearGradient
-            colors={['transparent', 'rgba(217,70,239,0.03)', 'rgba(139,92,246,0.08)']}
+            colors={['transparent', 'rgba(139,92,246,0.04)', 'rgba(139,92,246,0.10)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
@@ -91,8 +97,8 @@ export function AssetBarChart({ portfolio }: { portfolio: PortfolioSummary }): R
         ) : null}
         {/* Content */}
         <View>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 16 }}>
-            Asset Breakdown
+          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary, marginBottom: 16, textAlign }}>
+            {t('ASSETS_BREAKDOWN' as any)}
           </Text>
 
           <View className="items-center">

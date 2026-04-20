@@ -41,6 +41,18 @@ function getCategoryMap(): Record<string, string> {
     : CATEGORY_NAMES_AR;
 }
 
+/**
+ * Case-insensitive lookup in a category translation map.
+ * Tries exact match first, then lowercase comparison.
+ * Handles DB data that may have been seeded with different casing.
+ */
+function lookupCategory(map: Record<string, string>, name: string): string | undefined {
+  if (map[name]) return map[name];
+  const lower = name.toLowerCase();
+  const key = Object.keys(map).find((k) => k.toLowerCase() === lower);
+  return key ? map[key] : undefined;
+}
+
 // ─── UI string helpers ────────────────────────────────────────────────────────
 
 /**
@@ -68,17 +80,30 @@ export function t(key: StringKey): string {
   return STRINGS[key];
 }
 
+/**
+ * Non-hook template formatter: replaces `{var}` tokens in the catalog string
+ * with the given values. Example:
+ *   tFormat('TRASH_DELETE_CONFIRM_TEMPLATE', { label: txn.description })
+ */
+export function tFormat(key: StringKey, vars: Record<string, string | number>): string {
+  const template = t(key);
+  return template.replace(/\{(\w+)\}/g, (_, name) => {
+    const v = vars[name];
+    return v === undefined || v === null ? '' : String(v);
+  });
+}
+
 // ─── Category name translation (dialect-aware) ────────────────────────────────
 
 /**
  * Non-hook: translate a category name to the active language + dialect.
  * Gulf currencies → Gulf Arabic. EGP → Egyptian Arabic.
- * Returns the English name unchanged if no translation exists.
+ * Returns null in Arabic mode when no translation exists (so callers can show UNCATEGORIZED).
  */
-export function translateCategory(name: string): string {
+export function translateCategory(name: string): string | null {
   const language = useLanguageStore.getState().language;
   if (language === 'ar') {
-    return getCategoryMap()[name] ?? name;
+    return lookupCategory(getCategoryMap(), name) ?? null;
   }
   return name;
 }
@@ -87,16 +112,16 @@ export function translateCategory(name: string): string {
  * Hook: reactive version of translateCategory.
  * Re-renders automatically when language, currency, or country changes.
  */
-export function useTranslateCategory(): (name: string) => string {
+export function useTranslateCategory(): (name: string) => string | null {
   const language = useLanguageStore((s) => s.language);
   const countryCode = useSettingsStore((s) => s.countryCode);
   const currency = useSettingsStore((s) => s.activeCurrency);
 
-  return (name: string): string => {
+  return (name: string): string | null => {
     if (language === 'ar') {
       const isEgypt = countryCode === 'EG' || currency === 'EGP';
       const map = isEgypt ? CATEGORY_NAMES_AR_EG_MERGED : CATEGORY_NAMES_AR;
-      return map[name] ?? name;
+      return lookupCategory(map, name) ?? null;
     }
     return name;
   };

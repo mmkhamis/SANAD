@@ -10,13 +10,14 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Plus, Trash2, ArrowRight, Check } from 'lucide-react-native';
+import { X, Plus, Trash2, ArrowLeft, ArrowRight, Check } from 'lucide-react-native';
 import { CategoryIcon } from '../ui/CategoryIcon';
 
 import { impactLight, impactMedium, notifySuccess, notifyError } from '../../utils/haptics';
 import { useCreateCategoryGroup } from '../../hooks/useCategories';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import type { TransactionType, Category } from '../../types/index';
 
 // ─── Preset icon/color grid ─────────────────────────────────────────
@@ -59,6 +60,8 @@ export function CreateGroupSheet({
 }: CreateGroupSheetProps): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { isRTL } = useRTL();
+  const ForwardArrow = isRTL ? ArrowLeft : ArrowRight;
   const insets = useSafeAreaInsets();
   const { mutateAsync, isPending } = useCreateCategoryGroup();
 
@@ -369,9 +372,9 @@ export function CreateGroupSheet({
               }}
             >
               <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFFFFF' }}>
-                Add a Transaction
+                {t('CREATE_GROUP_ADD_TX_CTA')}
               </Text>
-              <ArrowRight size={18} color="#FFFFFF" strokeWidth={2.5} />
+              <ForwardArrow size={18} color="#FFFFFF" strokeWidth={2.5} />
             </Pressable>
 
             <Pressable

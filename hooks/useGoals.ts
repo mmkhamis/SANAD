@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { format } from 'date-fns';
 
 import { QUERY_KEYS } from '../lib/query-client';
@@ -21,6 +21,7 @@ export function useGoals(month?: string, enabled = true): UseGoalsResult {
     queryKey: [...QUERY_KEYS.budgets, 'goals', resolvedMonth],
     queryFn: () => fetchGoalsSummary(resolvedMonth),
     staleTime: 1000 * 60 * 2,
+    placeholderData: keepPreviousData,
     enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 

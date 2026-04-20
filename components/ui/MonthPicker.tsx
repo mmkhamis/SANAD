@@ -4,6 +4,7 @@ import { format, addMonths, subMonths } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useRTL } from '../../hooks/useRTL';
 import { impactLight } from '../../utils/haptics';
 import { formatMonthYear } from '../../utils/locale-format';
 
@@ -15,6 +16,7 @@ interface MonthPickerProps {
 
 export function MonthPicker({ month, onMonthChange }: MonthPickerProps): React.ReactElement {
   const colors = useThemeColors();
+  const { isRTL } = useRTL();
   const monthDate = new Date(`${month}-01`);
   const currentMonth = format(new Date(), 'yyyy-MM');
   const isCurrentMonth = month === currentMonth;
@@ -36,9 +38,13 @@ export function MonthPicker({ month, onMonthChange }: MonthPickerProps): React.R
     }
   };
 
+  // In RTL, the left chevron visually represents "next" (future) and right means "previous"
+  const onPressLeft = isRTL ? goForward : goBack;
+  const onPressRight = isRTL ? goBack : goForward;
+
   return (
     <View className="flex-row items-center justify-center gap-4 py-2 px-4">
-      <Pressable onPress={goBack} hitSlop={12} className="p-1">
+      <Pressable onPress={onPressLeft} hitSlop={12} className="p-1">
         <ChevronLeft size={20} color={colors.textPrimary} />
       </Pressable>
 
@@ -56,7 +62,7 @@ export function MonthPicker({ month, onMonthChange }: MonthPickerProps): React.R
         </Text>
       </Pressable>
 
-      <Pressable onPress={goForward} hitSlop={12} className="p-1">
+      <Pressable onPress={onPressRight} hitSlop={12} className="p-1">
         <ChevronRight size={20} color={colors.textPrimary} />
       </Pressable>
     </View>

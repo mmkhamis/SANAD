@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text as BaseText, type TextProps, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { formatAmount } from '../../utils/currency';
@@ -7,9 +7,16 @@ import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { COLORS } from '../../constants/colors';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT, useTranslateCategory } from '../../lib/i18n';
+import { useRTL } from '../../hooks/useRTL';
 import { impactLight } from '../../utils/haptics';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import type { BudgetGoal } from '../../types/index';
+
+// RTL-aware Text wrapper (caller style still wins).
+function Text({ style, ...rest }: TextProps): React.ReactElement {
+  const { textAlign } = useRTL();
+  return <BaseText style={[{ textAlign }, style]} {...rest} />;
+}
 
 function useStatusConfig(): Record<string, { label: string; color: string; bg: string }> {
   const t = useT();
@@ -28,7 +35,9 @@ interface GoalCardProps {
 export function GoalCard({ goal, onPress }: GoalCardProps): React.ReactElement {
   const colors = useThemeColors();
   const hidden = usePrivacyStore((s) => s.hidden);
+  const t = useT();
   const tc = useTranslateCategory();
+  const { rowDir } = useRTL();
   const statusConfig = useStatusConfig();
   const config = statusConfig[goal.status];
   const clampedPercent = Math.min(goal.percent_used, 100);
@@ -61,7 +70,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps): React.ReactElement {
         {/* Content */}
         <View>
           {/* Header: icon + name + status badge */}
-          <View className="flex-row items-center mb-3">
+          <View style={{ flexDirection: rowDir, alignItems: 'center', marginBottom: 12 }}>
             <View
               style={{
                 width: 40,
@@ -70,7 +79,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps): React.ReactElement {
                 backgroundColor: (goal.category_color ?? colors.primary) + '12',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginRight: 12,
+                marginEnd: 12,
               }}
             >
               <CategoryIcon
@@ -79,7 +88,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps): React.ReactElement {
                 color={goal.category_color ?? colors.primary}
               />
             </View>
-            <View className="flex-1">
+            <View style={{ flex: 1 }}>
               <Text
                 numberOfLines={1}
                 style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}
@@ -116,7 +125,7 @@ export function GoalCard({ goal, onPress }: GoalCardProps): React.ReactElement {
           </View>
 
           {/* Amounts row */}
-          <View className="flex-row items-center justify-between">
+          <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between' }}>
             <Text style={{ fontSize: 13, color: colors.textSecondary }}>
               {maskIfHidden(formatAmount(goal.actual_spent), hidden)}{' '}
               <Text style={{ color: colors.textTertiary }}>
@@ -131,8 +140,8 @@ export function GoalCard({ goal, onPress }: GoalCardProps): React.ReactElement {
               }}
             >
               {goal.status === 'exceeded'
-                ? `Over by ${maskIfHidden(formatAmount(Math.abs(goal.remaining)), hidden)}`
-                : `${maskIfHidden(formatAmount(goal.remaining), hidden)} left`}
+                ? (t('GOALS_OVER_BY' as any) as string).replace('{amount}', maskIfHidden(formatAmount(Math.abs(goal.remaining)), hidden))
+                : (t('GOALS_REMAINING' as any) as string).replace('{amount}', maskIfHidden(formatAmount(goal.remaining), hidden))}
             </Text>
           </View>
         </View>

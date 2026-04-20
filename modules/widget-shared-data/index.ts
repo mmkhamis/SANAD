@@ -6,6 +6,9 @@ interface WidgetSharedDataNative {
   removeItem(key: string): Promise<void>;
   reloadAllTimelines(): Promise<void>;
   reloadTimeline(kind: string): Promise<void>;
+  setSupabaseConfig(url: string, anonKey: string): Promise<void>;
+  setSupabaseSession(json: string): Promise<void>;
+  clearSupabaseSession(): Promise<void>;
 }
 
 const noop: WidgetSharedDataNative = {
@@ -14,6 +17,9 @@ const noop: WidgetSharedDataNative = {
   removeItem: async () => {},
   reloadAllTimelines: async () => {},
   reloadTimeline: async () => {},
+  setSupabaseConfig: async () => {},
+  setSupabaseSession: async () => {},
+  clearSupabaseSession: async () => {},
 };
 
 function loadNativeModule(): WidgetSharedDataNative {
@@ -54,4 +60,33 @@ export async function reloadAllWidgets(): Promise<void> {
 /** Reload a specific widget timeline by its kind identifier. */
 export async function reloadWidget(kind: string): Promise<void> {
   await NativeModule.reloadTimeline(kind);
+}
+
+// ─── Supabase native bridge (used by the iOS App Intent) ────────────
+
+export interface NativeSupabaseSession {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number; // unix seconds
+  userId: string;
+}
+
+/** Publish the Supabase URL + anon key to the App Group so the App Intent can read them. */
+export async function setSupabaseConfigNative(
+  url: string,
+  anonKey: string,
+): Promise<void> {
+  await NativeModule.setSupabaseConfig(url, anonKey);
+}
+
+/** Publish the current Supabase session to the shared Keychain. */
+export async function setSupabaseSessionNative(
+  session: NativeSupabaseSession,
+): Promise<void> {
+  await NativeModule.setSupabaseSession(JSON.stringify(session));
+}
+
+/** Wipe the shared Keychain session (called on sign-out). */
+export async function clearSupabaseSessionNative(): Promise<void> {
+  await NativeModule.clearSupabaseSession();
 }

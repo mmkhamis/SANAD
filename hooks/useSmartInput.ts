@@ -12,6 +12,9 @@ import {
 import { suggestCategory } from '../utils/sms-parser';
 import { normalizeMerchant } from '../utils/merchant';
 import type { SmartInputResult, Category, Account, TransactionType } from '../types/index';
+import { enqueue } from '../services/offline-queue-service';
+import { isNetworkError } from '../utils/offline/network-error';
+import { useNetworkStatus } from './useNetworkStatus';
 
 // ─── useParseTransaction ─────────────────────────────────────────────
 
@@ -59,6 +62,8 @@ export interface TransactionDraft {
   notes: string;
   accountId: string | null;
   saved: boolean;
+  /** True if the transaction was enqueued offline (pending sync) */
+  queued: boolean;
   /** Per-draft error message, null when no error */
   error: string | null;
 }
@@ -91,6 +96,7 @@ export function useSmartInput(
   const [state, setState] = useState<SmartInputState>(initialState);
   const parseMutation = useParseTransaction();
   const createMutation = useCreateParsedTransaction();
+  const { isOnline } = useNetworkStatus();
 
   // Use a ref so confirmDraft always reads the latest state
   const stateRef = useRef(state);
@@ -156,6 +162,7 @@ export function useSmartInput(
     notes: '',
     accountId: resolveAccount(result.account_name),
     saved: false,
+    queued: false,
     error: null,
   }), [resolveCategory, resolveAccount]);
 
@@ -274,7 +281,7 @@ export function useSmartInput(
     const current = stateRef.current;
     const draft = current.drafts[draftIndex];
     if (!draft) throw new Error('Draft not found');
-    if (draft.saved) return; // already saved
+    if (draft.saved || draft.queued) return; // already handled
 
     const amount = parseFloat(draft.amount);
     if (isNaN(amount) || amount <= 0) {
@@ -294,6 +301,10 @@ export function useSmartInput(
       throw new Error('Select a category');
     }
 
+    // Stable idempotency key: generated once per draft so replay is always deduped
+    // on the DB side regardless of how many times the queue replays this item.
+    const idempotency_key = `smart-${draft.id}`;
+
     const input: SmartTransactionInput = {
       amount,
       type: draft.transactionType,
@@ -310,25 +321,86 @@ export function useSmartInput(
       parse_confidence: draft.parseResult?.confidence,
       needs_review: draft.parseResult?.needs_review,
       input_source: current.inputSource,
+      idempotency_key,
     };
+
+    // ─── Offline path: enqueue before attempting network call ──────────
+    if (!isOnline) {
+      await enqueue({
+        id: idempotency_key,
+        type: 'manual_transaction',
+        payload: {
+          amount: input.amount,
+          type: input.type,
+          category_id: input.category_id,
+          category_name: input.category_name,
+          category_icon: input.category_icon,
+          category_color: input.category_color,
+          description: input.description,
+          merchant: input.merchant ?? null,
+          counterparty: input.counterparty ?? null,
+          date: input.date,
+          notes: input.notes ?? null,
+          account_id: input.account_id ?? null,
+          source: 'manual',
+          idempotency_key,
+        },
+      });
+      setState((prev) => {
+        const drafts = [...prev.drafts];
+        drafts[draftIndex] = { ...drafts[draftIndex], queued: true, error: null };
+        return { ...prev, drafts };
+      });
+      return;
+    }
 
     try {
       await createMutation.mutateAsync(input);
       setState((prev) => {
         const drafts = [...prev.drafts];
-        drafts[draftIndex] = { ...drafts[draftIndex], saved: true, error: null };
+        drafts[draftIndex] = { ...drafts[draftIndex], saved: true, queued: false, error: null };
         return { ...prev, drafts };
       });
     } catch (err) {
+      // ─── Network failure while online → enqueue and mark as queued ──
+      if (isNetworkError(err)) {
+        await enqueue({
+          id: idempotency_key,
+          type: 'manual_transaction',
+          payload: {
+            amount: input.amount,
+            type: input.type,
+            category_id: input.category_id,
+            category_name: input.category_name,
+            category_icon: input.category_icon,
+            category_color: input.category_color,
+            description: input.description,
+            merchant: input.merchant ?? null,
+            counterparty: input.counterparty ?? null,
+            date: input.date,
+            notes: input.notes ?? null,
+            account_id: input.account_id ?? null,
+            source: 'manual',
+            idempotency_key,
+          },
+        });
+        setState((prev) => {
+          const drafts = [...prev.drafts];
+          drafts[draftIndex] = { ...drafts[draftIndex], queued: true, error: null };
+          return { ...prev, drafts };
+        });
+        return;
+      }
+      // ─── Non-network error (validation, auth, etc.) → surface to UI ──
       const msg = err instanceof Error ? err.message : 'Save failed';
       setState((prev) => {
         const drafts = [...prev.drafts];
-        drafts[draftIndex] = { ...drafts[draftIndex], error: msg };
+        drafts[draftIndex] = { ...drafts[draftIndex], error: msg, queued: false };
         return { ...prev, drafts };
       });
       throw err;
     }
-  }, [createMutation]);
+  }, [createMutation, isOnline]);
 
   // ─── Confirm all unsaved drafts (sequential, resilient) ──────
   const confirmAllDrafts = useCallback(async (): Promise<{ saved: number; failed: number }> => {
@@ -337,7 +409,7 @@ export function useSmartInput(
     let failed = 0;
 
     for (let i = 0; i < current.drafts.length; i++) {
-      if (current.drafts[i].saved) {
+      if (current.drafts[i].saved || current.drafts[i].queued) {
         saved++;
         continue;
       }
@@ -360,7 +432,7 @@ export function useSmartInput(
 
   // Convenience: current active draft
   const activeDraft = state.drafts[state.activeDraftIndex] ?? null;
-  const savedCount = state.drafts.filter((d) => d.saved).length;
+  const savedCount = state.drafts.filter((d) => d.saved || d.queued).length;
   const unsavedCount = state.drafts.length - savedCount;
   const allSaved = state.drafts.length > 0 && unsavedCount === 0;
 
