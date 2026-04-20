@@ -5,7 +5,7 @@
  * Xcode project during `npx expo prebuild`.
  *
  * What it does:
- * 1. Adds a bundle-id-derived App Group entitlement to the main app.
+ * 1. Adds the "group.com.wallet.app" App Group entitlement to the main app.
  * 2. Copies Swift widget source files into the ios/ directory.
  * 3. Creates a new app-extension target in the .xcodeproj with correct
  *    build settings, build phases, entitlements, and embedding.
@@ -18,6 +18,7 @@ const {
 const fs = require('fs');
 const path = require('path');
 
+const APP_GROUP = 'group.com.wallet.app';
 const WIDGET_EXT_NAME = 'BudgetWidgetExtension';
 
 // ── Helper: recursive directory copy ─────────────────────────────────
@@ -42,10 +43,9 @@ function copyDirRecursive(src, dest) {
 
 function withAppGroupEntitlement(config) {
   return withEntitlementsPlist(config, (mod) => {
-    const appGroup = `group.${config.ios.bundleIdentifier}`;
     const groups = mod.modResults['com.apple.security.application-groups'] || [];
-    if (!groups.includes(appGroup)) {
-      groups.push(appGroup);
+    if (!groups.includes(APP_GROUP)) {
+      groups.push(APP_GROUP);
     }
     mod.modResults['com.apple.security.application-groups'] = groups;
     return mod;
@@ -60,29 +60,11 @@ function withWidgetTarget(config) {
     const projectRoot = mod.modRequest.projectRoot;
     const iosPath = path.join(projectRoot, 'ios');
     const bundleId = `${mod.ios.bundleIdentifier}.BudgetWidget`;
-    const appGroup = `group.${mod.ios.bundleIdentifier}`;
 
     // ── Copy Swift files ───────────────────────────────────────────
     const sourceDir = path.join(projectRoot, 'targets', 'budget-widget');
     const widgetDir = path.join(iosPath, WIDGET_EXT_NAME);
     copyDirRecursive(sourceDir, widgetDir);
-
-    const widgetSwiftPath = path.join(widgetDir, 'BudgetWidget.swift');
-    const widgetEntitlementsPath = path.join(widgetDir, `${WIDGET_EXT_NAME}.entitlements`);
-    if (fs.existsSync(widgetSwiftPath)) {
-      const contents = fs.readFileSync(widgetSwiftPath, 'utf8');
-      fs.writeFileSync(
-        widgetSwiftPath,
-        contents.replace(/group\.com\.wallet\.app/g, appGroup)
-      );
-    }
-    if (fs.existsSync(widgetEntitlementsPath)) {
-      const contents = fs.readFileSync(widgetEntitlementsPath, 'utf8');
-      fs.writeFileSync(
-        widgetEntitlementsPath,
-        contents.replace(/group\.com\.wallet\.app/g, appGroup)
-      );
-    }
 
     // ── Add extension target ───────────────────────────────────────
     const target = proj.addTarget(
@@ -96,10 +78,10 @@ function withWidgetTarget(config) {
     proj.addBuildPhase(
       [
         'BudgetWidget.swift',
+        'BudgetWidgetBundle.swift',
         'CommitmentsWidget.swift',
         'CharityWidget.swift',
         'WalletColors.swift',
-        'BudgetWidgetBundle.swift',
       ],
       'PBXSourcesBuildPhase',
       'Sources',
@@ -154,23 +136,51 @@ function withWidgetTarget(config) {
     }
 
     // ── Embed extension in main app ────────────────────────────────
+    // Create the Copy Files build phase with NO files, then manually attach
+    // the widget target's productReference (a PBXFileReference that already
+    // lives under the Products group). Passing a bare "foo.appex" filename
+    // to addBuildPhase creates an orphan PBXBuildFile with no parent group,
+    // which crashes `react_native_post_install`'s project serialization.
     const mainTarget = proj.getFirstTarget();
-    proj.addBuildPhase(
-      [`${WIDGET_EXT_NAME}.appex`],
+    const embedPhase = proj.addBuildPhase(
+      [],
       'PBXCopyFilesBuildPhase',
       'Embed Foundation Extensions',
       mainTarget.uuid,
       'plugins', // dstSubfolderSpec = 13 → PlugIns folder
     );
 
+    // Link widget target's .appex product into the embed phase.
+    const productFileRef = target.pbxNativeTarget.productReference;
+    if (productFileRef) {
+      const buildFileUuid = proj.generateUuid();
+      proj.hash.project.objects['PBXBuildFile'] =
+        proj.hash.project.objects['PBXBuildFile'] || {};
+      proj.hash.project.objects['PBXBuildFile'][buildFileUuid] = {
+        isa: 'PBXBuildFile',
+        fileRef: productFileRef,
+        fileRef_comment: `${WIDGET_EXT_NAME}.appex`,
+        settings: { ATTRIBUTES: ['RemoveHeadersOnCopy'] },
+      };
+      proj.hash.project.objects['PBXBuildFile'][`${buildFileUuid}_comment`] =
+        `${WIDGET_EXT_NAME}.appex in Embed Foundation Extensions`;
+      embedPhase.buildPhase.files.push({
+        value: buildFileUuid,
+        comment: `${WIDGET_EXT_NAME}.appex in Embed Foundation Extensions`,
+      });
+    }
+
+    // Make the main app target depend on the widget target so it builds first.
+    proj.addTargetDependency(mainTarget.uuid, [target.uuid]);
+
     // ── Add file group to project navigator ────────────────────────
     const group = proj.addPbxGroup(
       [
         'BudgetWidget.swift',
+        'BudgetWidgetBundle.swift',
         'CommitmentsWidget.swift',
         'CharityWidget.swift',
         'WalletColors.swift',
-        'BudgetWidgetBundle.swift',
         'Assets.xcassets',
         'Info.plist',
         `${WIDGET_EXT_NAME}.entitlements`,

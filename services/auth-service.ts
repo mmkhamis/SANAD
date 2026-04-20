@@ -206,24 +206,51 @@ export async function register(
     throw new Error('Registration succeeded but no user was returned');
   }
 
-  // Upsert the profile row — the DB trigger may have already created it
-  const { error: profileError } = await supabase.from('profiles').upsert({
+  // The DB trigger `on_auth_user_created` (migration 036) creates the base
+  // profile row via SECURITY DEFINER, bypassing RLS. We only UPDATE the extra
+  // fields the trigger doesn't set (name_ar, date_of_birth, phone) — and only
+  // if a session is active (email-confirm-required signups have no session yet).
+  if (authData.session) {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({
+        full_name: credentials.full_name,
+        name_ar: credentials.name_ar ?? null,
+        date_of_birth: credentials.birth_date ?? null,
+        phone: credentials.phone,
+      })
+      .eq('id', authData.user.id);
+
+    if (profileError) {
+      // Non-fatal — the trigger already created the row; these fields can be
+      // filled in during onboarding. Do not block signup.
+      console.warn('[auth] profile update after signup failed:', profileError.message);
+    }
+
+    return fetchOrCreateProfile(authData.user.id, credentials.email);
+  }
+
+  // No session yet (email confirmation required). Return a synthetic profile
+  // so the UI can show a "check your email" state. The real profile will be
+  // fetched after the user confirms and signs in.
+  return {
     id: authData.user.id,
     email: credentials.email,
     full_name: credentials.full_name,
     name_ar: credentials.name_ar ?? null,
+    avatar_url: null,
     date_of_birth: credentials.birth_date ?? null,
-    phone: credentials.phone,
+    age_band: null,
+    country_code: null,
+    region_name: null,
+    whatsapp_number: null,
+    phone: credentials.phone ?? null,
     currency: 'SAR',
     locale: 'en-SA',
     onboarding_completed: false,
-  }, { onConflict: 'id' });
-
-  if (profileError) {
-    throw new Error(profileError.message);
-  }
-
-  return fetchUserProfile(authData.user.id);
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  } as unknown as UserProfile;
 }
 
 // ─── Logout ──────────────────────────────────────────────────────────
@@ -258,17 +285,31 @@ export async function fetchOrCreateProfile(
   userId: string,
   email?: string,
 ): Promise<UserProfile> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
+  // The DB trigger `on_auth_user_created` creates the profile row atomically
+  // on auth.users INSERT (SECURITY DEFINER, bypasses RLS). In rare races the
+  // client can reach this function before the trigger commits, so retry a few
+  // times with a short backoff before falling back to a client-side insert.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
 
-  if (data && !error) {
-    return data as UserProfile;
+    if (data) {
+      return data as UserProfile;
+    }
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = no rows; any other error means we can't read — stop retrying
+      throw new Error(error.message);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
   }
 
-  // Profile doesn't exist — upsert it (user registered before tables existed, or Google OAuth)
+  // Trigger never ran (e.g. remote DB missing migration 036). Fall back to a
+  // client-side insert — requires an active session so auth.uid() matches.
   const authUser = (await supabase.auth.getUser()).data.user;
   const fullName = authUser?.user_metadata?.full_name ?? authUser?.user_metadata?.name ?? 'User';
   const resolvedEmail = email ?? authUser?.email ?? '';

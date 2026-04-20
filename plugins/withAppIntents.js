@@ -73,14 +73,16 @@ function withKeychainAccessGroup(config) {
 // ── Step 2 & 3: Copy Swift + register with main target ───────────────
 
 function withAppIntentSources(config) {
+  const projectName = (config.modRequest && config.modRequest.projectName) || config.name;
   return withXcodeProject(config, (mod) => {
     const proj = mod.modResults;
     const projectRoot = mod.modRequest.projectRoot;
     const iosPath = path.join(projectRoot, 'ios');
+    // Resolve the actual main app folder inside ios/ (matches the Xcode project name).
+    const mainTargetName = mod.modRequest.projectName || projectName || 'App';
 
     const sourceDir = path.join(projectRoot, 'targets', 'app-intents');
-    // The main app target group is named after the project (Wallet).
-    const mainAppDir = path.join(iosPath, 'Wallet', APP_INTENT_DIR_NAME);
+    const mainAppDir = path.join(iosPath, mainTargetName, APP_INTENT_DIR_NAME);
     copyDirRecursive(sourceDir, mainAppDir);
 
     const mainTarget = proj.getFirstTarget();
@@ -88,31 +90,32 @@ function withAppIntentSources(config) {
       throw new Error('withAppIntents: could not resolve main app target');
     }
 
-    // Path used inside the Xcode project (relative to the Wallet group).
-    const groupPath = `Wallet/${APP_INTENT_DIR_NAME}`;
+    // Path used inside the Xcode project (relative to the main app group).
+    const groupPath = `${mainTargetName}/${APP_INTENT_DIR_NAME}`;
 
     // Add a PBX group so the files appear in the navigator.
     const group = proj.addPbxGroup(SWIFT_FILES, APP_INTENT_DIR_NAME, groupPath);
 
-    // Attach to the Wallet group (sibling of existing source files).
+    // Attach to the main app group (sibling of existing source files).
     const groups = proj.hash.project.objects['PBXGroup'];
-    let walletGroupId = null;
+    let mainAppGroupId = null;
     for (const key of Object.keys(groups)) {
       const g = groups[key];
-      if (g && typeof g === 'object' && g.name === 'Wallet') {
-        walletGroupId = key.split('_comment_')[0];
+      if (g && typeof g === 'object' && g.name === mainTargetName) {
+        mainAppGroupId = key.split('_comment_')[0];
         break;
       }
     }
     const parentGroupId =
-      walletGroupId || proj.getFirstProject().firstProject.mainGroup;
+      mainAppGroupId || proj.getFirstProject().firstProject.mainGroup;
     proj.addToPbxGroup(group.uuid, parentGroupId);
 
     // Add each Swift file to the main target's Sources build phase.
+    // The group already has path=groupPath, so pass only the filename to
+    // avoid Xcode double-prefixing (SANAD/AppIntents/SANAD/AppIntents/...).
     for (const file of SWIFT_FILES) {
-      const filePath = `${groupPath}/${file}`;
       try {
-        proj.addSourceFile(filePath, { target: mainTarget.uuid }, group.uuid);
+        proj.addSourceFile(file, { target: mainTarget.uuid }, group.uuid);
       } catch (err) {
         // Idempotent — ignore "already in project" errors on re-runs.
         if (!String(err.message || err).includes('already')) {

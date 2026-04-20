@@ -46,6 +46,7 @@
       "expo-apple-authentication",
       "./plugins/withBudgetWidget",
       "./plugins/withAppIntents",
+      "./plugins/withFixBundleScriptSpace",
       [
         "expo-notifications",
         {
