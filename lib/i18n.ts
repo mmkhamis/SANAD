@@ -46,7 +46,8 @@ function getCategoryMap(): Record<string, string> {
  * Tries exact match first, then lowercase comparison.
  * Handles DB data that may have been seeded with different casing.
  */
-function lookupCategory(map: Record<string, string>, name: string): string | undefined {
+function lookupCategory(map: Record<string, string>, name: string | null | undefined): string | undefined {
+  if (!name) return undefined;
   if (map[name]) return map[name];
   const lower = name.toLowerCase();
   const key = Object.keys(map).find((k) => k.toLowerCase() === lower);
@@ -100,7 +101,8 @@ export function tFormat(key: StringKey, vars: Record<string, string | number>): 
  * Gulf currencies → Gulf Arabic. EGP → Egyptian Arabic.
  * Returns null in Arabic mode when no translation exists (so callers can show UNCATEGORIZED).
  */
-export function translateCategory(name: string): string | null {
+export function translateCategory(name: string | null | undefined): string | null {
+  if (!name) return null;
   const language = useLanguageStore.getState().language;
   if (language === 'ar') {
     return lookupCategory(getCategoryMap(), name) ?? null;
@@ -112,12 +114,13 @@ export function translateCategory(name: string): string | null {
  * Hook: reactive version of translateCategory.
  * Re-renders automatically when language, currency, or country changes.
  */
-export function useTranslateCategory(): (name: string) => string | null {
+export function useTranslateCategory(): (name: string | null | undefined) => string | null {
   const language = useLanguageStore((s) => s.language);
   const countryCode = useSettingsStore((s) => s.countryCode);
   const currency = useSettingsStore((s) => s.activeCurrency);
 
-  return (name: string): string | null => {
+  return (name: string | null | undefined): string | null => {
+    if (!name) return null;
     if (language === 'ar') {
       const isEgypt = countryCode === 'EG' || currency === 'EGP';
       const map = isEgypt ? CATEGORY_NAMES_AR_EG_MERGED : CATEGORY_NAMES_AR;

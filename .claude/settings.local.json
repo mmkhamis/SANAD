@@ -38,7 +38,19 @@
       "Bash(xcodebuild -workspace ios/Wallet.xcworkspace -scheme Wallet -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -quiet build)",
       "Bash(tee /tmp/wallet-build-before.log)",
       "Bash(xcodebuild -workspace ios/Wallet.xcworkspace -scheme BudgetWidgetExtension -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -quiet build)",
-      "Bash(tee /tmp/widget-build-before.log)"
+      "Bash(tee /tmp/widget-build-before.log)",
+      "Bash(kill -9 29549)",
+      "Bash(brew list *)",
+      "Bash(command -v cloudflared)",
+      "Bash(cloudflared --version)",
+      "Bash(pkill -9 -f cloudflared)",
+      "Bash(cloudflared tunnel *)",
+      "Bash(REACT_NATIVE_PACKAGER_HOSTNAME=rose-isp-specifically-individuals.trycloudflare.com npx expo start --port 8081 --host localhost)",
+      "Bash(curl -s -m 20 -H \"Accept: application/expo+json, application/json\" -H \"Expo-Platform: ios\" \"https://rose-isp-specifically-individuals.trycloudflare.com/\")",
+      "Bash(curl -s -m 10 -o /dev/null -w \"HTTP %{http_code}\\\\n\" \"https://rose-isp-specifically-individuals.trycloudflare.com/\")",
+      "Bash(EXPO_PACKAGER_PROXY_URL=https://rose-isp-specifically-individuals.trycloudflare.com EXPO_MANIFEST_PROXY_URL=https://rose-isp-specifically-individuals.trycloudflare.com REACT_NATIVE_PACKAGER_HOSTNAME=rose-isp-specifically-individuals.trycloudflare.com npx expo start --port 8081 --host localhost)",
+      "Bash(python3 -c \"import sys, json; m=json.load\\(sys.stdin\\); print\\('launchAsset.url:', m['launchAsset']['url']\\); print\\('hostUri:', m['extra']['expoClient'].get\\('hostUri'\\)\\); print\\('debuggerHost:', m['extra'].get\\('expoGo',{}\\).get\\('debuggerHost'\\)\\)\")",
+      "Read(//Users/mahmoudkhamis/**)"
     ]
   }
 }
