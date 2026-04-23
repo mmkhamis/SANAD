@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { TrendingDown, Sparkles } from 'lucide-react-native';
 
-import { HeroCard } from '../ui/HeroCard';
+import { Card } from '../ui/Card';
 import { CurrencyAmount } from '../ui/CurrencyAmount';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT } from '../../lib/i18n';
@@ -26,7 +26,7 @@ export function SubscriptionSavingsCard(): React.ReactElement | null {
   }
 
   return (
-    <HeroCard style={{ marginTop: 12 }}>
+    <Card style={{ marginTop: 12 }}>
       {/* Header */}
       <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <View
@@ -105,6 +105,6 @@ export function SubscriptionSavingsCard(): React.ReactElement | null {
           );
         })}
       </View>
-    </HeroCard>
+    </Card>
   );
 }

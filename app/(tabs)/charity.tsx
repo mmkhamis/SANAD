@@ -9,7 +9,7 @@ import { HeartHandshake, Plus, Target } from 'lucide-react-native';
 import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
 import { AppScreen } from '../../components/ui/AppScreen';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
-import { HeroCard } from '../../components/ui/HeroCard';
+import { Card } from '../../components/ui/Card';
 import { ChipIcon, chipIconColor } from '../../components/ui/ChipIcon';
 import { GradientDivider } from '../../components/ui/GradientDivider';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -120,7 +120,7 @@ function CharityContent(): React.ReactElement {
 
         {/* ── Stats hero card ── */}
         <Animated.View entering={FadeInDown.duration(400)} style={{ marginTop: 4 }}>
-          <HeroCard>
+          <Card style={{ marginHorizontal: 16 }}>
             <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <ChipIcon variant="green">
                 <HeartHandshake size={17} color={chipIconColor('green')} strokeWidth={2} />
@@ -267,7 +267,7 @@ function CharityContent(): React.ReactElement {
                 </View>
               </Pressable>
             )}
-          </HeroCard>
+          </Card>
         </Animated.View>
 
         {/* ── Daily trend chart ── */}

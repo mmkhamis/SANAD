@@ -24,7 +24,7 @@ import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
 import { SmartInputFAB } from '../../components/ui/SmartInputFAB';
 import { AppScreen } from '../../components/ui/AppScreen';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
-import { HeroCard } from '../../components/ui/HeroCard';
+import { Card } from '../../components/ui/Card';
 import { ChipIcon, chipIconColor } from '../../components/ui/ChipIcon';
 import { GradientDivider } from '../../components/ui/GradientDivider';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -56,7 +56,7 @@ function FeatureCard({
   return (
     <Animated.View entering={FadeInDown.duration(400).delay(delay)} style={{ marginTop: 12 }}>
       <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.92 : 1 })}>
-        <HeroCard>{children}</HeroCard>
+        <Card style={{ marginHorizontal: 16 }}>{children}</Card>
       </Pressable>
     </Animated.View>
   );

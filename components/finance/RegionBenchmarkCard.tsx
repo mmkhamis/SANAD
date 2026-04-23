@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text } from 'react-native';
 import { TrendingUp, TrendingDown, Users } from 'lucide-react-native';
 
-import { HeroCard } from '../ui/HeroCard';
+import { Card } from '../ui/Card';
 import { CategoryIcon } from '../ui/CategoryIcon';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT, useTranslateCategory } from '../../lib/i18n';
@@ -36,7 +36,7 @@ export function RegionBenchmarkCard({ month }: { month?: string }): React.ReactE
   if (!data || !data.has_profile) return null;
 
   return (
-    <HeroCard style={{ marginTop: 12 }}>
+    <Card style={{ marginTop: 12 }}>
       {/* Header */}
       <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <View
@@ -133,6 +133,6 @@ export function RegionBenchmarkCard({ month }: { month?: string }): React.ReactE
           })}
         </View>
       )}
-    </HeroCard>
+    </Card>
   );
 }

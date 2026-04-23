@@ -13,7 +13,7 @@ import { formatAmount } from '../../utils/currency';
 import { SmartInputButton } from '../../components/ui/SmartInputButton';
 import { FeatureGate } from '../../components/ui/FeatureGate';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
-import { HeroCard } from '../../components/ui/HeroCard';
+import { Card } from '../../components/ui/Card';
 import { SMSShortcutPresets } from '../../components/finance/SMSShortcutPresets';
 import { COLORS } from '../../constants/colors';
 import { useT } from '../../lib/i18n';
@@ -1037,7 +1037,7 @@ export default function ProfileScreen(): React.ReactElement {
 
       {/* PROFILE HERO CARD */}
       {user ? (
-        <HeroCard noMargin style={{ marginBottom: 4 }}>
+        <Card style={{ marginBottom: 4 }}>
             <View style={{ flexDirection: rowDir, alignItems: 'center' }}>
               <LinearGradient
                 colors={[COLORS.claude.p400, COLORS.claude.p700]}
@@ -1094,7 +1094,7 @@ export default function ProfileScreen(): React.ReactElement {
                 </Pressable>
               </View>
             ) : null}
-        </HeroCard>
+        </Card>
       ) : null}
 
       {/* PREFERENCES */}

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text } from 'react-native';
 import { PieChart } from 'lucide-react-native';
 
-import { HeroCard } from '../ui/HeroCard';
+import { Card } from '../ui/Card';
 import { CurrencyAmount } from '../ui/CurrencyAmount';
 import { SpendingDonutChart } from '../charts/SpendingDonutChart';
 import { useThemeColors } from '../../hooks/useThemeColors';
@@ -62,7 +62,7 @@ export function SpendingAnalysisCard({
   const valueColor = colors.isDark ? COLORS.claude.fg : colors.textPrimary;
 
   return (
-    <HeroCard style={{ marginTop: 12 }}>
+    <Card style={{ marginTop: 12, marginHorizontal: 16 }}>
       {/* Header */}
       <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10, marginBottom: 4 }}>
         <View
@@ -163,6 +163,6 @@ export function SpendingAnalysisCard({
           </Text>
         </View>
       </View>
-    </HeroCard>
+    </Card>
   );
 }

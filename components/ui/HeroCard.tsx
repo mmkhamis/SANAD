@@ -82,11 +82,11 @@ export const HeroCard = React.memo(function HeroCard({
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.glassBorder,
-        shadowColor: 'rgba(72,75,106,1)',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.25,
-        shadowRadius: 18,
-        elevation: 6,
+        shadowColor: 'rgba(120,125,150,1)',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.14,
+        shadowRadius: 14,
+        elevation: 4,
       };
 
   return (
@@ -117,7 +117,7 @@ export const HeroCard = React.memo(function HeroCard({
         <>
           {/* Light-mode brushed-silver base: pale radial washes + subtle gradient. */}
           <LinearGradient
-            colors={['#FFFFFF', '#F6F4EF', '#EDEAE3']}
+            colors={['#FFFFFF', '#FBFAF7', '#F4F2EE']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
@@ -131,7 +131,7 @@ export const HeroCard = React.memo(function HeroCard({
           />
           {/* Bottom-right warm shadow for depth */}
           <LinearGradient
-            colors={['transparent', 'rgba(160,150,180,0.12)']}
+            colors={['transparent', 'rgba(170,165,195,0.06)']}
             start={{ x: 0.2, y: 0.2 }}
             end={{ x: 1, y: 1 }}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
