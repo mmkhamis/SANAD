@@ -15,6 +15,7 @@ import { FeatureGate } from '../../components/ui/FeatureGate';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Card } from '../../components/ui/Card';
 import { SMSShortcutPresets } from '../../components/finance/SMSShortcutPresets';
+import { SupportChatCard } from '../../components/ui/SupportChatCard';
 import { COLORS } from '../../constants/colors';
 import { useT } from '../../lib/i18n';
 import { useLanguageStore, type Language } from '../../store/language-store';
@@ -1391,6 +1392,11 @@ export default function ProfileScreen(): React.ReactElement {
           onPress={() => { impactLight(); Linking.openURL('mailto:support@wallet-app.com').catch(() => {}); }}
         />
       </SettingsCard>
+
+      {/* SUPPORT CHAT — WhatsApp hotline with preset topics */}
+      <View style={{ marginTop: 8 }}>
+        <SupportChatCard />
+      </View>
 
       {/* SIGN OUT — presented as a dedicated card with a destructive accent
           so it matches every other grouped section on the screen. */}

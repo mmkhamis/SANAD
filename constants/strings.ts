@@ -946,6 +946,16 @@ export const STRINGS = {
   PROFILE_DELETED: 'Deleted Transactions',
   PROFILE_CONTACT_US: 'Contact Support',
 
+  // ─── Profile — WhatsApp Support ─────────────────────────
+  SUPPORT_CHAT_TITLE: 'Need a hand?',
+  SUPPORT_CHAT_SUBTITLE: 'Chat with us on WhatsApp — pick a topic to start',
+  SUPPORT_CHAT_BUTTON: 'Chat on WhatsApp',
+  SUPPORT_TOPIC_CATEGORIZE_SMS: 'Help me categorize my recent SMS transactions',
+  SUPPORT_TOPIC_ADD_TRANSACTIONS: 'Help me add some transactions',
+  SUPPORT_TOPIC_BUDGET: 'Help me set up a budget',
+  SUPPORT_TOPIC_PLAN: 'Question about my plan / billing',
+  SUPPORT_TOPIC_OTHER: 'Something else',
+
   // ─── Welcome Screen ─────────────────────────────────────
   WELCOME_BRAND: 'SANAD',
   WELCOME_HEADLINE: 'Your Money,\nUnder Control',

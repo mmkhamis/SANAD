@@ -943,6 +943,16 @@ export const STRINGS_AR = {
   PROFILE_DELETED: 'المحذوفات',
   PROFILE_CONTACT_US: 'الدعم الفني',
 
+  // ─── Profile — WhatsApp Support ─────────────────────────
+  SUPPORT_CHAT_TITLE: 'تحتاج مساعدة؟',
+  SUPPORT_CHAT_SUBTITLE: 'تواصل معنا على واتساب — اختر موضوعك للبدء',
+  SUPPORT_CHAT_BUTTON: 'محادثة عبر واتساب',
+  SUPPORT_TOPIC_CATEGORIZE_SMS: 'ساعدني في تصنيف رسائل البنك الأخيرة',
+  SUPPORT_TOPIC_ADD_TRANSACTIONS: 'ساعدني في إضافة معاملات',
+  SUPPORT_TOPIC_BUDGET: 'ساعدني في إعداد ميزانية',
+  SUPPORT_TOPIC_PLAN: 'استفسار عن اشتراكي / الفوترة',
+  SUPPORT_TOPIC_OTHER: 'موضوع آخر',
+
   // ─── Welcome Screen ─────────────────────────────────────
   WELCOME_BRAND: 'SANAD',
   WELCOME_HEADLINE: 'فلوسك،\nبين يديك',

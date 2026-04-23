@@ -10,7 +10,6 @@
  */
 
 import React from 'react';
-import { Text } from 'react-native';
 import {
   Activity,
   Award,
@@ -621,6 +620,258 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   'repairs': Wrench,
 };
 
+// ─── Emoji → Lucide fallback ─────────────────────────────────────────────────
+// Legacy DB rows (user-created categories, pre-migration-032 rows, seeded
+// category_groups from older migrations) still store emoji icons. Instead of
+// rendering them as raw text, map each emoji to its closest Lucide icon so the
+// UI stays consistent across categories (no mix of emoji + line icons).
+
+const EMOJI_TO_LUCIDE: Record<string, string> = {
+  // Finance / money
+  '💰': 'wallet',
+  '💵': 'banknote',
+  '💴': 'banknote',
+  '💶': 'banknote',
+  '💷': 'banknote',
+  '💳': 'credit-card',
+  '🏦': 'landmark',
+  '🪙': 'coins',
+  '💎': 'gem',
+  '📈': 'chart-line',
+  '📉': 'chart-line',
+  '📊': 'chart-pie',
+  '👑': 'gem',
+
+  // Home / housing
+  '🏠': 'house',
+  '🏡': 'house',
+  '🛋️': 'sofa',
+  '🛏️': 'lamp',
+  '🧹': 'spray-can',
+  '🧺': 'washing-machine',
+
+  // Bills / utilities
+  '⚡': 'zap',
+  '💡': 'zap',
+  '💧': 'droplets',
+  '🔥': 'flame',
+  '📡': 'wifi',
+  '📶': 'wifi',
+  '📱': 'smartphone',
+  '📞': 'smartphone',
+  '☎️': 'smartphone',
+  '📺': 'tv',
+  '🧾': 'receipt',
+  '🏛️': 'landmark',
+  '🔌': 'zap',
+
+  // Food / dining
+  '🍽️': 'utensils-crossed',
+  '🍴': 'utensils',
+  '🍕': 'utensils',
+  '🍔': 'utensils',
+  '🥗': 'utensils',
+  '🥘': 'utensils',
+  '🍞': 'croissant',
+  '🥐': 'croissant',
+  '🥖': 'croissant',
+  '🍰': 'ice-cream-cone',
+  '🍦': 'ice-cream-cone',
+  '🍨': 'ice-cream-cone',
+  '🍩': 'ice-cream-cone',
+  '🍪': 'ice-cream-cone',
+  '🍫': 'ice-cream-cone',
+  '🍬': 'ice-cream-cone',
+  '🥤': 'cup-soda',
+  '🧃': 'cup-soda',
+  '🥛': 'cup-soda',
+  '☕': 'coffee',
+  '🫖': 'coffee',
+  '🥩': 'beef',
+  '🍗': 'beef',
+  '🐟': 'fish',
+  '🐠': 'fish',
+  '👨‍🍳': 'chef-hat',
+  '🛒': 'shopping-cart',
+
+  // Transport
+  '🚗': 'car',
+  '🚙': 'car',
+  '🚕': 'car-taxi-front',
+  '🚌': 'bus',
+  '🚎': 'bus',
+  '🚐': 'bus',
+  '🚋': 'train-front',
+  '🚆': 'train-front',
+  '🚇': 'train-front',
+  '🚊': 'train-front',
+  '⛽': 'fuel',
+  '🛢️': 'fuel',
+  '🅿️': 'parking-circle',
+  '🛣️': 'parking-circle',
+  '🛵': 'bike',
+  '🏍️': 'bike',
+  '🚲': 'bike',
+  '✈️': 'plane',
+  '🛫': 'plane-takeoff',
+  '🛬': 'plane',
+  '🚚': 'truck',
+  '🚛': 'truck',
+
+  // Shopping / retail / fashion
+  '🛍️': 'shopping-bag',
+  '👜': 'shopping-bag',
+  '👛': 'shopping-bag',
+  '🎒': 'backpack',
+  '👔': 'shopping-bag',
+  '👕': 'shopping-bag',
+  '👗': 'shopping-bag',
+  '👟': 'footprints',
+  '👠': 'footprints',
+  '👞': 'footprints',
+  '🥿': 'footprints',
+  '⌚': 'watch',
+  '💍': 'gem',
+  '💻': 'laptop',
+  '🖥️': 'monitor',
+  '📦': 'package',
+
+  // Health / wellness
+  '❤️': 'heart',
+  '💗': 'heart',
+  '🫀': 'heart-pulse',
+  '🏥': 'hospital',
+  '⚕️': 'stethoscope',
+  '🩺': 'stethoscope',
+  '💊': 'pill',
+  '🧪': 'flask-conical',
+  '😁': 'smile-plus',
+  '🦷': 'smile-plus',
+  '💆': 'sparkles',
+  '💇': 'scissors',
+  '✂️': 'scissors',
+  '💅': 'sparkles',
+  '🧖': 'sparkles',
+  '🧴': 'spray-can',
+  '🛁': 'droplets',
+  '🚿': 'droplets',
+
+  // Education
+  '🎓': 'graduation-cap',
+  '🏫': 'school',
+  '📚': 'book-open',
+  '📖': 'book',
+  '📝': 'file-pen-line',
+  '🖊️': 'file-pen-line',
+  '🗣️': 'globe',
+
+  // Family / kids
+  '👨‍👩‍👧‍👦': 'users',
+  '👨‍👩‍👧': 'users',
+  '👨‍👩‍👦': 'users',
+  '👶': 'baby',
+  '🧒': 'baby',
+  '🧸': 'toy-brick',
+  '🎈': 'party-popper',
+
+  // Entertainment / lifestyle
+  '🎬': 'clapperboard',
+  '🎞️': 'film',
+  '🎥': 'film',
+  '🎟️': 'ticket',
+  '🎫': 'ticket',
+  '🎮': 'gamepad-2',
+  '🕹️': 'gamepad-2',
+  '🎨': 'palette',
+  '🎭': 'palette',
+  '🎪': 'party-popper',
+  '🎉': 'party-popper',
+  '🎊': 'party-popper',
+  '🏋️': 'dumbbell',
+  '⚽': 'dumbbell',
+  '🏀': 'dumbbell',
+  '🎵': 'music',
+  '🎶': 'music',
+  '🎧': 'music-4',
+  '🎤': 'music-2',
+
+  // Subscriptions / digital
+  '🔄': 'smartphone-nfc',
+  '☁️': 'cloud',
+  '🤖': 'bot',
+  '🛡️': 'shield',
+  '🔒': 'shield-check',
+  '🔐': 'shield-check',
+
+  // Savings / goals
+  '🐷': 'piggy-bank',
+  '🐖': 'piggy-bank',
+  '🎯': 'piggy-bank',
+  '🏆': 'award',
+  '🎖️': 'award',
+
+  // Travel
+  '🏖️': 'plane',
+  '🏝️': 'plane',
+  '🗺️': 'globe',
+  '🌍': 'globe',
+  '🌎': 'globe',
+  '🌏': 'globe',
+  '🏨': 'hotel',
+  '🛎️': 'hotel',
+  '🧳': 'shopping-bag',
+  '🕌': 'moon-star',
+  '🌙': 'moon',
+
+  // Religion / charity / social
+  '🙏': 'heart-handshake',
+  '🤝': 'hand-coins',
+  '🎁': 'gift',
+  '💐': 'flower-2',
+
+  // Business / work
+  '💼': 'briefcase',
+  '📎': 'paperclip',
+  '📢': 'megaphone',
+  '📣': 'megaphone',
+
+  // Pets
+  '🐶': 'paw-print',
+  '🐱': 'paw-print',
+  '🐾': 'paw-print',
+  '🦴': 'bone',
+
+  // Misc / uncategorized
+  '❓': 'circle-help',
+  '❔': 'circle-help',
+  '⚠️': 'triangle-alert',
+  '❗': 'octagon-alert',
+  '📄': 'file-text',
+  '📁': 'boxes',
+  '📂': 'boxes',
+
+  // Transfers / income-ish
+  '↔️': 'arrow-left-right',
+  '🔁': 'repeat',
+  '🔂': 'repeat',
+  '➕': 'plus-circle',
+  '🎁‍': 'gift',
+};
+
+/** Map any leading emoji codepoint to its Lucide name, if known. */
+function resolveEmojiToLucide(raw: string): string | null {
+  if (!raw) return null;
+  // Exact match first (handles multi-codepoint family emoji like 👨‍👩‍👧‍👦)
+  if (EMOJI_TO_LUCIDE[raw]) return EMOJI_TO_LUCIDE[raw];
+  // Fall back to first grapheme (strip variation selectors / ZWJ tails)
+  const codepoints = Array.from(raw);
+  for (let len = Math.min(4, codepoints.length); len > 0; len--) {
+    const candidate = codepoints.slice(0, len).join('');
+    if (EMOJI_TO_LUCIDE[candidate]) return EMOJI_TO_LUCIDE[candidate];
+  }
+  return null;
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 interface CategoryIconProps {
@@ -636,15 +887,19 @@ export function CategoryIcon({
   color = '#94A3B8',
   strokeWidth = 1.8,
 }: CategoryIconProps): React.ReactElement {
-  // Legacy emoji or unknown → render as text
-  if (!name || !/^[a-z][a-z0-9-]*$/.test(name)) {
-    return (
-      <Text style={{ fontSize: size * 0.85, lineHeight: size }}>
-        {name || '📁'}
-      </Text>
-    );
+  // Kebab-case lucide name
+  if (name && /^[a-z][a-z0-9-]*$/.test(name)) {
+    const Icon = ICON_MAP[name] ?? CircleHelp;
+    return <Icon size={size} color={color} strokeWidth={strokeWidth} />;
   }
 
-  const Icon = ICON_MAP[name] ?? CircleHelp;
-  return <Icon size={size} color={color} strokeWidth={strokeWidth} />;
+  // Legacy emoji → try to map to a Lucide icon for consistency
+  const lucideName = resolveEmojiToLucide(name);
+  if (lucideName) {
+    const Icon = ICON_MAP[lucideName] ?? CircleHelp;
+    return <Icon size={size} color={color} strokeWidth={strokeWidth} />;
+  }
+
+  // Unknown → safe fallback icon (not raw emoji text)
+  return <CircleHelp size={size} color={color} strokeWidth={strokeWidth} />;
 }

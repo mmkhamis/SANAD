@@ -28,6 +28,18 @@ const CATEGORY_NAMES_AR_EG_MERGED: Record<string, string> = {
   ...CATEGORY_NAMES_AR_EG,
 };
 
+// Display-name rewrites applied BEFORE Arabic lookup and used as the English
+// label when the source name matches. Lets us retire legacy category names
+// (e.g. "Financial") without a DB migration.
+const CATEGORY_NAME_REWRITES: Record<string, string> = {
+  'Financial': 'Investment',
+  'Financial & Savings': 'Investments & Savings',
+};
+
+function rewriteCategoryName(name: string): string {
+  return CATEGORY_NAME_REWRITES[name] ?? name;
+}
+
 /** Returns true if the user is an Egyptian dialect user (by country or currency). */
 function isEgyptianDialect(): boolean {
   const { countryCode, activeCurrency } = useSettingsStore.getState();
@@ -103,11 +115,14 @@ export function tFormat(key: StringKey, vars: Record<string, string | number>): 
  */
 export function translateCategory(name: string | null | undefined): string | null {
   if (!name) return null;
+  const rewritten = rewriteCategoryName(name);
   const language = useLanguageStore.getState().language;
   if (language === 'ar') {
-    return lookupCategory(getCategoryMap(), name) ?? null;
+    return lookupCategory(getCategoryMap(), rewritten)
+      ?? lookupCategory(getCategoryMap(), name)
+      ?? null;
   }
-  return name;
+  return rewritten;
 }
 
 /**
@@ -121,11 +136,12 @@ export function useTranslateCategory(): (name: string | null | undefined) => str
 
   return (name: string | null | undefined): string | null => {
     if (!name) return null;
+    const rewritten = rewriteCategoryName(name);
     if (language === 'ar') {
       const isEgypt = countryCode === 'EG' || currency === 'EGP';
       const map = isEgypt ? CATEGORY_NAMES_AR_EG_MERGED : CATEGORY_NAMES_AR;
-      return lookupCategory(map, name) ?? null;
+      return lookupCategory(map, rewritten) ?? lookupCategory(map, name) ?? null;
     }
-    return name;
+    return rewritten;
   };
 }

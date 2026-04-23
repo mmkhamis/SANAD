@@ -64,7 +64,8 @@ const PLAN_ENTITLEMENTS: Record<UserPlan, PlanEntitlements> = {
     customCategoriesPerMonth: 0,
     historyDaysVisible: 30,
 
-    categoriesLevel: 'basic',
+    // Free sees all default categories but cannot create custom ones.
+    categoriesLevel: 'all',
     insightsQuality: 'basic',
     habitDetectionLevel: 'basic',
     savingTipsLevel: 'none',
@@ -88,12 +89,12 @@ const PLAN_ENTITLEMENTS: Record<UserPlan, PlanEntitlements> = {
     voiceTrackingPerDay: 3,
     deepAnalyticsPerWeek: UNLIMITED,
     insightsPerWeek: UNLIMITED,
-    // Pro gets full category power (deep subcategories + custom creation).
-    // Pro and Max are intentionally identical on the category axis.
-    customCategoriesPerMonth: 3,
+    // Free + Pro see ALL default categories but cannot create custom ones.
+    // Only Max can add personal custom categories.
+    customCategoriesPerMonth: 0,
     historyDaysVisible: UNLIMITED,
 
-    categoriesLevel: 'all_plus_custom',
+    categoriesLevel: 'all',
     insightsQuality: 'smarter',
     habitDetectionLevel: 'advanced',
     savingTipsLevel: 'basic',
