@@ -149,6 +149,20 @@ Deno.serve(async (_req: Request): Promise<Response> => {
 
       // ── TEXT: parse all transactions → insert all ──
       if (!ev.raw_text) throw new Error('No text or media');
+
+      // ── Intent: "uncategorized" command ──────────────────────
+      // When the user asks for their pending review list we bypass the
+      // transaction parser entirely and reply with a numbered digest.
+      // Works in Arabic and English. The user's next voice note can
+      // then map amounts → categories (handled client-side in review).
+      if (isUncategorizedQuery(ev.raw_text)) {
+        const list = await fetchUncategorized(sb, userId, 10);
+        await sb.from('whatsapp_events').update({ status: 'completed' }).eq('id', ev.id);
+        await twilioReply(ev.from_number, formatUncategorizedReply(list));
+        results.push({ id: ev.id, ok: true, count: list.length });
+        continue;
+      }
+
       const pR = await edge('parse-transaction', { text: ev.raw_text });
       if (!pR.ok) throw new Error(`parse-transaction ${pR.status}`);
       const txs = (await pR.json()).transactions ?? [];
@@ -165,3 +179,71 @@ Deno.serve(async (_req: Request): Promise<Response> => {
   }
   return new Response(JSON.stringify({ processed: results.length, results }), { status: 200 });
 });
+
+// ─── "Uncategorized" intent ─────────────────────────────────────────
+
+/**
+ * Does the inbound message look like a request for the pending-review
+ * list? Matches common English + Arabic phrasings. Short (<= 60 chars)
+ * and keyword-driven to avoid collisions with real transaction text.
+ */
+function isUncategorizedQuery(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (t.length === 0 || t.length > 60) return false;
+  return (
+    /\buncategor(?:ised|ized)\b/.test(t) ||
+    /\bpending\s*review\b/.test(t) ||
+    /\bneeds?\s*review\b/.test(t) ||
+    /\blist\s*(?:my\s*)?(?:uncategor|review)/.test(t) ||
+    /غير\s*مصنف/.test(t) ||            // "غير مصنفة / غير مصنف"
+    /مش\s*مصنف/.test(t) ||             // Egyptian "مش مصنفة"
+    /بدون\s*تصنيف/.test(t) ||          // "بدون تصنيف"
+    /لم\s*تصنف/.test(t) ||             // MSA "لم تُصنّف"
+    /عرض.*(?:المعاملات|العمليات).*(?:غير\s*مصنف|بدون\s*تصنيف)/.test(t)
+  );
+}
+
+interface UncategorizedRow {
+  id: string;
+  amount: number;
+  date: string;
+  merchant: string | null;
+  counterparty: string | null;
+  description: string | null;
+  type: string;
+  notes: string | null;
+}
+
+async function fetchUncategorized(
+  sb: ReturnType<typeof createClient>,
+  userId: string,
+  limit: number,
+): Promise<UncategorizedRow[]> {
+  const { data } = await sb
+    .from('transactions')
+    .select('id, amount, date, merchant, counterparty, description, type, notes')
+    .eq('user_id', userId)
+    .eq('needs_review', true)
+    .is('deleted_at', null)
+    .order('date', { ascending: false })
+    .limit(limit);
+  return (data ?? []) as UncategorizedRow[];
+}
+
+function formatUncategorizedReply(rows: UncategorizedRow[]): string {
+  if (rows.length === 0) {
+    return '✓ Nothing to categorize — you\'re all caught up!';
+  }
+  const header = `📋 ${rows.length} uncategorized transaction${rows.length === 1 ? '' : 's'}:\n`;
+  const lines = rows.map((r, i) => {
+    const label = r.merchant || r.counterparty || r.description || 'Transaction';
+    const clean = label.length > 30 ? label.slice(0, 27) + '…' : label;
+    const sign = r.type === 'income' ? '+' : r.type === 'expense' ? '-' : '';
+    return `${i + 1}. ${sign}${r.amount} — ${clean} (${r.date})`;
+  });
+  const footer =
+    '\n\nReply with a voice note like:\n' +
+    '"1 groceries, 2 restaurants, 3 fuel"\n' +
+    'and I\'ll categorize them for you.';
+  return header + lines.join('\n') + footer;
+}

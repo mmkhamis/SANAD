@@ -25,6 +25,12 @@ export async function setupNotificationChannel(): Promise<void> {
       vibrationPattern: [0, 100],
       lightColor: '#8B5CF6',
     });
+    await Notifications.setNotificationChannelAsync('review-reminder', {
+      name: 'Review Reminders',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      vibrationPattern: [0, 80],
+      lightColor: '#8B5CF6',
+    });
   }
 }
 
@@ -123,4 +129,82 @@ export async function registerPushToken(): Promise<string | null> {
     console.warn('[registerPushToken] failed:', e);
     return null;
   }
+}
+
+// ─── Recurring uncategorized-transactions reminder ───────────────────
+// A weekly local nudge when the user has transactions sitting in review.
+// The handler runs inside the app (fires a local push) and — separately —
+// the WhatsApp webhook can trigger an outbound DM when the user replies
+// with "uncategorized". Both entry points call `buildReviewNudgeContent`.
+
+const REVIEW_NUDGE_ID = 'review-uncategorized-weekly';
+
+interface ReviewNudgeContent {
+  title: string;
+  body: string;
+}
+
+export function buildReviewNudgeContent(count: number): ReviewNudgeContent {
+  if (count <= 0) {
+    return { title: '', body: '' };
+  }
+  const plural = count === 1 ? 'transaction' : 'transactions';
+  return {
+    title: `${count} uncategorized ${plural}`,
+    body: 'Tap to categorize — or reply "uncategorized" on WhatsApp to sort them by voice.',
+  };
+}
+
+/**
+ * Schedule (or reschedule) a weekly reminder that fires when the user
+ * has uncategorized transactions. The reminder is idempotent — calling
+ * this repeatedly replaces the previous schedule without stacking.
+ *
+ * Pass `count = 0` to cancel the reminder entirely (no pending work).
+ */
+export async function scheduleUncategorizedReminder(count: number): Promise<void> {
+  // Always cancel the existing one first so we don't double-schedule.
+  try {
+    await Notifications.cancelScheduledNotificationAsync(REVIEW_NUDGE_ID);
+  } catch {
+    // Not scheduled yet — ignore.
+  }
+
+  if (count <= 0) return;
+
+  const { title, body } = buildReviewNudgeContent(count);
+
+  // Weekly trigger — Sunday 10:00 local. expo-notifications normalizes
+  // weekday Sunday = 1 on iOS. We use the generic weekly trigger which
+  // works on both platforms.
+  await Notifications.scheduleNotificationAsync({
+    identifier: REVIEW_NUDGE_ID,
+    content: {
+      title,
+      body,
+      data: { source: 'review-nudge', count },
+      ...(Platform.OS === 'android' ? { channelId: 'review-reminder' } : {}),
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+      weekday: 1, // Sunday
+      hour: 10,
+      minute: 0,
+    },
+  });
+}
+
+/** One-shot: fire the nudge NOW. Useful after SMS batch imports. */
+export async function fireUncategorizedReminderNow(count: number): Promise<void> {
+  if (count <= 0) return;
+  const { title, body } = buildReviewNudgeContent(count);
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      data: { source: 'review-nudge', count },
+      ...(Platform.OS === 'android' ? { channelId: 'review-reminder' } : {}),
+    },
+    trigger: null,
+  });
 }

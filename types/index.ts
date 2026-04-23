@@ -635,6 +635,12 @@ export interface PlanEntitlements {
   deepAnalyticsPerWeek: number;
   insightsPerWeek: number;
   customCategoriesPerMonth: number;
+  /**
+   * Maximum days of historical data the plan can view. Infinity = unlimited.
+   * Free plans see the last N days only; older data is preserved in the DB
+   * but hidden behind a soft paywall until the user upgrades.
+   */
+  historyDaysVisible: number;
 
   // ── Quality / feature levels ────────────────────────────────────
   categoriesLevel: CategoriesLevel;
@@ -648,7 +654,7 @@ export interface PlanEntitlements {
 /** Keys for numeric entitlements (limits & quotas). */
 export type LimitKey = keyof Pick<
   PlanEntitlements,
-  'aiChatPerDay' | 'voiceTrackingPerDay' | 'deepAnalyticsPerWeek' | 'insightsPerWeek' | 'customCategoriesPerMonth'
+  'aiChatPerDay' | 'voiceTrackingPerDay' | 'deepAnalyticsPerWeek' | 'insightsPerWeek' | 'customCategoriesPerMonth' | 'historyDaysVisible'
 >;
 
 /** Keys for level/quality entitlements. */

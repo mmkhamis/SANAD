@@ -62,6 +62,7 @@ const PLAN_ENTITLEMENTS: Record<UserPlan, PlanEntitlements> = {
     deepAnalyticsPerWeek: 2,
     insightsPerWeek: 5,
     customCategoriesPerMonth: 0,
+    historyDaysVisible: 30,
 
     categoriesLevel: 'basic',
     insightsQuality: 'basic',
@@ -87,9 +88,12 @@ const PLAN_ENTITLEMENTS: Record<UserPlan, PlanEntitlements> = {
     voiceTrackingPerDay: 3,
     deepAnalyticsPerWeek: UNLIMITED,
     insightsPerWeek: UNLIMITED,
-    customCategoriesPerMonth: 0,
+    // Pro gets full category power (deep subcategories + custom creation).
+    // Pro and Max are intentionally identical on the category axis.
+    customCategoriesPerMonth: 3,
+    historyDaysVisible: UNLIMITED,
 
-    categoriesLevel: 'all',
+    categoriesLevel: 'all_plus_custom',
     insightsQuality: 'smarter',
     habitDetectionLevel: 'advanced',
     savingTipsLevel: 'basic',
@@ -114,6 +118,7 @@ const PLAN_ENTITLEMENTS: Record<UserPlan, PlanEntitlements> = {
     deepAnalyticsPerWeek: UNLIMITED,
     insightsPerWeek: UNLIMITED,
     customCategoriesPerMonth: 3,
+    historyDaysVisible: UNLIMITED,
 
     categoriesLevel: 'all_plus_custom',
     insightsQuality: 'predictive',
@@ -238,6 +243,23 @@ export const PLAN_HIERARCHY: Record<UserPlan, number> = {
 };
 
 const PLANS_ORDERED: UserPlan[] = ['free', 'pro', 'max'];
+
+/**
+ * Return the ISO date (YYYY-MM-DD) the plan is allowed to see back to.
+ * Free plans are capped at the last N days. Pro & Max return null (no cap).
+ *
+ * Data OLDER than this date is preserved in the DB — it's only hidden
+ * from read queries until the user upgrades. Paid plans see everything.
+ */
+export function getHistoryWindowStart(
+  plan: UserPlan,
+  now: Date = new Date(),
+): string | null {
+  const days = PLAN_ENTITLEMENTS[plan].historyDaysVisible;
+  if (!Number.isFinite(days)) return null;
+  const start = new Date(now.getTime() - days * 86_400_000);
+  return start.toISOString().slice(0, 10);
+}
 
 /** Returns true when `a` is a higher tier than `b`. */
 export function isHigherPlan(a: UserPlan, b: UserPlan): boolean {

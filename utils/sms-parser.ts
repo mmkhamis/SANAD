@@ -299,13 +299,16 @@ function detectTransactionType(text: string): TransactionType {
 // Terminators that follow a merchant name in Arabic/English SMS.
 // Important for Arabic SMS like "عند BEET ELGOMLA يوم 15/04..." where
 // "يوم" (on/day), "بتاريخ" (on date), "الساعه" (at time) end the merchant.
+// Also ends on ISO country code ("في SA", "في AE") used in Saudi bank SMS.
 const MERCHANT_TERMINATORS =
-  '(?:\\s+on\\b|\\s+ref\\b|\\s+at\\s+\\d|\\s+يوم\\b|\\s+بتاريخ\\b|\\s+الساعه\\b|\\s+الساعة\\b|\\s+في\\s+\\d|\\s+بمبلغ\\b|\\s+كود\\b|\\s+رقم\\b|\\s+المتاح\\b|\\s+للمزيد\\b|\\s*[.,]|\\s*$)';
+  '(?:\\s+on\\b|\\s+ref\\b|\\s+at\\s+\\d|\\s+يوم\\b|\\s+بتاريخ\\b|\\s+الساعه\\b|\\s+الساعة\\b|\\s+في\\s+\\d|\\s+في\\s+[A-Z]{2}\\b|\\s+بمبلغ\\b|\\s+كود\\b|\\s+رقم\\b|\\s+المتاح\\b|\\s+للمزيد\\b|\\s*[.,]|\\s*$)';
 
 const MERCHANT_PATTERNS = [
-  // "at MERCHANT_NAME" / "from MERCHANT_NAME" / "عند MERCHANT"
+  // "at MERCHANT_NAME" / "from MERCHANT_NAME" / "عند MERCHANT" / "من MERCHANT"
+  // Allow an optional colon or dash separator after the preposition —
+  // common in Saudi bank SMS: "من: HUNGERSTATION LLC".
   new RegExp(
-    `(?:at|from|عند|لدى)\\s+([A-Za-z0-9][A-Za-z0-9\\s&'._\\-]{1,60}?)${MERCHANT_TERMINATORS}`,
+    `(?:at|from|عند|لدى|من)\\s*[:\\-]?\\s+([A-Za-z0-9][A-Za-z0-9\\s&'._\\-]{1,60}?)${MERCHANT_TERMINATORS}`,
     'i',
   ),
   // Egyptian bank style: "By Mobile payment عند BEET ELGOMLA" → captured via عند above.
@@ -320,6 +323,9 @@ const MERCHANT_PATTERNS = [
 ];
 
 // Noise fragments that sometimes get captured as a merchant name.
+// Includes payment rails (Apple Pay, mada), card-number patterns, and
+// Gulf bank names that appear after "من" but are the issuing bank, not
+// the actual merchant.
 const MERCHANT_NOISE = [
   /^mobile\s+payment$/i,
   /^pos$/i,
@@ -328,10 +334,21 @@ const MERCHANT_NOISE = [
   /^transfer$/i,
   /^بطاقة/i,          // Arabic "card..."
   /^حساب/i,          // Arabic "account..."
+  /^\*?\d+\*?$/,      // Card/acct numbers like "*3452", "7402*"
+  // Payment rails — never real merchants
+  /^(?:apple\s*pay|google\s*pay|samsung\s*pay|mada|stc\s*pay|urpay)$/i,
+  // Gulf & MENA banks — issuer, not merchant
+  /^(?:stc\s*bank|alrajhi|al\s*rajhi|snb|anb|sab|riyad\s*bank|albilad|al\s*bilad|aljazira|al\s*jazira|saib|bsf|emirates\s*nbd|enbd|adcb|fab|cbd|rakbank|nbd|qnb|cib|banque\s*misr|nbe|alexbank|aib)$/i,
 ];
 
 function cleanMerchant(raw: string): string | null {
-  const trimmed = raw.trim().replace(/\s+/g, ' ');
+  // Strip trailing corporate suffixes that banks append to the merchant
+  // name ("HUNGERSTATION LLC", "Carrefour L.L.C.") — noisy for display.
+  const trimmed = raw
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/\s+(?:llc|l\.l\.c\.?|ltd|inc|co\.?|company|corp(?:oration)?)\.?$/i, '')
+    .trim();
   if (trimmed.length < 2) return null;
   if (/^\d+$/.test(trimmed)) return null;
   if (MERCHANT_NOISE.some((re) => re.test(trimmed))) return null;

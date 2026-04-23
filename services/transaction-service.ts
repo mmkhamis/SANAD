@@ -416,6 +416,22 @@ export async function fetchUnreviewedTransactions(): Promise<Transaction[]> {
   return (data as Transaction[]) ?? [];
 }
 
+/**
+ * Cheap, count-only query for uncategorized transactions. Used by the
+ * recurring nudge notification + the review banner on the home screen.
+ * Returns a scalar — no rows transferred — so it's safe to poll.
+ */
+export async function countUncategorizedTransactions(): Promise<number> {
+  const { count, error } = await supabase
+    .from('transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('needs_review', true)
+    .is('deleted_at', null);
+
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
 // ─── Review / categorize a transaction ───────────────────────────────
 
 export interface ReviewTransactionInput {

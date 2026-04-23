@@ -13,6 +13,8 @@ import {
 } from '../services/transaction-service';
 import type { Transaction, PaginatedResponse } from '../types/index';
 import { useAuthStore } from '../store/auth-store';
+import { useSubscription } from './useSubscription';
+import { getHistoryWindowStart } from '../lib/plan';
 
 // ─── Infinite paginated transaction list ─────────────────────────────
 // Uses useInfiniteQuery so pages accumulate instead of replacing each
@@ -35,6 +37,20 @@ interface UseTransactionsResult {
 export function useTransactions(
   filters?: TransactionFilters,
 ): UseTransactionsResult {
+  // Plan-gated history window. Free plans only see the last 30 days;
+  // older data is preserved in the DB but hidden from read queries
+  // until they upgrade. We merge the floor with any explicit
+  // filters.start_date (honoring the tighter of the two).
+  const { entitlement } = useSubscription();
+  const historyFloor = getHistoryWindowStart(entitlement.effectivePlan);
+  const effectiveFilters = useMemo<TransactionFilters | undefined>(() => {
+    if (!historyFloor) return filters;
+    const callerStart = filters?.start_date;
+    const mergedStart =
+      callerStart && callerStart > historyFloor ? callerStart : historyFloor;
+    return { ...(filters ?? {}), start_date: mergedStart };
+  }, [filters, historyFloor]);
+
   const {
     data,
     isLoading,
@@ -45,9 +61,9 @@ export function useTransactions(
     fetchNextPage,
     refetch,
   } = useInfiniteQuery<PaginatedResponse<Transaction>, Error>({
-    queryKey: [...QUERY_KEYS.transactions, filters ?? {}],
+    queryKey: [...QUERY_KEYS.transactions, effectiveFilters ?? {}],
     queryFn: ({ pageParam }) =>
-      fetchTransactions({ page: pageParam as number, filters }),
+      fetchTransactions({ page: pageParam as number, filters: effectiveFilters }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.has_more ? lastPage.page + 1 : undefined,

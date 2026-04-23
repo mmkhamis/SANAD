@@ -94,21 +94,40 @@ function detectType(text: string): ServerTxType {
 
 // ─── Merchant ───────────────────────────────────────────────────────
 
-const MERCHANT_TERM = '(?:\\s+on\\b|\\s+ref\\b|\\s+at\\s+\\d|\\s+يوم\\b|\\s+بتاريخ\\b|\\s+الساعه\\b|\\s+الساعة\\b|\\s+في\\s+\\d|\\s+بمبلغ\\b|\\s+كود\\b|\\s+رقم\\b|\\s+المتاح\\b|\\s+للمزيد\\b|\\s*[.,]|\\s*$)';
+// Terminator set — ends the merchant run. Includes ISO country code
+// ("في SA"), Arabic time/date markers, and the usual punctuation.
+const MERCHANT_TERM = '(?:\\s+on\\b|\\s+ref\\b|\\s+at\\s+\\d|\\s+يوم\\b|\\s+بتاريخ\\b|\\s+الساعه\\b|\\s+الساعة\\b|\\s+في\\s+\\d|\\s+في\\s+[A-Z]{2}\\b|\\s+بمبلغ\\b|\\s+كود\\b|\\s+رقم\\b|\\s+المتاح\\b|\\s+للمزيد\\b|\\s*[.,]|\\s*$)';
+
+// Payment rails, card/acct numbers, and MENA bank issuer names that
+// sometimes get captured as a "merchant". They are never the real one.
 const MERCHANT_NOISE = [
-  /^mobile\s+payment$/i, /^pos$/i, /^card$/i, /^online$/i, /^transfer$/i,
-  /^بطاقة/i, /^حساب/i,
+  /^mobile\s+payment$/i,
+  /^pos$/i,
+  /^card$/i,
+  /^online$/i,
+  /^transfer$/i,
+  /^بطاقة/i,
+  /^حساب/i,
+  /^\*?\d+\*?$/,
+  /^(?:apple\s*pay|google\s*pay|samsung\s*pay|mada|stc\s*pay|urpay)$/i,
+  /^(?:stc\s*bank|alrajhi|al\s*rajhi|snb|anb|sab|riyad\s*bank|albilad|al\s*bilad|aljazira|al\s*jazira|saib|bsf|emirates\s*nbd|enbd|adcb|fab|cbd|rakbank|nbd|qnb|cib|banque\s*misr|nbe|alexbank|aib)$/i,
 ];
 
 function extractMerchant(text: string): string | null {
   const patterns = [
-    new RegExp(`(?:at|from|عند|لدى)\\s+([A-Za-z0-9][A-Za-z0-9\\s&'._\\-]{1,60}?)${MERCHANT_TERM}`, 'i'),
+    // "at / from / عند / لدى / من [:-] MERCHANT" — the optional [:-]
+    // handles Saudi bank SMS style: "من: HUNGERSTATION LLC".
+    new RegExp(`(?:at|from|عند|لدى|من)\\s*[:\\-]?\\s+([A-Za-z0-9][A-Za-z0-9\\s&'._\\-]{1,60}?)${MERCHANT_TERM}`, 'i'),
     new RegExp(`(?:to|إلى)\\s+([A-Za-z0-9][A-Za-z0-9\\s&'._\\-]{1,60}?)${MERCHANT_TERM}`, 'i'),
     /(?:merchant|store|shop|التاجر)[:\s]+([A-Za-z0-9][A-Za-z0-9\s&'._-]{1,60})/i,
   ];
   for (const p of patterns) {
     const m = text.match(p);
-    const raw = m?.[1]?.trim().replace(/\s+/g, ' ');
+    const raw = m?.[1]
+      ?.trim()
+      .replace(/\s+/g, ' ')
+      .replace(/\s+(?:llc|l\.l\.c\.?|ltd|inc|co\.?|company|corp(?:oration)?)\.?$/i, '')
+      .trim();
     if (!raw || raw.length < 2 || /^\d+$/.test(raw)) continue;
     if (MERCHANT_NOISE.some((re) => re.test(raw))) continue;
     return raw;
@@ -251,18 +270,38 @@ export interface CategoryRow {
 // Lightweight alias map used as a fallback when `taxonomy_key` is absent.
 // Lower-case keyword → taxonomy_key. Mirrors the most common
 // FLATTENED_SUBCATEGORIES aliases for high-traffic categories.
+//
+// Important: "شراء إنترنت / شراء انترنت" is Saudi-bank shorthand for an
+// online card purchase — it is NOT an internet bill. We therefore do NOT
+// map the standalone word "إنترنت / انترنت / internet" to the internet
+// taxonomy; we only map when it appears next to a telecom merchant
+// (STC / Mobily / Zain / Etisalat / du / WE / Orange / Vodafone).
+const TELCO_MERCHANT_RE = /\b(?:stc(?!\s*pay|\s*bank)|mobily|zain|etisalat|\bdu\b|orange|vodafone|we\s*telecom|\bwe\b)\b/i;
+
 const KEYWORD_TO_TAXONOMY: Array<[RegExp, string]> = [
-  [/(carrefour|spinneys|panda|lulu|seoudi|kazyon|gomla|elgomla|بيت\s*الجملة|سوبر\s*ماركت|هايبر|بقالة|كارفور|بندة)/i, 'groceries'],
-  [/(restaurant|cafe|coffee|starbucks|mcdonalds|kfc|pizza|burger|مطعم|كافيه|قهوة)/i, 'restaurants'],
-  [/(uber|careem|bolt|taxi|lyft|اوبر|كريم)/i, 'taxi_rideshare'],
-  [/(petrol|gasoline|fuel|aramco|adnoc|chevron|بنزين|محطة\s*وقود)/i, 'fuel'],
-  [/(pharmacy|صيدلية|pharma)/i, 'pharmacy'],
-  [/(netflix|spotify|apple\s*music|amazon\s*prime|disney\+)/i, 'subscriptions'],
+  // Groceries & hypermarkets
+  [/(carrefour|spinneys|panda|lulu|seoudi|kazyon|gomla|elgomla|بيت\s*الجملة|سوبر\s*ماركت|هايبر|بقالة|كارفور|بندة|danube|دانوب|othaim|عثيم|tamimi|تميمي|bin\s*dawood|بن\s*داود|farm\s*superstore|مزرعة|نستو|nesto)/i, 'groceries'],
+  // Food delivery & restaurants (MENA-specific brands roll up to restaurants)
+  [/(hungerstation|هنقرستيشن|talabat|طلبات|jahez|جاهز|mrsool|مرسول|toyou|to\s*you|chefz|شيفز|shgardy|شقردي|uber\s*eats|careem\s*food|deliveroo|ديليفرو|el?menus|elmenus|otlob)/i, 'restaurants'],
+  [/(restaurant|cafe|coffee|starbucks|mcdonalds|kfc|pizza|burger|مطعم|كافيه|قهوة|herfy|هرفي|albaik|al\s*baik|البيك|kudu|كودو)/i, 'restaurants'],
+  // Rideshare
+  [/(uber|careem|bolt|taxi|lyft|اوبر|كريم|in\s*drive)/i, 'taxi_rideshare'],
+  // Fuel
+  [/(petrol|gasoline|fuel|aramco|adnoc|chevron|shell|بنزين|محطة\s*وقود|محطه\s*وقود|sasco|ساسكو|wataniya|وطنية|naft|total\s*energies)/i, 'fuel'],
+  // Pharmacy
+  [/(pharmacy|صيدلية|صيدلية\s*الدواء|pharma|nahdi|النهدي|dawaa|الدواء|al\s*dawaa|whites|وايتس|seif|سيف)/i, 'pharmacy'],
+  // Subscriptions (digital services)
+  [/(netflix|spotify|apple\s*music|apple\.com\/bill|amazon\s*prime|disney\+|shahid|شاهد|anghami|أنغامي|icloud|youtube\s*premium)/i, 'subscriptions'],
+  // Salary
   [/(salary|payroll|راتب|مرتب)/i, 'salary'],
-  [/(electricity|كهرباء)/i, 'electricity'],
-  [/(internet|wifi|fiber|انترنت|نت)/i, 'internet'],
-  [/(mobile|recharge|sim|موبايل|شحن\s*رصيد)/i, 'mobile'],
-  [/(water|مياه)/i, 'water'],
+  // E-commerce / shopping
+  [/(noon|نون|amazon\.sa|amazon\.ae|amazon\s*eg|amazon|jarir|جرير|extra\s*stores|إكسترا|اكسترا|shein|شي?\s*إن|namshi|نمشي|aliexpress|علي\s*اكسبرس|6thstreet|سنتر\s*بوينت|centrepoint)/i, 'shopping'],
+  // Utilities — only match electricity/water/gas when clearly a bill
+  [/(electricity|فاتورة\s*كهرباء|كهرباء)/i, 'electricity'],
+  [/(water\s*bill|فاتورة\s*مياه|مياه)/i, 'water'],
+  // Mobile recharge — phone credit, not the network itself
+  [/(recharge|sim\s*card|شحن\s*رصيد|mobile\s*recharge|top[\s-]?up\s*credit)/i, 'mobile'],
+  // Refund
   [/(refund|cashback|كاش\s*باك|استرداد)/i, 'refund_rebate'],
 ];
 
@@ -279,6 +318,17 @@ export function suggestUserCategory(
   for (const [re, k] of KEYWORD_TO_TAXONOMY) {
     if (re.test(hay)) { taxKey = k; break; }
   }
+
+  // Special case: the phrase "internet / wifi / fiber / انترنت / إنترنت / نت"
+  // is ONLY an internet-bill signal when the merchant is a known telco.
+  // Otherwise "شراء إنترنت" = online purchase — leave uncategorized so the
+  // transaction lands in review.
+  if (!taxKey && /\b(?:internet|wifi|fiber|انترنت|إنترنت|نت)\b/i.test(hay)) {
+    if (merchant && TELCO_MERCHANT_RE.test(merchant)) {
+      taxKey = 'internet';
+    }
+  }
+
   if (!taxKey) return null;
 
   // Match against the user's own categories: prefer same-type + matching taxonomy_key

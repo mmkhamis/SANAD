@@ -15,6 +15,7 @@ import { useLanguageStore } from '../store/language-store';
 import { LoadingScreen } from '../components/ui/LoadingScreen';
 import { setupNotificationChannel, requestNotificationPermission, registerPushToken } from '../services/notification-service';
 import { useOfflineQueue } from '../hooks/useOfflineQueue';
+import { useUncategorizedReminder } from '../hooks/useUncategorizedReminder';
 import { OfflineBanner } from '../components/ui/OfflineBanner';
 import { startNativeSessionBridge } from '../services/native-session-bridge';
 
@@ -107,6 +108,8 @@ function RootLayoutInner(): React.ReactElement {
   useSMSDeepLink();
   // Wires connectivity detection and triggers replay on reconnect
   useOfflineQueue();
+  // Weekly "you have uncategorized transactions" nudge — idempotent.
+  useUncategorizedReminder();
 
   // Initialize notification channel + request permission
   useEffect(() => {
