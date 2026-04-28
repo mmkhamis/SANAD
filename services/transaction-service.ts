@@ -293,6 +293,8 @@ export interface CreateSMSTransactionInput {
   parse_confidence?: number | null;
   review_reason?: string | null;
   transaction_type?: TransactionType;
+  from_last4?: string | null;
+  to_last4?: string | null;
 }
 
 export async function createSMSTransaction(
@@ -351,15 +353,54 @@ export async function createSMSTransaction(
     }
   }
 
-  const txType = input.transaction_type ?? input.type;
+  let txType = input.transaction_type ?? input.type;
+  const fromLast4 = input.from_last4 ?? null;
+  const toLast4 = input.to_last4 ?? null;
+  if (txType !== 'transfer' && fromLast4 && toLast4) {
+    txType = 'transfer';
+  }
+
+  let fromAccountId: string | null = null;
+  let toAccountId: string | null = null;
+  if (fromLast4 || toLast4 || txType === 'transfer') {
+    const { data: accounts } = await supabase
+      .from('accounts')
+      .select('id, account_last4, card_last4, iban_last4')
+      .eq('user_id', session.user.id);
+
+    const resolveOwnedAccountId = (last4: string | null): string | null => {
+      if (!last4 || !accounts?.length) return null;
+      const match = accounts.find((a) =>
+        a.account_last4 === last4 || a.card_last4 === last4 || a.iban_last4 === last4,
+      );
+      return (match?.id as string | undefined) ?? null;
+    };
+
+    fromAccountId = resolveOwnedAccountId(fromLast4);
+    toAccountId = resolveOwnedAccountId(toLast4);
+    if (fromAccountId && toAccountId) {
+      txType = 'transfer';
+    }
+  }
+
   const needsReview = input.parse_confidence != null ? input.parse_confidence < 0.7 : true;
 
   // Build review reason — always include 'missing_category' since SMS transactions
   // are saved without a category and need user categorization.
+  const cleanedReviewReason = input.review_reason
+    ?.split(';')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .filter((s) => !(txType === 'transfer' && /transaction type unclear|unknown merchant/i.test(s)))
+    .join('; ') ?? null;
   const reasons: string[] = [];
   reasons.push('missing_category');
-  if (input.review_reason) reasons.push(input.review_reason);
+  if (cleanedReviewReason) reasons.push(cleanedReviewReason);
   const reviewReason = reasons.join('; ');
+
+  const description = txType === 'transfer' && /card payment/i.test(input.description)
+    ? 'Internal transfer'
+    : input.description;
 
   const row: Record<string, unknown> = {
     user_id: session.user.id,
@@ -370,7 +411,7 @@ export async function createSMSTransaction(
     category_name: null,
     category_icon: null,
     category_color: null,
-    description: input.description,
+    description,
     merchant: input.merchant ?? null,
     date: input.date,
     notes: input.notes ?? null,
@@ -379,6 +420,10 @@ export async function createSMSTransaction(
     needs_review: true, // Always true for SMS — no category assigned
     parse_confidence: input.parse_confidence ?? null,
     review_reason: reviewReason,
+    from_last4: fromLast4,
+    to_last4: toLast4,
+    from_account_id: fromAccountId,
+    to_account_id: toAccountId,
   };
 
   // Only include counterparty if it has a value (avoids error if column doesn't exist yet)
@@ -442,6 +487,8 @@ export interface ReviewTransactionInput {
   category_icon: string;
   category_color: string;
   account_id?: string | null;
+  /** For transfers: the destination account to credit */
+  to_account_id?: string | null;
   amount?: number;
   description?: string;
 }
@@ -492,24 +539,77 @@ export async function reviewTransaction(
     throw new Error(error.message);
   }
 
-  const previousDelta = existing.account_id
-    ? getAccountDelta(existing.type, existing.amount)
-    : 0;
-  const updatedDelta = nextAccountId
-    ? getAccountDelta(nextType, nextAmount)
-    : 0;
+  // ─── Cache merchant→category for future SMS auto-categorization ────
+  // Only for SMS-sourced transactions with a merchant name.
+  const reviewed = data as Transaction;
+  if (reviewed.merchant && reviewed.source === 'sms' && input.category_id) {
+    const merchantKey = reviewed.merchant.toLowerCase().trim();
+    if (merchantKey.length >= 2) {
+      // Fetch the category's taxonomy_key
+      const { data: catRow } = await supabase
+        .from('categories')
+        .select('taxonomy_key')
+        .eq('id', input.category_id)
+        .maybeSingle();
 
-  if (existing.account_id && existing.account_id === nextAccountId) {
-    const deltaDiff = updatedDelta - previousDelta;
-    if (deltaDiff !== 0) {
-      await adjustAccountBalance(existing.account_id, deltaDiff).catch(() => {});
+      if (catRow?.taxonomy_key) {
+        supabase
+          .from('merchant_category_cache')
+          .upsert({
+            merchant_key: merchantKey,
+            taxonomy_key: catRow.taxonomy_key,
+            merchant_raw: reviewed.merchant,
+            source: 'manual',
+            hit_count: 1,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'merchant_key' })
+          .then(() => {});
+      }
+    }
+  }
+
+  // ─── Balance adjustments ────────────────────────────────────────────
+  // For transfers: debit from_account, credit to_account.
+  // For income/expense: adjust the single account_id.
+  const isTransfer = nextType === 'transfer';
+
+  if (isTransfer) {
+    const toAccountId = input.to_account_id ?? null;
+
+    // Reverse any previous adjustments
+    if (existing.account_id) {
+      const prevDelta = getAccountDelta(existing.type, existing.amount);
+      await adjustAccountBalance(existing.account_id, -prevDelta).catch(() => {});
+    }
+
+    // Debit from source
+    if (nextAccountId) {
+      await adjustAccountBalance(nextAccountId, -nextAmount).catch(() => {});
+    }
+    // Credit to destination
+    if (toAccountId) {
+      await adjustAccountBalance(toAccountId, nextAmount).catch(() => {});
     }
   } else {
-    if (existing.account_id) {
-      await adjustAccountBalance(existing.account_id, -previousDelta).catch(() => {});
-    }
-    if (nextAccountId) {
-      await adjustAccountBalance(nextAccountId, updatedDelta).catch(() => {});
+    const previousDelta = existing.account_id
+      ? getAccountDelta(existing.type, existing.amount)
+      : 0;
+    const updatedDelta = nextAccountId
+      ? getAccountDelta(nextType, nextAmount)
+      : 0;
+
+    if (existing.account_id && existing.account_id === nextAccountId) {
+      const deltaDiff = updatedDelta - previousDelta;
+      if (deltaDiff !== 0) {
+        await adjustAccountBalance(existing.account_id, deltaDiff).catch(() => {});
+      }
+    } else {
+      if (existing.account_id) {
+        await adjustAccountBalance(existing.account_id, -previousDelta).catch(() => {});
+      }
+      if (nextAccountId) {
+        await adjustAccountBalance(nextAccountId, updatedDelta).catch(() => {});
+      }
     }
   }
 

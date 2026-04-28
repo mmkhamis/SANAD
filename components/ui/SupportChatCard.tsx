@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { View, Text, Pressable, Linking } from 'react-native';
+import { View, Text, Pressable, Linking, ScrollView } from 'react-native';
 import { MessageCircle, ChevronRight } from 'lucide-react-native';
 
 import { Card } from './Card';
@@ -72,16 +72,16 @@ export function SupportChatCard(): React.ReactElement {
       >
         <View
           style={{
-            width: 38,
-            height: 38,
-            borderRadius: 10,
+            width: 34,
+            height: 34,
+            borderRadius: 9,
             alignItems: 'center',
             justifyContent: 'center',
             marginEnd: 12,
             backgroundColor: '#25D36615',
           }}
         >
-          <MessageCircle size={20} color="#25D366" strokeWidth={1.9} />
+          <MessageCircle size={17} color="#25D366" strokeWidth={1.9} />
         </View>
         <View style={{ flex: 1 }}>
           <Text
@@ -110,40 +110,48 @@ export function SupportChatCard(): React.ReactElement {
 
       <View style={{ height: 1, backgroundColor: colors.borderLight }} />
 
-      {/* Topic list */}
-      {topics.map((topic, idx) => (
-        <Pressable
-          key={topic.key}
-          onPress={() => onPickTopic(topic)}
-          style={({ pressed }) => ({
-            flexDirection: rowDir,
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingVertical: 13,
-            backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
-            borderBottomWidth: idx === topics.length - 1 ? 0 : 1,
-            borderBottomColor: colors.borderLight,
-          })}
-        >
-          <Text
-            style={{
-              flex: 1,
-              fontSize: 14,
-              fontWeight: '500',
-              color: colors.textPrimary,
-              textAlign,
-            }}
+      {/* Topic cards — horizontal scroll */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 12, gap: 8 }}
+      >
+        {topics.map((topic) => (
+          <Pressable
+            key={topic.key}
+            onPress={() => onPickTopic(topic)}
+            style={({ pressed }) => ({
+              flexDirection: rowDir,
+              alignItems: 'center',
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              borderRadius: 12,
+              backgroundColor: pressed ? colors.surfaceSecondary : colors.surface,
+              borderWidth: 1,
+              borderColor: colors.borderLight,
+              gap: 6,
+            })}
           >
-            {topic.label}
-          </Text>
-          <ChevronRight
-            size={16}
-            color={colors.textTertiary}
-            strokeWidth={1.8}
-            style={isRTL ? { transform: [{ scaleX: -1 }] } : undefined}
-          />
-        </Pressable>
-      ))}
+            <MessageCircle size={14} color="#25D366" strokeWidth={2} />
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '500',
+                color: colors.textPrimary,
+              }}
+              numberOfLines={1}
+            >
+              {topic.label}
+            </Text>
+            <ChevronRight
+              size={13}
+              color={colors.textTertiary}
+              strokeWidth={1.8}
+              style={isRTL ? { transform: [{ scaleX: -1 }] } : undefined}
+            />
+          </Pressable>
+        ))}
+      </ScrollView>
     </Card>
   );
 }

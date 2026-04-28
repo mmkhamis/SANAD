@@ -21,7 +21,6 @@ import {
 } from 'lucide-react-native';
 
 import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
-import { SmartInputFAB } from '../../components/ui/SmartInputFAB';
 import { AppScreen } from '../../components/ui/AppScreen';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Card } from '../../components/ui/Card';
@@ -333,14 +332,6 @@ function FeaturesContent(): React.ReactElement {
         </FeatureCard>
 
       </ScrollView>
-
-      <SmartInputFAB
-        style={{ right: 12, bottom: 96 }}
-        onPress={() => router.push('/(tabs)/smart-input')}
-        onVoice={() => router.push('/(tabs)/smart-input?mode=voice')}
-        onScan={() => router.push('/(tabs)/smart-input?mode=scan')}
-        onManual={() => router.push('/(tabs)/smart-input?mode=manual')}
-      />
     </AppScreen>
   );
 }

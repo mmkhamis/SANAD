@@ -60,7 +60,10 @@ import { useLanguageStore } from '../../store/language-store';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { COLORS } from '../../constants/colors';
-import { SUBSCRIPTION_PRESETS } from '../../services/subscription-service';
+import {
+  getSubscriptionDisplayName,
+  getSubscriptionLogo,
+} from '../../services/subscription-service';
 import { STRINGS } from '../../constants/strings';
 import { useT, useTranslateCategory } from '../../lib/i18n';
 import { useRTL } from '../../hooks/useRTL';
@@ -85,10 +88,6 @@ function toMonthly(amount: number, cycle: BillingCycle): number {
     case 'quarterly': return amount / 3;
     case 'yearly': return amount / 12;
   }
-}
-
-function getPresetLogo(name: string): string | null {
-  return SUBSCRIPTION_PRESETS.find((p) => p.name === name || p.nameAr === name)?.logo ?? null;
 }
 
 function thisMonthEnd(): Date {
@@ -1257,7 +1256,7 @@ const SubscriptionsCard = React.memo(function SubscriptionsCard({ subs, hidden, 
           />
           <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10 }}>
             {previews.map((sub) => {
-              const logo = getPresetLogo(sub.name);
+              const logo = getSubscriptionLogo(sub);
               return (
                 <View
                   key={sub.id}
@@ -1310,7 +1309,7 @@ function SubscriptionsSheetContent({
 }): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
-  const { rowDir } = useRTL();
+  const { isRTL, rowDir } = useRTL();
   const language = useLanguageStore((s) => s.language);
   const {
     active,
@@ -1485,7 +1484,7 @@ function SubscriptionsSheetContent({
           <SectionLabel>{t('UPCOMING_BILLING')}</SectionLabel>
           <ThinCard>
             {sortedActive.slice(0, 8).map((sub, i) => {
-              const logo = getPresetLogo(sub.name);
+              const logo = getSubscriptionLogo(sub);
               const daysUntil = Math.ceil((new Date(sub.next_billing_date).getTime() - Date.now()) / 86400000);
               const isUrgent = daysUntil <= 7;
               const isLast = i === Math.min(sortedActive.length, 8) - 1;
@@ -1521,7 +1520,7 @@ function SubscriptionsSheetContent({
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>
-                      {sub.name}
+                      {getSubscriptionDisplayName(sub, isRTL)}
                     </Text>
                     <Text style={{ fontSize: 11, color: isUrgent ? colors.warning : colors.textTertiary, marginTop: 1 }}>
                       {dueDateLabel}
@@ -1545,7 +1544,7 @@ function SubscriptionsSheetContent({
           <SectionLabel>{`${t('PAUSED')} (${paused.length})`}</SectionLabel>
           <ThinCard>
             {paused.map((sub, i) => {
-              const logo = getPresetLogo(sub.name);
+              const logo = getSubscriptionLogo(sub);
               const isLast = i === paused.length - 1;
               return (
                 <View
@@ -1579,7 +1578,7 @@ function SubscriptionsSheetContent({
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text numberOfLines={1} style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>
-                      {sub.name}
+                      {getSubscriptionDisplayName(sub, isRTL)}
                     </Text>
                     <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 1 }}>{t('PAUSED')}</Text>
                   </View>

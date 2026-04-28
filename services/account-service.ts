@@ -32,6 +32,9 @@ export interface CreateAccountInput {
   type: AccountType;
   opening_balance: number;
   include_in_total?: boolean;
+  account_last4?: string | null;
+  card_last4?: string | null;
+  iban_last4?: string | null;
 }
 
 export async function createAccount(
@@ -42,6 +45,10 @@ export async function createAccount(
     throw new Error('No authenticated session');
   }
 
+  const accountLast4 = normalizeLast4(input.account_last4);
+  const cardLast4 = normalizeLast4(input.card_last4);
+  const ibanLast4 = normalizeLast4(input.iban_last4);
+
   const { data, error } = await supabase
     .from('accounts')
     .insert({
@@ -51,6 +58,9 @@ export async function createAccount(
       opening_balance: input.opening_balance,
       current_balance: input.opening_balance,
       include_in_total: input.include_in_total ?? true,
+      account_last4: accountLast4,
+      card_last4: cardLast4,
+      iban_last4: ibanLast4,
     })
     .select()
     .single();
@@ -68,18 +78,29 @@ export interface UpdateAccountInput {
   name?: string;
   include_in_total?: boolean;
   current_balance?: number;
+  account_last4?: string | null;
+  card_last4?: string | null;
+  iban_last4?: string | null;
 }
 
 export async function updateAccount(
   id: string,
   input: UpdateAccountInput,
 ): Promise<Account> {
+  const payload: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
+
+  if (input.name !== undefined) payload.name = input.name;
+  if (input.include_in_total !== undefined) payload.include_in_total = input.include_in_total;
+  if (input.current_balance !== undefined) payload.current_balance = input.current_balance;
+  if (input.account_last4 !== undefined) payload.account_last4 = normalizeLast4(input.account_last4);
+  if (input.card_last4 !== undefined) payload.card_last4 = normalizeLast4(input.card_last4);
+  if (input.iban_last4 !== undefined) payload.iban_last4 = normalizeLast4(input.iban_last4);
+
   const { data, error } = await supabase
     .from('accounts')
-    .update({
-      ...input,
-      updated_at: new Date().toISOString(),
-    })
+    .update(payload)
     .eq('id', id)
     .select()
     .single();
@@ -89,6 +110,16 @@ export async function updateAccount(
   }
 
   return data as Account;
+}
+
+function normalizeLast4(value?: string | null): string | null {
+  if (value == null) return null;
+  const digits = value.replace(/\D/g, '');
+  if (digits.length === 0) return null;
+  if (digits.length !== 4) {
+    throw new Error('Last 4 fields must contain exactly 4 digits');
+  }
+  return digits;
 }
 
 // ─── Delete account ──────────────────────────────────────────────────

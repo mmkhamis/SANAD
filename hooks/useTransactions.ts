@@ -148,7 +148,18 @@ export function useDeleteTransaction(): UseDeleteTransactionResult {
       await qc.cancelQueries({ queryKey: QUERY_KEYS.transactions });
       const prev = qc.getQueriesData({ queryKey: QUERY_KEYS.transactions });
       qc.setQueriesData({ queryKey: QUERY_KEYS.transactions }, (old: any) => {
+        if (!old) return old;
         if (Array.isArray(old)) return old.filter((t: any) => t.id !== id);
+        if (old.pages && Array.isArray(old.pages)) {
+          return {
+            ...old,
+            pages: old.pages.map((page: any) => ({
+              ...page,
+              data: Array.isArray(page.data) ? page.data.filter((t: any) => t.id !== id) : page.data,
+              count: typeof page.count === 'number' ? Math.max(0, page.count - 1) : page.count,
+            })),
+          };
+        }
         return old;
       });
       return { prev };

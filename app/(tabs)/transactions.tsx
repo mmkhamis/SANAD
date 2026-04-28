@@ -51,11 +51,10 @@ import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
 import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { Card } from '../../components/ui/Card';
 import { SmartInputButton } from '../../components/ui/SmartInputButton';
 import { DateRangeFilter, getDefaultRange, type DateRange, type DatePreset } from '../../components/ui/DateRangeFilter';
-import { TransactionRow } from '../../components/finance/TransactionRow';
-import { TransactionCard } from '../../components/finance/TransactionCard';
-import { SwipeableTransactionRow } from '../../components/finance/SwipeableTransactionRow';
+import { TransactionDateSection } from '../../components/finance/TransactionDateSection';
 import { CategoryPicker } from '../../components/finance/CategoryPicker';
 import { AccountPicker } from '../../components/finance/AccountPicker';
 import { useTransactions, useUpdateTransaction, useDeleteTransaction } from '../../hooks/useTransactions';
@@ -74,6 +73,10 @@ import type { Transaction, TransactionType, Category, Account } from '../../type
 // ─── Filter tabs ─────────────────────────────────────────────────────
 
 type FilterTab = 'all' | TransactionType;
+interface TransactionDateGroup {
+  dateKey: string;
+  transactions: Transaction[];
+}
 
 const FILTER_TAB_KEYS: { key: FilterTab; labelKey: 'FILTER_ALL' | 'FILTER_EXPENSES' | 'FILTER_INCOME' | 'FILTER_TRANSFERS' }[] = [
   { key: 'all', labelKey: 'FILTER_ALL' },
@@ -631,6 +634,23 @@ function TransactionsContent({ onClose, isModal = false }: { onClose?: () => voi
     return { income, expense };
   }, [transactions]);
 
+  const transactionSections = useMemo<TransactionDateGroup[]>(() => {
+    const groups: TransactionDateGroup[] = [];
+
+    for (const transaction of transactions) {
+      const dateKey = transaction.date.slice(0, 10);
+      const lastGroup = groups[groups.length - 1];
+
+      if (!lastGroup || lastGroup.dateKey !== dateKey) {
+        groups.push({ dateKey, transactions: [transaction] });
+      } else {
+        lastGroup.transactions.push(transaction);
+      }
+    }
+
+    return groups;
+  }, [transactions]);
+
   const { data: unreviewed } = useUnreviewedTransactions();
   const unreviewedCount = unreviewed?.length ?? 0;
 
@@ -732,16 +752,17 @@ function TransactionsContent({ onClose, isModal = false }: { onClose?: () => voi
     });
   }, [splitTarget, router]);
 
-  const renderItem = useCallback(({ item }: ListRenderItemInfo<Transaction>): React.ReactElement => (
-    <TransactionCard
-      transaction={item}
+  const renderItem = useCallback(({ item }: ListRenderItemInfo<TransactionDateGroup>): React.ReactElement => (
+    <TransactionDateSection
+      dateKey={item.dateKey}
+      transactions={item.transactions}
       onEdit={handleTransactionPress}
       onDelete={handleDelete}
       onSplit={handleSplit}
     />
   ), [handleTransactionPress, handleDelete, handleSplit]);
 
-  const keyExtractor = useCallback((item: Transaction): string => item.id, []);
+  const keyExtractor = useCallback((item: TransactionDateGroup): string => item.dateKey, []);
 
   // ─── Early returns AFTER all hooks ───────────────────────────────
 
@@ -764,7 +785,7 @@ function TransactionsContent({ onClose, isModal = false }: { onClose?: () => voi
     <View
       style={{
         paddingTop: isModal ? 8 : insets.top + 12,
-        paddingBottom: 8,
+        paddingBottom: 10,
         backgroundColor: colors.isDark ? 'rgba(26,31,46,0.92)' : 'rgba(255,255,255,0.95)',
         borderBottomWidth: 1,
         borderBottomColor: colors.glassBorder,
@@ -784,134 +805,157 @@ function TransactionsContent({ onClose, isModal = false }: { onClose?: () => voi
         </View>
       ) : null}
 
-      {/* Title + calendar toggle (+ close button in modal) */}
-      <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: hPad, marginBottom: 8 }}>
-        <Text style={{ fontSize: isModal ? 24 : 28, fontWeight: '700', color: colors.textPrimary, textAlign }}>
-          {t('TAB_TRANSACTIONS')}
-        </Text>
-        <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
-          <Pressable
-            onPress={() => { impactLight(); setShowCalendar((prev) => !prev); }}
-            style={{
-              width: 36, height: 36, borderRadius: 10,
-              alignItems: 'center', justifyContent: 'center',
-              backgroundColor: showCalendar ? colors.primary + '15' : colors.surfaceSecondary,
-              borderWidth: 1,
-              borderColor: showCalendar ? colors.primary + '30' : colors.borderLight,
-            }}
-          >
-            <CalendarIcon size={18} color={showCalendar ? colors.primary : colors.textSecondary} strokeWidth={2} />
-          </Pressable>
-          {isModal ? (
+      <View style={{ paddingHorizontal: hPad }}>
+        {/* Title + compact actions */}
+        <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <View style={{ flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
+            <Text style={{ fontSize: isModal ? 24 : 28, fontWeight: '700', color: colors.textPrimary, textAlign }}>
+              {t('TAB_TRANSACTIONS')}
+            </Text>
+            <Text style={{ marginTop: 4, fontSize: 12.5, fontWeight: '500', color: colors.textTertiary, textAlign }}>
+              {selectedDay ? formatLongDate(selectedDay) : formatMonthYear(selectedMonth)}
+            </Text>
+          </View>
+          <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', gap: 8 }}>
             <Pressable
-              onPress={() => { impactLight(); onClose?.(); }}
-              hitSlop={12}
+              onPress={() => { impactLight(); setShowCalendar((prev) => !prev); }}
               style={{
-                width: 36, height: 36, borderRadius: 10,
-                alignItems: 'center', justifyContent: 'center',
-                backgroundColor: colors.surfaceSecondary,
+                flexDirection: isRTL ? 'row-reverse' : 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingHorizontal: 12,
+                height: 36,
+                borderRadius: 12,
+                backgroundColor: showCalendar ? colors.primary + '16' : colors.surfaceSecondary,
                 borderWidth: 1,
-                borderColor: colors.borderLight,
+                borderColor: showCalendar ? colors.primary + '26' : colors.borderLight,
               }}
             >
-              <ChevronDown size={20} color={colors.textSecondary} strokeWidth={2} />
+              <CalendarIcon size={16} color={showCalendar ? colors.primary : colors.textSecondary} strokeWidth={2} />
+              <Text style={{ fontSize: 12.5, fontWeight: '700', color: showCalendar ? colors.primary : colors.textSecondary }}>
+                {formatShortMonthYear(selectedMonth)}
+              </Text>
+            </Pressable>
+            {isModal ? (
+              <Pressable
+                onPress={() => { impactLight(); onClose?.(); }}
+                hitSlop={12}
+                style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: colors.surfaceSecondary,
+                  borderWidth: 1,
+                  borderColor: colors.borderLight,
+                }}
+              >
+                <ChevronDown size={20} color={colors.textSecondary} strokeWidth={2} />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+
+        {/* Compact status strip */}
+        <View
+          style={{
+            flexDirection: rowDir,
+            flexWrap: 'wrap',
+            gap: 8,
+            width: '100%',
+            marginBottom: 10,
+            paddingHorizontal: 2,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: rowDir,
+              alignItems: 'center',
+              borderRadius: 14,
+              paddingHorizontal: 12,
+              paddingVertical: 9,
+              backgroundColor: colors.isDark ? 'rgba(15,23,42,0.56)' : 'rgba(255,255,255,0.85)',
+              borderWidth: 1,
+              borderColor: colors.isDark ? 'rgba(52,199,89,0.20)' : 'rgba(52,199,89,0.16)',
+            }}
+          >
+            <TrendingUp size={14} color={colors.income} strokeWidth={2} />
+            <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.income, marginLeft: isRTL ? 0 : 6, marginRight: isRTL ? 6 : 0 }}>
+              {formatAmount(summary.income)}
+            </Text>
+          </View>
+
+          <View
+            style={{
+              flexDirection: rowDir,
+              alignItems: 'center',
+              borderRadius: 14,
+              paddingHorizontal: 12,
+              paddingVertical: 9,
+              backgroundColor: colors.isDark ? 'rgba(15,23,42,0.56)' : 'rgba(255,255,255,0.85)',
+              borderWidth: 1,
+              borderColor: colors.isDark ? 'rgba(255,59,48,0.20)' : 'rgba(255,59,48,0.16)',
+            }}
+          >
+            <TrendingDown size={14} color={colors.expense} strokeWidth={2} />
+            <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.expense, marginLeft: isRTL ? 0 : 6, marginRight: isRTL ? 6 : 0 }}>
+              {formatAmount(summary.expense)}
+            </Text>
+          </View>
+
+          {unreviewedCount > 0 ? (
+            <Pressable
+              onPress={() => { impactLight(); router.push('/(tabs)/review'); }}
+              style={{
+                flexDirection: rowDir,
+                alignItems: 'center',
+                borderRadius: 14,
+                paddingHorizontal: 12,
+                paddingVertical: 9,
+                backgroundColor: colors.isDark ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.10)',
+                borderWidth: 1,
+                borderColor: colors.isDark ? 'rgba(245,158,11,0.24)' : 'rgba(245,158,11,0.18)',
+              }}
+            >
+              <AlertCircle size={14} color={colors.warning} strokeWidth={2} />
+              <Text style={{ fontSize: 12.5, fontWeight: '700', color: colors.textPrimary, marginLeft: isRTL ? 0 : 6, marginRight: isRTL ? 6 : 0 }}>
+                {unreviewedCount} {t('UNCATEGORIZED_COUNT_SUFFIX' as any)}
+              </Text>
             </Pressable>
           ) : null}
         </View>
       </View>
-
-      {/* Uncategorized banner */}
-      <UncategorizedBanner
-        count={unreviewedCount}
-        onPress={() => router.push('/(tabs)/review')}
-      />
 
       {/* Quick date range filter */}
       <View className="px-4 mb-2">
         <DateRangeFilter value={quickRange} onChange={handleQuickRangeChange} />
       </View>
 
-      {/* Month navigator */}
-      <View className="flex-row items-center justify-between px-4 mb-2">
-        <Pressable onPress={isRTL ? handleMonthForward : handleMonthBack} style={{ padding: 6 }}>
-          <ChevronLeft size={20} color={colors.textSecondary} strokeWidth={2} />
-        </Pressable>
-        <Pressable onPress={handleMonthReset}>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary }}>
-            {formatMonthYear(selectedMonth)}
-          </Text>
-        </Pressable>
-        <Pressable onPress={isRTL ? handleMonthBack : handleMonthForward} style={{ padding: 6 }}>
-          <ChevronRight size={20} color={colors.textSecondary} strokeWidth={2} />
-        </Pressable>
-      </View>
-
-      {/* Calendar grid (collapsible) */}
-      {showCalendar ? (
-        <MiniCalendar
-          month={selectedMonth}
-          selectedDay={selectedDay}
-          onSelectDay={handleDaySelect}
-          transactions={allMonthTransactions}
-        />
-      ) : null}
-
-      {/* Day selection indicator */}
-      {selectedDay ? (
-        <Pressable
-          onPress={() => { impactLight(); setSelectedDay(null); }}
-          className="flex-row items-center mx-4 mb-2 rounded-lg px-3 py-2"
-          style={{ backgroundColor: colors.primary + '12', borderWidth: 1, borderColor: colors.primary + '25' }}
-        >
-          <CalendarIcon size={14} color={colors.primary} strokeWidth={2} />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary, marginLeft: 6, flex: 1 }}>
-            {formatLongDate(selectedDay)}
-          </Text>
-          <X size={14} color={colors.primary} strokeWidth={2} />
-        </Pressable>
-      ) : null}
-
-      {/* Income / Expense summary */}
-      <View className="px-4 mb-2" style={{ gap: 8, flexDirection: rowDir }}>
-        <View className="flex-1 flex-row items-center rounded-xl px-3 py-2.5" style={{
-          backgroundColor: colors.isDark ? 'rgba(15,23,42,0.60)' : 'rgba(241,245,249,0.8)',
-          borderWidth: 1,
-          borderColor: colors.isDark ? 'rgba(52,199,89,0.20)' : 'rgba(52,199,89,0.15)',
-        }}>
-          <TrendingUp size={14} color={colors.income} strokeWidth={2} />
-          <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 13, fontWeight: '600', color: colors.income, marginLeft: 4 }}>
-            {formatAmount(summary.income)}
-          </Text>
-        </View>
-        <View className="flex-1 flex-row items-center rounded-xl px-3 py-2.5" style={{
-          backgroundColor: colors.isDark ? 'rgba(15,23,42,0.60)' : 'rgba(241,245,249,0.8)',
-          borderWidth: 1,
-          borderColor: colors.isDark ? 'rgba(255,59,48,0.20)' : 'rgba(255,59,48,0.15)',
-        }}>
-          <TrendingDown size={14} color={colors.expense} strokeWidth={2} />
-          <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontSize: 13, fontWeight: '600', color: colors.expense, marginLeft: 4 }}>
-            {formatAmount(summary.expense)}
-          </Text>
-        </View>
-      </View>
-
       {/* Filter row */}
-      <View className="gap-2 px-4 pb-1" style={{ flexDirection: rowDir }}>
+      <View
+        style={{
+          flexDirection: rowDir,
+          flexWrap: 'wrap',
+          gap: 8,
+          width: '100%',
+          paddingHorizontal: 16,
+        }}
+      >
         {FILTER_TAB_KEYS.map((tab) => {
           const isActive = activeFilter === tab.key;
           return (
             <Pressable
               key={tab.key}
               onPress={() => handleFilterChange(tab.key)}
-              className="rounded-lg px-3 py-2"
+              className="rounded-xl px-4 py-2.5"
               style={{
                 backgroundColor: isActive ? colors.primary : colors.surfaceSecondary,
+                borderWidth: 1,
+                borderColor: isActive ? colors.primary : colors.borderLight,
               }}
             >
               <Text
                 style={{
                   fontSize: 13,
-                  fontWeight: '600',
+                  fontWeight: '700',
                   color: isActive ? colors.textInverse : colors.textSecondary,
                 }}
               >
@@ -921,6 +965,57 @@ function TransactionsContent({ onClose, isModal = false }: { onClose?: () => voi
           );
         })}
       </View>
+
+      {/* Calendar panel */}
+      {showCalendar ? (
+        <Card noPadding style={{ marginHorizontal: 16, marginTop: 12, overflow: 'hidden' }}>
+          <View style={{ paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10 }}>
+            <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Pressable onPress={isRTL ? handleMonthForward : handleMonthBack} style={{ padding: 6 }}>
+                <ChevronLeft size={18} color={colors.textSecondary} strokeWidth={2} />
+              </Pressable>
+              <Pressable onPress={handleMonthReset}>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.textPrimary }}>
+                  {formatMonthYear(selectedMonth)}
+                </Text>
+              </Pressable>
+              <Pressable onPress={isRTL ? handleMonthBack : handleMonthForward} style={{ padding: 6 }}>
+                <ChevronRight size={18} color={colors.textSecondary} strokeWidth={2} />
+              </Pressable>
+            </View>
+
+            <MiniCalendar
+              month={selectedMonth}
+              selectedDay={selectedDay}
+              onSelectDay={handleDaySelect}
+              transactions={allMonthTransactions}
+            />
+
+            {selectedDay ? (
+              <Pressable
+                onPress={() => { impactLight(); setSelectedDay(null); }}
+                style={{
+                  flexDirection: rowDir,
+                  alignItems: 'center',
+                  borderRadius: 12,
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                  marginTop: 10,
+                  backgroundColor: colors.primary + '12',
+                  borderWidth: 1,
+                  borderColor: colors.primary + '24',
+                }}
+              >
+                <CalendarIcon size={14} color={colors.primary} strokeWidth={2} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary, marginLeft: isRTL ? 0 : 8, marginRight: isRTL ? 8 : 0, flex: 1 }}>
+                  {formatLongDate(selectedDay)}
+                </Text>
+                <X size={14} color={colors.primary} strokeWidth={2} />
+              </Pressable>
+            ) : null}
+          </View>
+        </Card>
+      ) : null}
     </View>
   );
 
@@ -944,12 +1039,12 @@ function TransactionsContent({ onClose, isModal = false }: { onClose?: () => voi
   return (
     <BgWrapper {...(bgProps as any)}>
       {FixedHeader}
-      <FlashList<Transaction>
-        data={transactions}
+      <FlashList<TransactionDateGroup>
+        data={transactionSections}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         drawDistance={500}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 120 }}
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: insets.bottom + 120 }}
         ListFooterComponent={
           isFetchingNextPage ? (
             <View style={{ paddingVertical: 16, alignItems: 'center' }}>

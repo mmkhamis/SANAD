@@ -60,6 +60,8 @@ const MERCHANT_ALIASES: Record<string, string> = {
   // Delivery
   'hungerstation': 'HungerStation',
   'hunger station': 'HungerStation',
+  'هنقرستيشن': 'HungerStation',
+  'هنقر ستيشن': 'HungerStation',
   'jahez': 'Jahez',
   'toyou': 'ToYou',
   'to you': 'ToYou',

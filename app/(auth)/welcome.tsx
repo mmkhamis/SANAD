@@ -1,23 +1,13 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   Pressable,
-  Dimensions,
   Platform,
-  StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withDelay,
-  withSequence,
-  Easing,
   FadeIn,
   FadeInDown,
   FadeInUp,
@@ -26,8 +16,8 @@ import Svg, { Path } from 'react-native-svg';
 
 import { impactMedium } from '../../utils/haptics';
 import { useT } from '../../lib/i18n';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { AnimatedAuroraBg } from '../../components/ui/AnimatedAuroraBg';
+import { COLORS } from '../../constants/colors';
 
 // ─── Google Logo ─────────────────────────────────────────────────────
 
@@ -40,70 +30,6 @@ function GoogleLogo(): React.ReactElement {
       <Path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
       <Path fill="none" d="M0 0h48v48H0z" />
     </Svg>
-  );
-}
-
-// ─── Animated Orb ────────────────────────────────────────────────────
-
-interface OrbProps {
-  size: number;
-  color: string;
-  initialX: number;
-  initialY: number;
-  delay: number;
-  duration: number;
-  moveX: number;
-  moveY: number;
-}
-
-function AnimatedOrb({ size, color, initialX, initialY, delay, duration, moveX, moveY }: OrbProps): React.ReactElement {
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-
-  useEffect(() => {
-    translateX.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(moveX, { duration, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0, { duration, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        true,
-      ),
-    );
-    translateY.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(moveY, { duration: duration * 1.3, easing: Easing.inOut(Easing.sin) }),
-          withTiming(0, { duration: duration * 1.3, easing: Easing.inOut(Easing.sin) }),
-        ),
-        -1,
-        true,
-      ),
-    );
-  }, []);
-
-  const style = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }, { translateY: translateY.value }],
-  }));
-
-  return (
-    <Animated.View
-      style={[
-        {
-          position: 'absolute',
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: color,
-          left: initialX,
-          top: initialY,
-        },
-        style,
-      ]}
-    />
   );
 }
 
@@ -171,22 +97,9 @@ export default function WelcomeScreen(): React.ReactElement {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* ── Full-screen gradient ── */}
-      <LinearGradient
-        colors={['#4c1d95', '#7c3aed', '#6d28d9', '#4338ca']}
-        locations={[0, 0.35, 0.65, 1]}
-        start={{ x: 0.1, y: 0 }}
-        end={{ x: 0.9, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* ── Animated background orbs ── */}
-      <AnimatedOrb size={280} color="rgba(167,139,250,0.25)" initialX={-80} initialY={-60} delay={0} duration={5000} moveX={40} moveY={30} />
-      <AnimatedOrb size={220} color="rgba(99,102,241,0.30)" initialX={SCREEN_WIDTH - 160} initialY={80} delay={800} duration={6500} moveX={-50} moveY={40} />
-      <AnimatedOrb size={180} color="rgba(196,181,253,0.18)" initialX={SCREEN_WIDTH / 2 - 90} initialY={SCREEN_HEIGHT * 0.3} delay={400} duration={7000} moveX={30} moveY={-40} />
-      <AnimatedOrb size={150} color="rgba(139,92,246,0.22)" initialX={20} initialY={SCREEN_HEIGHT * 0.55} delay={1200} duration={5500} moveX={60} moveY={-30} />
-      <AnimatedOrb size={120} color="rgba(216,180,254,0.15)" initialX={SCREEN_WIDTH - 100} initialY={SCREEN_HEIGHT * 0.65} delay={600} duration={8000} moveX={-40} moveY={50} />
+    <View style={{ flex: 1, backgroundColor: COLORS.claude.bg0 }}>
+      {/* ── Synchronized aurora background ── */}
+      <AnimatedAuroraBg variant="bloom" />
 
       {/* ── Content ── */}
       <View
@@ -213,7 +126,7 @@ export default function WelcomeScreen(): React.ReactElement {
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 20,
-              shadowColor: '#7c3aed',
+              shadowColor: COLORS.claude.p500,
               shadowOffset: { width: 0, height: 8 },
               shadowOpacity: 0.6,
               shadowRadius: 20,
@@ -309,7 +222,7 @@ export default function WelcomeScreen(): React.ReactElement {
                 transform: [{ scale: pressed ? 0.98 : 1 }],
               })}
             >
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#7c3aed' }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.claude.p600 }}>
                 {t('WELCOME_GET_STARTED')}
               </Text>
             </Pressable>

@@ -363,6 +363,7 @@ interface DateRangeFilterProps {
 export function DateRangeFilter({ value, onChange }: DateRangeFilterProps): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { rowDir, textAlign, isRTL } = useRTL();
   const [showCustom, setShowCustom] = useState(false);
 
   const handlePreset = (key: Exclude<DatePreset, 'custom'>): void => {
@@ -381,17 +382,24 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps): Reac
 
   return (
     <>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 6, paddingHorizontal: 2 }}
+      <View
+        style={{
+          flexDirection: rowDir,
+          flexWrap: 'wrap',
+          gap: 6,
+          width: '100%',
+        }}
       >
         {/* Custom button first */}
         <Pressable
           onPress={() => { impactLight(); setShowCustom(true); }}
-          className="rounded-full px-3 py-1.5 flex-row items-center"
           style={{
+            flexDirection: rowDir,
+            alignItems: 'center',
             backgroundColor: value.preset === 'custom' ? colors.primary : colors.surfaceSecondary,
+            borderRadius: 999,
+            paddingHorizontal: 12,
+            paddingVertical: 6,
           }}
         >
           <Calendar size={12} color={value.preset === 'custom' ? '#FFFFFF' : colors.textSecondary} strokeWidth={2} />
@@ -400,7 +408,9 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps): Reac
               fontSize: 12,
               fontWeight: '600',
               color: value.preset === 'custom' ? '#FFFFFF' : colors.textSecondary,
-              marginLeft: 4,
+              marginLeft: isRTL ? 0 : 4,
+              marginRight: isRTL ? 4 : 0,
+              textAlign,
             }}
           >
             {value.preset === 'custom' ? value.label : t('DATE_CUSTOM' as any)}
@@ -423,6 +433,7 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps): Reac
                   fontSize: 12,
                   fontWeight: '600',
                   color: isActive ? '#FFFFFF' : colors.textSecondary,
+                  textAlign,
                 }}
               >
                 {t(p.labelKey as any)}
@@ -430,7 +441,7 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps): Reac
             </Pressable>
           );
         })}
-      </ScrollView>
+      </View>
 
       <CustomRangeModal
         visible={showCustom}

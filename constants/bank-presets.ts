@@ -50,6 +50,14 @@ export const SAUDI_BANKS: BankPreset[] = [
     type: 'bank',
   },
   {
+    id: 'alfursan',
+    nameAr: 'الفرسان - الأهلي',
+    nameEn: 'AlFursan (SNB)',
+    color: '#006838',
+    logo: gFav('alahli.com'),
+    type: 'credit_card',
+  },
+  {
     id: 'riyad',
     nameAr: 'بنك الرياض',
     nameEn: 'Riyad Bank',
@@ -119,6 +127,14 @@ export const SAUDI_BANKS: BankPreset[] = [
     nameEn: 'STC Pay',
     color: '#4F008C',
     logo: gFav('stcpay.com.sa'),
+    type: 'bank',
+  },
+  {
+    id: 'stc-bank',
+    nameAr: 'بنك STC',
+    nameEn: 'STC Bank',
+    color: '#4F008C',
+    logo: gFav('stcbank.com.sa'),
     type: 'bank',
   },
   {
@@ -235,3 +251,16 @@ export const ALL_BANK_PRESETS: BankPreset[] = [
   ...EGYPTIAN_BANKS,
   ...GENERIC_ACCOUNTS,
 ];
+
+/** Fuzzy-match an account name to a bank preset for logo/color */
+export function findBankPreset(name: string): BankPreset | null {
+  const lower = name.toLowerCase();
+  return ALL_BANK_PRESETS.find(
+    (p) =>
+      lower.includes(p.nameEn.toLowerCase()) ||
+      lower.includes(p.id.replace(/-/g, ' ')) ||
+      name.includes(p.nameAr) ||
+      // Match partial keywords (e.g. "NBE" in "NBE Platinum")
+      (p.id.length >= 3 && lower.includes(p.id)),
+  ) ?? null;
+}

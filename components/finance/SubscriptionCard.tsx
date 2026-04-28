@@ -10,7 +10,11 @@ import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
 import { impactLight, impactMedium, notifySuccess } from '../../utils/haptics';
 import { useT } from '../../lib/i18n';
 import { useRTL } from '../../hooks/useRTL';
-import { SUBSCRIPTION_PRESETS, type Subscription } from '../../services/subscription-service';
+import {
+  getSubscriptionDisplayName,
+  getSubscriptionLogo,
+  type Subscription,
+} from '../../services/subscription-service';
 
 interface SubscriptionCardProps {
   sub: Subscription;
@@ -41,13 +45,8 @@ export const SubscriptionCard = React.memo(function SubscriptionCard({
     yearly: t('SUBS_BILLING_YEARLY_SHORT' as any),
   };
   const cycleLabel = cycleLabels[sub.billing_cycle] ?? cycleLabels.monthly;
-  const preset = SUBSCRIPTION_PRESETS.find((p) => p.name === sub.name || p.nameAr === sub.name);
-  const logo = preset?.logo;
-  /** Localized display name: English name in EN, Arabic name in AR. Falls
-      back to the stored subscription name when no preset is matched. */
-  const displayName = preset
-    ? (isRTL ? preset.nameAr : preset.name)
-    : sub.name;
+  const logo = getSubscriptionLogo(sub);
+  const displayName = getSubscriptionDisplayName(sub, isRTL);
 
   const handleDelete = (): void => {
     Alert.alert(t('SUBS_DELETE_TITLE' as any), t('SUBS_DELETE_CONFIRM' as any), [

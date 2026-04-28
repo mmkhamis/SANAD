@@ -9,6 +9,7 @@ import {
 import { invokeWithRetry } from '../lib/supabase';
 import type {
   SmartInputResult,
+  ParseResult,
   TransactionType,
   Category,
 } from '../types/index';
@@ -62,11 +63,45 @@ export interface ParseContext {
   categories?: { id: string; name: string; type: string }[];
 }
 
+const EXPENSE_SIGNAL_RE = /(purchase|paid|payment|spent|debited|withdrawn|card payment|pos|شراء|تم خصم|دفع|سحب|نقطة بيع)/i;
+const INCOME_SIGNAL_RE = /(received|credited|deposited|salary|payroll|incoming|refund|cash\s?back|تم إضافة|تم اضافة|تم استلام|إيداع|ايداع|راتب|تحويل وارد|استرداد)/i;
+const TRANSFER_SIGNAL_RE = /(transfer(?:red)?|تحويل|حوال[ةه])/i;
+const TRANSFER_DIRECTION_RE = /(?:\bfrom\b.*\bto\b|\bto\b.*\bfrom\b|من\s+.+(?:الى|إلى)|(?:الى|إلى)\s+.+من)/i;
+const CARD_INSTRUMENT_RE = /(apple\s?pay|google\s?pay|mada|credit\s*card|card\b|بطاق(?:ة|ه)\s*(?:ائتماني(?:ة|ه)|مدى)?)/i;
+
+function coerceTransactionType(
+  text: string,
+  candidate: TransactionType,
+): TransactionType {
+  const hasExpenseSignal = EXPENSE_SIGNAL_RE.test(text);
+  const hasIncomeSignal = INCOME_SIGNAL_RE.test(text);
+  const hasTransferSignal = TRANSFER_SIGNAL_RE.test(text);
+  const hasTransferDirection = TRANSFER_DIRECTION_RE.test(text);
+  const hasCardInstrument = CARD_INSTRUMENT_RE.test(text);
+
+  if (candidate === 'income' && hasExpenseSignal && !hasIncomeSignal) {
+    return hasTransferSignal && hasTransferDirection && !hasCardInstrument ? 'transfer' : 'expense';
+  }
+
+  if (candidate === 'transfer' && hasExpenseSignal && hasCardInstrument && !hasTransferDirection) {
+    return 'expense';
+  }
+
+  if (candidate === 'expense' && hasIncomeSignal && !hasExpenseSignal && !hasCardInstrument) {
+    return hasTransferSignal && hasTransferDirection ? 'transfer' : 'income';
+  }
+
+  return candidate;
+}
+
 export async function parseTransactionText(
   text: string,
   context?: ParseContext,
 ): Promise<SmartInputResult[]> {
-  const data = await invokeWithRetry<{ transactions?: SmartInputResult[] } | SmartInputResult>(
+  const data = await invokeWithRetry<{
+    transactions?: SmartInputResult[];
+    results?: ParseResult[];
+  } | SmartInputResult>(
     'parse-transaction',
     {
       body: {
@@ -77,14 +112,58 @@ export async function parseTransactionText(
     },
   );
 
-  // Edge function returns { transactions: [...] }
+  // Canonical parser-v2 payload: { results: ParseResult[] }
+  if (data && typeof data === 'object' && 'results' in data && Array.isArray((data as { results?: ParseResult[] }).results)) {
+    const mapped = ((data as { results: ParseResult[] }).results ?? [])
+      .filter((item) => item.should_create_transaction && item.amount !== null)
+      .map((item) => {
+        const transaction_type = coerceTransactionType(
+          text,
+          item.message_class === 'income' || item.message_class === 'refund'
+            ? 'income'
+            : item.message_class === 'transfer'
+              ? 'transfer'
+              : 'expense',
+        );
+
+        return {
+          amount: item.amount,
+          currency: item.currency,
+          transaction_type,
+          category: null,
+          merchant: item.merchant_raw,
+          counterparty: item.counterparty_name,
+          account_name: null,
+          confidence: item.confidence,
+          needs_review: item.confidence < 0.85 || item.review_flags.length > 0,
+          source: item.parser_source === 'rules' ? 'rules' : 'ai',
+          date: (item.timestamp ?? new Date().toISOString()).slice(0, 10),
+          description:
+            item.descriptor
+            ?? item.merchant_raw
+            ?? item.counterparty_name
+            ?? text.trim().slice(0, 80),
+        } satisfies SmartInputResult;
+      });
+    if (__DEV__) console.log('[parseTransactionText]', mapped.length, 'transactions (canonical)');
+    return mapped;
+  }
+  // Legacy payload: { transactions: [...] }
   if (data && typeof data === 'object' && 'transactions' in data && Array.isArray(data.transactions)) {
-    if (__DEV__) console.log('[parseTransactionText]', data.transactions.length, 'transactions');
-    return data.transactions;
+    const normalized = data.transactions.map((item) => ({
+      ...item,
+      transaction_type: coerceTransactionType(text, item.transaction_type ?? 'expense'),
+    }));
+    if (__DEV__) console.log('[parseTransactionText]', normalized.length, 'transactions');
+    return normalized;
   }
   // Backward compat: single object
   if (__DEV__) console.log('[parseTransactionText] single result, wrapping');
-  return [data as SmartInputResult];
+  const single = data as SmartInputResult;
+  return [{
+    ...single,
+    transaction_type: coerceTransactionType(text, single.transaction_type ?? 'expense'),
+  }];
 }
 
 // ─── Match category by name ─────────────────────────────────────────

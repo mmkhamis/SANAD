@@ -54,7 +54,8 @@ export const AccountChip = React.memo(function AccountChip({
         <Image
           source={{ uri: logo }}
           style={{ width: 18, height: 18, borderRadius: 6 }}
-          contentFit="contain"
+          contentFit="cover"
+          cachePolicy="memory-disk"
           onError={() => setImgError(true)}
         />
       ) : (

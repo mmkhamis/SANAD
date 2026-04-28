@@ -38,6 +38,7 @@ export async function fetchMonthSummary(month?: string): Promise<MonthSummary> {
     .from('transactions')
     .select('amount, type')
     .is('deleted_at', null)
+    .eq('needs_review', false)
     .eq('exclude_from_insights', false)
     .gte('date', range.start)
     .lte('date', range.end);
@@ -78,6 +79,7 @@ export async function fetchCategorySpending(month?: string): Promise<CategorySpe
       .from('transactions')
       .select('amount, category_id, category_name, category_color, category_icon')
       .is('deleted_at', null)
+      .eq('needs_review', false)
       .eq('exclude_from_insights', false)
       .eq('type', 'expense')
       .gte('date', range.start)
@@ -148,13 +150,18 @@ export async function fetchCategorySpending(month?: string): Promise<CategorySpe
 
 // ─── Recent Transactions ─────────────────────────────────────────────
 
-export async function fetchRecentTransactions(): Promise<Transaction[]> {
-  const { data, error } = await supabase
+export async function fetchRecentTransactions(_month?: string): Promise<Transaction[]> {
+  const query = supabase
     .from('transactions')
     .select('*')
     .is('deleted_at', null)
-    .order('date', { ascending: false })
+    // Home "Recent" should prioritize what was just confirmed/edited/added,
+    // even if the transaction date itself is older (e.g. backfilled SMS).
+    .order('updated_at', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(DASHBOARD_RECENT_TRANSACTIONS_LIMIT);
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);
@@ -172,6 +179,7 @@ export async function fetchMonthExpenseTransactions(month?: string): Promise<Tra
     .from('transactions')
     .select('*')
     .is('deleted_at', null)
+    .eq('needs_review', false)
     .eq('type', 'expense')
     .gte('date', range.start)
     .lte('date', range.end)
@@ -237,7 +245,7 @@ export async function fetchDashboardData(month?: string): Promise<DashboardData>
       fetchMonthSummary(month),
       fetchMonthSummary(prevMonth),
       fetchCategorySpending(month),
-      fetchRecentTransactions(),
+      fetchRecentTransactions(month),
       fetchMonthExpenseTransactions(month),
       fetchLatestAIInsight(),
       fetchComputedBalance(),
@@ -282,6 +290,7 @@ export async function fetchExpenseTrend(
     .from('transactions')
     .select('amount, date')
     .is('deleted_at', null)
+    .eq('needs_review', false)
     .eq('type', 'expense')
     .eq('exclude_from_insights', false)
     .gte('date', startStr)

@@ -41,6 +41,10 @@ import {
 import {
   SUBSCRIPTION_PRESETS,
   SUBSCRIPTION_CATEGORIES,
+  getSubscriptionDisplayName,
+  getSubscriptionPreset,
+  getSubscriptionPresetByKey,
+  resolveSubscriptionProviderKey,
   type Subscription,
   type BillingCycle,
   type SubscriptionPreset,
@@ -65,6 +69,27 @@ function cycleMultiplier(cycle: BillingCycle): number {
   }
 }
 
+function normalizeArabicDigits(text: string): string {
+  return text.replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)));
+}
+
+function parseLocalizedInt(text: string): number {
+  return parseInt(normalizeArabicDigits(text), 10);
+}
+
+function getInitialBillingDate(now: Date = new Date()): { day: string; month: string; year: string } {
+  let nextDate = setDate(now, 1);
+  if (nextDate <= now) {
+    nextDate = setDate(new Date(now.getFullYear(), now.getMonth() + 1, 1), 1);
+  }
+
+  return {
+    day: String(nextDate.getDate()),
+    month: String(nextDate.getMonth() + 1),
+    year: String(nextDate.getFullYear()),
+  };
+}
+
 // ─── Add Subscription Modal ──────────────────────────────────────────
 
 function AddSubscriptionModal({
@@ -78,33 +103,41 @@ function AddSubscriptionModal({
   const { hPad } = useResponsive();
   const insets = useSafeAreaInsets();
   const t = useT();
-  const { isRTL } = useRTL();
+  const { isRTL, rowDir, textAlign } = useRTL();
   const { mutateAsync, isPending } = useCreateSubscription();
+  const initialBillingDate = useMemo(() => getInitialBillingDate(), []);
 
   const [step, setStep] = useState<'preset' | 'form'>('preset');
+  const [selectedProviderKey, setSelectedProviderKey] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('📱');
   const [color, setColor] = useState('#6B7280');
   const [amount, setAmount] = useState('');
   const [cycle, setCycle] = useState<BillingCycle>('monthly');
-  const [billingDay, setBillingDay] = useState('1');
+  const [billingDay, setBillingDay] = useState(initialBillingDate.day);
+  const [billingMonth, setBillingMonth] = useState(initialBillingDate.month);
+  const [billingYear, setBillingYear] = useState(initialBillingDate.year);
   const [category, setCategory] = useState('Other');
   const [filterCat, setFilterCat] = useState<string | null>(null);
 
   const reset = (): void => {
     setStep('preset');
+    setSelectedProviderKey(null);
     setName('');
     setIcon('📱');
     setColor('#6B7280');
     setAmount('');
     setCycle('monthly');
-    setBillingDay('1');
+    setBillingDay(initialBillingDate.day);
+    setBillingMonth(initialBillingDate.month);
+    setBillingYear(initialBillingDate.year);
     setCategory('Other');
     setFilterCat(null);
   };
 
   const handlePresetSelect = (preset: SubscriptionPreset): void => {
     impactLight();
+    setSelectedProviderKey(preset.key);
     setName(isRTL ? preset.nameAr : preset.name);
     setIcon(preset.icon);
     setColor(preset.color);
@@ -114,32 +147,55 @@ function AddSubscriptionModal({
 
   const handleCustom = (): void => {
     impactLight();
+    setSelectedProviderKey(null);
     setStep('form');
   };
+
+  const previewPreset = useMemo(() => (
+    getSubscriptionPreset({ provider_key: selectedProviderKey, name })
+  ), [name, selectedProviderKey]);
 
   const handleSave = async (): Promise<void> => {
     const amt = parseFloat(amount);
     if (!name.trim() || isNaN(amt) || amt <= 0) return;
-    const day = parseInt(billingDay, 10);
-    if (isNaN(day) || day < 1 || day > 31) return;
-
-    impactMedium();
-    // Calculate next billing date from the chosen day
-    const now = new Date();
-    let nextDate = setDate(now, Math.min(day, 28)); // clamp to 28 safely
-    if (nextDate <= now) {
-      // If the day already passed this month, use next month
-      nextDate = setDate(new Date(now.getFullYear(), now.getMonth() + 1, 1), Math.min(day, 28));
+    const day = parseLocalizedInt(billingDay);
+    const month = parseLocalizedInt(billingMonth);
+    const year = parseLocalizedInt(billingYear);
+    if (
+      Number.isNaN(day) || day < 1 || day > 31 ||
+      Number.isNaN(month) || month < 1 || month > 12 ||
+      Number.isNaN(year) || year < 2000 || year > 2100
+    ) {
+      Alert.alert(t('ERROR_TITLE'), t('SUBS_INVALID_DATE' as any));
+      return;
     }
 
+    impactMedium();
+    const nextDate = new Date(year, month - 1, day);
+    const isExactDate = nextDate.getFullYear() === year
+      && nextDate.getMonth() === month - 1
+      && nextDate.getDate() === day;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (!isExactDate || nextDate < today) {
+      Alert.alert(t('ERROR_TITLE'), t('SUBS_INVALID_DATE' as any));
+      return;
+    }
+
+    const trimmedName = name.trim();
+    const providerKey = selectedProviderKey ?? resolveSubscriptionProviderKey(trimmedName);
+    const matchedPreset = getSubscriptionPresetByKey(providerKey);
+
     const input: CreateSubscriptionInput = {
-      name: name.trim(),
-      icon,
-      color,
+      name: matchedPreset?.name ?? trimmedName,
+      provider_key: providerKey,
+      icon: matchedPreset?.icon ?? icon,
+      color: matchedPreset?.color ?? color,
       amount: amt,
       billing_cycle: cycle,
       next_billing_date: format(nextDate, 'yyyy-MM-dd'),
-      category,
+      category: matchedPreset?.category ?? category,
     };
 
     try {
@@ -211,7 +267,7 @@ function AddSubscriptionModal({
             <View className="flex-row flex-wrap" style={{ gap: 8 }}>
               {filteredPresets.map((preset) => (
                 <Pressable
-                  key={preset.name}
+                  key={preset.key}
                   onPress={() => handlePresetSelect(preset)}
                   className="items-center rounded-xl px-3 py-3"
                   style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderLight, width: '31%' }}
@@ -252,23 +308,27 @@ function AddSubscriptionModal({
             {/* Preview */}
             <View className="items-center mb-6">
               <View className="h-16 w-16 rounded-2xl items-center justify-center mb-2" style={{ backgroundColor: color + '20' }}>
-                {(() => {
-                  const preset = SUBSCRIPTION_PRESETS.find((p) => p.name === name || p.nameAr === name);
-                  return preset?.logo ? (
-                    <Image source={{ uri: preset.logo }} style={{ width: 36, height: 36, borderRadius: 6 }} contentFit="contain" />
-                  ) : (
-                    <Text style={{ fontSize: 32 }}>{icon}</Text>
-                  );
-                })()}
+                {previewPreset?.logo ? (
+                  <Image source={{ uri: previewPreset.logo }} style={{ width: 36, height: 36, borderRadius: 6 }} contentFit="contain" />
+                ) : (
+                  <Text style={{ fontSize: 32 }}>{icon}</Text>
+                )}
               </View>
-              {name ? <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>{name}</Text> : null}
+              {name ? (
+                <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
+                  {previewPreset ? getSubscriptionDisplayName(previewPreset, isRTL) : name}
+                </Text>
+              ) : null}
             </View>
 
             {/* Name */}
             <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary, marginBottom: 8 }}>{t('SUBS_FORM_NAME' as any)}</Text>
             <TextInput
               value={name}
-              onChangeText={setName}
+              onChangeText={(next) => {
+                setName(next);
+                setSelectedProviderKey(resolveSubscriptionProviderKey(next));
+              }}
               placeholder={t('SUBS_PLACEHOLDER_NAME' as any)}
               placeholderTextColor={colors.textTertiary}
               className="rounded-xl px-4 mb-5"
@@ -308,17 +368,45 @@ function AddSubscriptionModal({
               ))}
             </View>
 
-            {/* Category */}
-            <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary, marginBottom: 8 }}>{t('SUBS_FORM_DAY' as any)}</Text>
-            <TextInput
-              value={billingDay}
-              onChangeText={setBillingDay}
-              placeholder={t('SUBS_PLACEHOLDER_DAY' as any)}
-              placeholderTextColor={colors.textTertiary}
-              keyboardType="number-pad"
-              className="rounded-xl px-4 mb-5"
-              style={{ height: 48, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, fontSize: 16, color: colors.textPrimary }}
-            />
+            <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary, marginBottom: 8 }}>{t('SUBS_FORM_NEXT_BILLING' as any)}</Text>
+            <View style={{ flexDirection: rowDir, gap: 8, marginBottom: 20 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, fontWeight: '500', color: colors.textSecondary, marginBottom: 6, textAlign }}>{t('SUBS_FORM_DAY' as any)}</Text>
+                <TextInput
+                  value={billingDay}
+                  onChangeText={setBillingDay}
+                  placeholder={t('SUBS_PLACEHOLDER_DAY' as any)}
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="number-pad"
+                  className="rounded-xl px-4"
+                  style={{ height: 48, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, fontSize: 16, color: colors.textPrimary, textAlign }}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, fontWeight: '500', color: colors.textSecondary, marginBottom: 6, textAlign }}>{t('SUBS_FORM_MONTH' as any)}</Text>
+                <TextInput
+                  value={billingMonth}
+                  onChangeText={setBillingMonth}
+                  placeholder={t('SUBS_PLACEHOLDER_MONTH' as any)}
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="number-pad"
+                  className="rounded-xl px-4"
+                  style={{ height: 48, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, fontSize: 16, color: colors.textPrimary, textAlign }}
+                />
+              </View>
+              <View style={{ flex: 1.2 }}>
+                <Text style={{ fontSize: 12, fontWeight: '500', color: colors.textSecondary, marginBottom: 6, textAlign }}>{t('SUBS_FORM_YEAR' as any)}</Text>
+                <TextInput
+                  value={billingYear}
+                  onChangeText={setBillingYear}
+                  placeholder={t('SUBS_PLACEHOLDER_YEAR' as any)}
+                  placeholderTextColor={colors.textTertiary}
+                  keyboardType="number-pad"
+                  className="rounded-xl px-4"
+                  style={{ height: 48, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, fontSize: 16, color: colors.textPrimary, textAlign }}
+                />
+              </View>
+            </View>
 
             <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary, marginBottom: 8 }}>{t('SUBS_FORM_CATEGORY' as any)}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 24 }}>
@@ -329,7 +417,7 @@ function AddSubscriptionModal({
                   className="rounded-lg px-3 py-2 mr-2"
                   style={{ backgroundColor: category === cat ? colors.primary : colors.surfaceSecondary }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: category === cat ? '#fff' : colors.textSecondary }}>{cat}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: category === cat ? '#fff' : colors.textSecondary }}>{catLabel(cat)}</Text>
                 </Pressable>
               ))}
             </ScrollView>
@@ -373,6 +461,7 @@ function SubscriptionsContent(): React.ReactElement {
   const { mutateAsync: markPaidAsync } = useMarkSubscriptionPaid();
   const [showAdd, setShowAdd] = useState(false);
   const [horizon, setHorizon] = useState<HorizonMonths>(1);
+  const [customHorizonMonth, setCustomHorizonMonth] = useState<string | null>(null);
   const hidden = usePrivacyStore((s) => s.hidden);
   const togglePrivacy = usePrivacyStore((s) => s.toggle);
 
@@ -416,7 +505,14 @@ function SubscriptionsContent(): React.ReactElement {
   // Split active subs into "billing this month" vs "upcoming" (horizon-filtered)
   const now = new Date();
   const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const horizonEnd = useMemo(() => addMonths(new Date(), horizon), [horizon]);
+  const horizonEnd = useMemo(() => {
+    if (horizon === 'custom' && customHorizonMonth) {
+      // End of the picked month so subs billing on the last day are included.
+      const d = new Date(`${customHorizonMonth}-01`);
+      return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    }
+    return addMonths(new Date(), horizon === 'custom' ? 1 : horizon);
+  }, [horizon, customHorizonMonth]);
   const thisMonth = active.filter((s) => {
     const d = new Date(s.next_billing_date);
     return d <= currentMonthEnd;
@@ -543,7 +639,12 @@ function SubscriptionsContent(): React.ReactElement {
                   <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
                     {t('SUBS_UPCOMING' as any)}
                   </Text>
-                  <HorizonSelector selected={horizon} onChange={setHorizon} />
+                  <HorizonSelector
+                    selected={horizon}
+                    onChange={setHorizon}
+                    customMonth={customHorizonMonth}
+                    onCustomMonthChange={setCustomHorizonMonth}
+                  />
                 </View>
                 {upcoming.length > 0 ? (
                   <>

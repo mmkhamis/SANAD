@@ -10,7 +10,7 @@ import { Image } from 'expo-image';
 import {
   Eye, EyeOff, AlertTriangle,
   Wallet, ArrowUpRight, ArrowDownRight, MessageSquareWarning,
-  Sparkles, ChevronLeft, ChevronRight,
+  Sparkles, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
 } from 'lucide-react-native';
 
 import { impactLight } from '../../utils/haptics';
@@ -20,7 +20,6 @@ import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
 import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import { ErrorState } from '../../components/ui/ErrorState';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { SmartInputFAB } from '../../components/ui/SmartInputFAB';
 import { MonthPicker } from '../../components/ui/MonthPicker';
 import { HorizonSelector, type HorizonMonths } from '../../components/ui/HorizonSelector';
 import { HeroCard } from '../../components/ui/HeroCard';
@@ -34,9 +33,9 @@ import { SMSReviewSheet } from '../../components/finance/SMSReviewSheet';
 import { BudgetStatusRibbon } from '../../components/finance/BudgetStatusRibbon';
 import { CurrencyAmount } from '../../components/ui/CurrencyAmount';
 import { CategoryIcon } from '../../components/ui/CategoryIcon';
+import { HeroStatusBarChart } from '../../components/charts/HeroStatusBarChart';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useUnreviewedTransactions } from '../../hooks/useReviewTransactions';
-import { usePortfolioSummary } from '../../hooks/useAssets';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useSubscriptions } from '../../hooks/useSubscriptions';
 import { useCommitmentsDue } from '../../hooks/useCommitments';
@@ -52,8 +51,12 @@ import { STRINGS } from '../../constants/strings';
 import { useT } from '../../lib/i18n';
 import { useTranslateCategory } from '../../lib/i18n';
 import type { Transaction, Commitment } from '../../types/index';
-import { type Subscription, SUBSCRIPTION_PRESETS } from '../../services/subscription-service';
-import { ALL_BANK_PRESETS } from '../../constants/bank-presets';
+import {
+  getSubscriptionDisplayName,
+  getSubscriptionLogo,
+  type Subscription,
+} from '../../services/subscription-service';
+import { findBankPreset } from '../../constants/bank-presets';
 import { findBrand } from '../../constants/brand-presets';
 import { useAuthStore } from '../../store/auth-store';
 import { TransactionsPageContent } from './transactions';
@@ -144,8 +147,7 @@ const UpcomingPaymentRow = React.memo(function UpcomingPaymentRow({ sub }: { sub
   const subIcon = sub.icon || '💳';
   const subColor = sub.color || colors.primary;
   const iconBg = colors.isDark ? subColor + '30' : subColor + '18';
-  const preset = SUBSCRIPTION_PRESETS.find((p) => p.name === sub.name || p.nameAr === sub.name);
-  const logo = preset?.logo ?? null;
+  const logo = getSubscriptionLogo(sub);
 
   return (
     <View
@@ -178,7 +180,9 @@ const UpcomingPaymentRow = React.memo(function UpcomingPaymentRow({ sub }: { sub
         )}
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 13.5, fontWeight: '600', color: colors.textPrimary, textAlign: isRTL ? 'right' : 'left' }}>{sub.name}</Text>
+        <Text style={{ fontSize: 13.5, fontWeight: '600', color: colors.textPrimary, textAlign: isRTL ? 'right' : 'left' }}>
+          {getSubscriptionDisplayName(sub, isRTL)}
+        </Text>
         <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg3 : colors.textSecondary, textAlign: isRTL ? 'right' : 'left' }}>
           {sub.billing_cycle} · {formatShortDate(parseISO(sub.next_billing_date))}
         </Text>
@@ -207,7 +211,6 @@ function DashboardContent(): React.ReactElement {
   // This prevents ~18 simultaneous Supabase requests on cold start.
   const dashboardReady = !!data;
   const { data: unreviewed } = useUnreviewedTransactions(dashboardReady);
-  const { data: portfolio, isLoading: portfolioLoading } = usePortfolioSummary(dashboardReady);
   const { data: accounts } = useAccounts(dashboardReady);
   const { data: subscriptions } = useSubscriptions(dashboardReady);
   const { data: commitmentsDue } = useCommitmentsDue(selectedMonth, dashboardReady);
@@ -218,8 +221,11 @@ function DashboardContent(): React.ReactElement {
   const [reviewVisible, setReviewVisible] = useState(false);
   const [showTxnModal, setShowTxnModal] = useState(false);
   const [horizon, setHorizon] = useState<HorizonMonths>(1);
+  const [customHorizonMonth, setCustomHorizonMonth] = useState<string | null>(null);
+  const [upcomingExpanded, setUpcomingExpanded] = useState(false);
   const hidden = usePrivacyStore((s) => s.hidden);
   const togglePrivacy = usePrivacyStore((s) => s.toggle);
+  const currentMonthKey = format(new Date(), 'yyyy-MM');
   const userNameEn = useAuthStore((s) => s.user?.full_name ?? '');
   const userNameAr = useAuthStore((s) => s.user?.name_ar ?? '');
   const userName = isRTL && userNameAr ? userNameAr : userNameEn;
@@ -234,13 +240,46 @@ function DashboardContent(): React.ReactElement {
 
   // ─── ALL hooks MUST be above early returns (React rules of hooks) ──
 
-  const horizonDate = useMemo(() => addMonths(new Date(), horizon), [horizon]);
+  const horizonDate = useMemo(() => {
+    if (horizon === 'custom' && customHorizonMonth) {
+      const d = new Date(`${customHorizonMonth}-01`);
+      return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+    }
+    return addMonths(new Date(), horizon === 'custom' ? 1 : horizon);
+  }, [horizon, customHorizonMonth]);
 
   const upcomingSubs = useMemo(() => (subscriptions ?? [])
     .filter((s) => s.is_active && s.next_billing_date && parseISO(s.next_billing_date) <= horizonDate)
     .sort((a, b) => a.next_billing_date.localeCompare(b.next_billing_date)), [subscriptions, horizonDate]);
 
-  const upcomingTotal = useMemo(() => upcomingSubs.reduce((s, sub) => s + sub.amount, 0), [upcomingSubs]);
+  // Sum across the horizon, counting how many times each active subscription
+  // would actually bill in the window (e.g. a monthly sub bills 3× over 3 mo).
+  // Falls back to a single occurrence when the cycle is unrecognized.
+  const upcomingTotal = useMemo(() => {
+    const activeSubs = (subscriptions ?? []).filter((s) => s.is_active && s.next_billing_date);
+    return activeSubs.reduce((sum, sub) => {
+      const start = parseISO(sub.next_billing_date);
+      if (start > horizonDate) return sum;
+      const cycleMonths = sub.billing_cycle === 'yearly' ? 12
+        : sub.billing_cycle === 'quarterly' ? 3
+        : sub.billing_cycle === 'monthly' ? 1 : 0;
+      let occurrences = 1;
+      if (cycleMonths > 0) {
+        let next = addMonths(start, cycleMonths);
+        while (next <= horizonDate) {
+          occurrences += 1;
+          next = addMonths(next, cycleMonths);
+        }
+      }
+      return sum + sub.amount * occurrences;
+    }, 0);
+  }, [subscriptions, horizonDate]);
+
+  const dueSubscriptionsThisMonth = useMemo(() => (subscriptions ?? [])
+    .filter((sub) => sub.is_active && !!sub.next_billing_date && sub.next_billing_date.startsWith(selectedMonth))
+    .reduce((sum, sub) => sum + sub.amount, 0), [selectedMonth, subscriptions]);
+
+  const heroDueThisMonthTotal = (commitmentsDue?.total_due_this_month ?? 0) + dueSubscriptionsThisMonth;
 
   const sections: SectionType[] = useMemo(() => {
     if (!data) return [];
@@ -269,9 +308,9 @@ function DashboardContent(): React.ReactElement {
 
     s.push({ type: 'bottom-spacer' });
     return s;
-  // NOTE: portfolio, upcomingTotal, goalsSummary, habitInsights are intentionally
+  // NOTE: upcomingTotal, goalsSummary, habitInsights are intentionally
   // excluded — they are NOT used in the sections array itself (data is read in
-  // renderItem). Removing them avoids 4 spurious FlashList re-diffs on initial load.
+  // renderItem). Removing them avoids spurious FlashList re-diffs on initial load.
   }, [accounts, upcomingSubs, commitmentsDue, data]);
 
   // ─── Scroll-driven compact header hooks ────────────────────────────
@@ -379,37 +418,42 @@ function DashboardContent(): React.ReactElement {
       case 'hero-balance': {
         const accts = (accounts ?? []).filter((a) => a.include_in_total);
         const totalBalance = data.computed_balance;
+        // Top 3 budgets nearest the limit (or already exceeded). Sorting by
+        // percent_used descending surfaces the most "at-risk" budgets first.
+        const topBudgets = (goalsSummary?.goals ?? [])
+          .filter((g) => g.budget.amount > 0)
+          .slice()
+          .sort((a, b) => b.percent_used - a.percent_used)
+          .slice(0, 3);
+        const heroBudgetItems = topBudgets.map((g) => ({
+          id: g.budget.id,
+          label: tc(g.budget.category_name) || g.budget.category_name,
+          value: g.actual_spent,
+          max: g.budget.amount,
+          accentColor: g.category_color,
+          status: g.status,
+        }));
 
         return (
           <Animated.View entering={FadeInDown.duration(400).delay(80)}>
               <HeroCard style={{ marginTop: 8 }}>
-                  {/* Label row — just the "Current Balance" caption.
-                      Wallet chip icon, change pill, and View-Profile link all
-                      removed per user request. */}
-                  <View style={{ flexDirection: rowDir, alignItems: 'center', marginBottom: 10 }}>
-                    <Text style={{ fontSize: 13, color: colors.isDark ? COLORS.claude.fg3 : colors.textSecondary, fontWeight: '500' }}>{t('CURRENT_BALANCE')}</Text>
-                  </View>
-
-                  {/* Large balance amount */}
-                  <View style={{ marginBottom: 18, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
-                    {hidden ? (
-                      <Text style={{ fontSize: 46, fontWeight: '700', color: colors.isDark ? COLORS.claude.fg : colors.textPrimary, letterSpacing: -1 }}>••••</Text>
-                    ) : (
-                      <CurrencyAmount value={totalBalance} color={colors.isDark ? COLORS.claude.fg : colors.textPrimary} fontSize={46} fontWeight="700" />
-                    )}
-                  </View>
-
-                  {/* Stats row: assets / income / expenses */}
-                  <View style={{ flexDirection: rowDir, justifyContent: 'space-between' }}>
-                    <View style={{ flex: 1, alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
-                      <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg4 : colors.textTertiary, marginBottom: 4, fontWeight: '500' }}>{t('TOTAL_ASSETS')}</Text>
+                  {/* Top row: balance only — chart moved down so card stays short. */}
+                  <View style={{ marginBottom: 18 }}>
+                    <View style={{ flexDirection: rowDir, alignItems: 'center', marginBottom: 10 }}>
+                      <Text style={{ fontSize: 13, color: colors.isDark ? COLORS.claude.fg3 : colors.textSecondary, fontWeight: '500' }}>{t('CURRENT_BALANCE')}</Text>
+                    </View>
+                    <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
                       {hidden ? (
-                        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>••••</Text>
+                        <Text style={{ fontSize: 46, fontWeight: '700', color: colors.isDark ? COLORS.claude.fg : colors.textPrimary, letterSpacing: -1 }}>••••</Text>
                       ) : (
-                        <CurrencyAmount value={portfolio?.total_value ?? 0} color={colors.isDark ? COLORS.claude.fg : colors.textPrimary} fontSize={16} />
+                        <CurrencyAmount value={totalBalance} color={colors.isDark ? COLORS.claude.fg : colors.textPrimary} fontSize={46} fontWeight="700" />
                       )}
                     </View>
-                    <View style={{ flex: 1, alignItems: 'center' }}>
+                  </View>
+
+                  {/* Stats row: income (edge) · spending (middle) · budgets bar chart (edge) */}
+                  <View style={{ flexDirection: rowDir, justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                    <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
                       <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg4 : colors.textTertiary, marginBottom: 4, fontWeight: '500' }}>{t('INCOME')}</Text>
                       {hidden ? (
                         <Text style={{ fontSize: 16, fontWeight: '600', color: colors.income }}>••••</Text>
@@ -417,7 +461,7 @@ function DashboardContent(): React.ReactElement {
                         <CurrencyAmount value={data.summary.total_income} color={colors.isDark ? COLORS.claude.greenText : colors.income} fontSize={16} />
                       )}
                     </View>
-                    <View style={{ flex: 1, alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
+                    <View style={{ alignItems: 'center' }}>
                       <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg4 : colors.textTertiary, marginBottom: 4, fontWeight: '500' }}>{t('SPENDING')}</Text>
                       {hidden ? (
                         <Text style={{ fontSize: 16, fontWeight: '600', color: colors.expense }}>••••</Text>
@@ -425,6 +469,14 @@ function DashboardContent(): React.ReactElement {
                         <CurrencyAmount value={data.summary.total_expense} color={colors.isDark ? COLORS.claude.redText : colors.expense} fontSize={16} showSign />
                       )}
                     </View>
+                    <HeroStatusBarChart
+                      title={t('BUDGETS' as any) as string}
+                      hidden={hidden}
+                      items={heroBudgetItems}
+                      emptyLabel={t('NO_BUDGETS' as any) as string}
+                      compact
+                      style={{ width: Math.min(150, Math.max(120, screenWidth * 0.32)) }}
+                    />
                   </View>
 
                   {/* Account chips — horizontal scroll so long lists don't wrap
@@ -440,9 +492,7 @@ function DashboardContent(): React.ReactElement {
                       contentContainerStyle={{ paddingHorizontal: 22, gap: 8 }}
                     >
                       {accts.map((acct) => {
-                        const preset = ALL_BANK_PRESETS.find(
-                          (b) => b.nameEn === acct.name || b.nameAr === acct.name
-                        );
+                        const preset = findBankPreset(acct.name);
                         return (
                           <AccountChip
                             key={acct.id}
@@ -515,6 +565,17 @@ function DashboardContent(): React.ReactElement {
 
       case 'upcoming-block': {
         const subs = item.subscriptions;
+        const isCurrentCustomMonth = !customHorizonMonth || customHorizonMonth === currentMonthKey;
+        const totalLabel = horizon === 'custom'
+          ? (t((isCurrentCustomMonth ? 'SUBS_TOTAL_UNTIL_THIS_MONTH' : 'SUBS_TOTAL_UNTIL') as any) as string)
+          : horizon === 1
+            ? t('SUBS_TOTAL_NEXT_1_MO')
+            : t('SUBS_TOTAL_NEXT_N_MO').replace('{n}', String(horizon));
+        const ChevronToggle = upcomingExpanded ? ChevronUp : ChevronDown;
+        // Mini-icon strip — first 5 unique subs in chronological order
+        const miniSubs = subs.slice(0, 5);
+        const extraCount = Math.max(0, subs.length - miniSubs.length);
+
         return (
           <View style={{ marginHorizontal: 16, marginTop: 14 }}>
             <SectionHeader
@@ -523,18 +584,116 @@ function DashboardContent(): React.ReactElement {
               onAction={() => { impactLight(); router.push('/(tabs)/subscriptions'); }}
             />
             <Card noPadding>
-              <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 8 }}>
-                <HorizonSelector selected={horizon} onChange={setHorizon} />
-                {subs.length > 0 ? (
-                  <Text style={{ fontSize: 12, fontWeight: '600', color: colors.expense, marginTop: 8 }}>
-                    {t('SUBS_MONTHLY_TOTAL')}: {maskIfHidden(formatCompactNumberLocale(upcomingTotal, language), hidden)}
-                  </Text>
-                ) : null}
+              <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10 }}>
+                <HorizonSelector
+                  selected={horizon}
+                  onChange={setHorizon}
+                  customMonth={customHorizonMonth}
+                  onCustomMonthChange={setCustomHorizonMonth}
+                />
               </View>
 
-              {/* Subscription rows */}
-              {subs.length > 0 ? (
+              {/* Summary row — total + mini icons + chevron toggle */}
+              <Pressable
+                onPress={() => { impactLight(); setUpcomingExpanded((v) => !v); }}
+                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                disabled={subs.length === 0}
+              >
+                <View
+                  style={{
+                    flexDirection: rowDir,
+                    alignItems: 'center',
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    gap: 12,
+                  }}
+                >
+                  {subs.length > 0 ? (
+                    <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10 }}>
+                      {!upcomingExpanded ? (
+                        <View style={{ flexDirection: rowDir, alignItems: 'center' }}>
+                          {miniSubs.map((sub, i) => {
+                            const subColor = sub.color || colors.primary;
+                            const iconBg = colors.isDark ? subColor + '30' : subColor + '18';
+                            const overlap = i === 0 ? 0 : -8;
+                            const logo = getSubscriptionLogo(sub);
+                            return (
+                              <View
+                                key={sub.id}
+                                style={{
+                                  width: 24,
+                                  height: 24,
+                                  borderRadius: 8,
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  backgroundColor: iconBg,
+                                  borderWidth: 1.5,
+                                  borderColor: colors.surface,
+                                  marginLeft: isRTL ? 0 : overlap,
+                                  marginRight: isRTL ? overlap : 0,
+                                }}
+                              >
+                                {logo ? (
+                                  <Image
+                                    source={{ uri: logo }}
+                                    style={{ width: 14, height: 14, borderRadius: 3 }}
+                                    contentFit="contain"
+                                  />
+                                ) : (
+                                  <Text style={{ fontSize: 11 }}>{sub.icon || '💳'}</Text>
+                                )}
+                              </View>
+                            );
+                          })}
+                          {extraCount > 0 ? (
+                            <View
+                              style={{
+                                width: 24,
+                                height: 24,
+                                borderRadius: 8,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: colors.isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                                borderWidth: 1.5,
+                                borderColor: colors.surface,
+                                marginLeft: isRTL ? 0 : -8,
+                                marginRight: isRTL ? -8 : 0,
+                              }}
+                            >
+                              <Text style={{ fontSize: 9, fontWeight: '700', color: colors.textSecondary }}>
+                                +{extraCount}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      ) : null}
+                      <ChevronToggle size={18} color={colors.textTertiary} strokeWidth={2} />
+                    </View>
+                  ) : null}
+
+                  <View style={{ flex: 1, alignItems: isRTL ? 'flex-start' : 'flex-end' }}>
+                    <Text style={{ fontSize: 11.5, color: colors.textTertiary, fontWeight: '500', marginBottom: 2, textAlign: isRTL ? 'left' : 'right' }}>
+                      {totalLabel}
+                    </Text>
+                    {subs.length > 0 ? (
+                      hidden ? (
+                        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.expense }}>••••</Text>
+                      ) : (
+                        <CurrencyAmount value={upcomingTotal} color={colors.expense} fontSize={17} fontWeight="700" />
+                      )
+                    ) : (
+                      <Text style={{ fontSize: 13, color: colors.textTertiary, textAlign: isRTL ? 'left' : 'right' }}>
+                        {t('NO_UPCOMING_SUBS')}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              </Pressable>
+
+              {/* Subscription rows — only shown when expanded */}
+              {upcomingExpanded && subs.length > 0 ? (
                 <View>
+                  <GradientDivider />
                   {subs.map((sub, i) => (
                     <React.Fragment key={sub.id}>
                       {i > 0 ? <GradientDivider /> : null}
@@ -542,13 +701,7 @@ function DashboardContent(): React.ReactElement {
                     </React.Fragment>
                   ))}
                 </View>
-              ) : (
-                <View style={{ paddingVertical: 16, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: colors.textTertiary }}>
-                    {t('NO_UPCOMING_SUBS')}
-                  </Text>
-                </View>
-              )}
+              ) : null}
             </Card>
           </View>
         );
@@ -847,15 +1000,6 @@ function DashboardContent(): React.ReactElement {
           </Text>
         </Pressable>
       ) : null}
-
-      {/* Intelligent Input FAB — tap for full screen, long-press for radial mode select */}
-      <SmartInputFAB
-        style={{ right: 12, bottom: insets.bottom + 96 }}
-        onPress={() => router.push('/(tabs)/smart-input')}
-        onVoice={() => router.push('/(tabs)/smart-input?mode=voice')}
-        onScan={() => router.push('/(tabs)/smart-input?mode=scan')}
-        onManual={() => router.push('/(tabs)/smart-input?mode=manual')}
-      />
 
       {/* Transactions modal — slides up from "See All" in recent transactions */}
       <Modal

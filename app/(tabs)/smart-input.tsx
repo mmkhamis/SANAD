@@ -53,6 +53,7 @@ import { useUsage, formatExhaustedMessage } from '../../hooks/useUsage';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCategories } from '../../hooks/useCategories';
 import { transcribeVoiceNote, ocrReceiptImage, type SmartTransactionInput } from '../../services/smart-input-service';
+import { useVoiceInputStore } from '../../store/voice-input-store';
 import { formatAmount } from '../../utils/currency';
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useRTL } from '../../hooks/useRTL';
@@ -767,7 +768,7 @@ function SmartInputContent(): React.ReactElement {
   const createMutation = useCreateParsedTransaction();
 
   // ─── FAB radial mode auto-trigger ───────────────────────────────
-  const { mode } = useLocalSearchParams<{ mode?: 'voice' | 'scan' | 'manual' }>();
+  const { mode, source } = useLocalSearchParams<{ mode?: 'voice' | 'scan' | 'manual'; source?: string }>();
   const autoTriggeredRef = useRef(false);
 
   useEffect(() => {
@@ -779,6 +780,26 @@ function SmartInputContent(): React.ReactElement {
     else if (mode === 'scan') handleOCRDirect();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally empty — mode is stable, handlers are useCallbacks
+
+  // ─── Voice handoff from global store ────────────────────────────
+  // When the user lands here via the voice processing pill (source=voice),
+  // pick up the transcribed text from the global store, kick the parser,
+  // then clear the store so the pill goes away.
+  const voiceText = useVoiceInputStore((s) => s.transcribedText);
+  const voiceState = useVoiceInputStore((s) => s.state);
+  const dismissVoiceStore = useVoiceInputStore((s) => s.dismiss);
+  const voiceHandoffRef = useRef(false);
+  useEffect(() => {
+    if (source !== 'voice') return;
+    if (voiceHandoffRef.current) return;
+    if (voiceState !== 'done' || !voiceText) return;
+    voiceHandoffRef.current = true;
+    setInputSource('voice');
+    setInputText(voiceText);
+    parseText(voiceText).finally(() => {
+      dismissVoiceStore();
+    });
+  }, [source, voiceState, voiceText, parseText, setInputSource, dismissVoiceStore]);
 
   // Cleanup recording on unmount
   useEffect(() => {

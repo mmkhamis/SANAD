@@ -10,11 +10,12 @@ import { useRTL } from '../../hooks/useRTL';
 import { useLanguageStore } from '../../store/language-store';
 import { useSubscriptionInsights } from '../../hooks/useSubscriptionInsights';
 import { COLORS } from '../../constants/colors';
+import { getSubscriptionDisplayName } from '../../services/subscription-service';
 
 export function SubscriptionSavingsCard(): React.ReactElement | null {
   const colors = useThemeColors();
   const t = useT();
-  const { rowDir, textAlign } = useRTL();
+  const { isRTL, rowDir, textAlign } = useRTL();
   const language = useLanguageStore((s) => s.language);
   const { data: insights, isLoading } = useSubscriptionInsights();
 
@@ -75,7 +76,7 @@ export function SubscriptionSavingsCard(): React.ReactElement | null {
                 <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 8 }}>
                   <Text style={{ fontSize: 18 }}>{insight.subscription.icon}</Text>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: colors.isDark ? COLORS.claude.fg : colors.textPrimary }}>
-                    {insight.subscription.name}
+                    {getSubscriptionDisplayName(insight.subscription, isRTL)}
                   </Text>
                 </View>
                 <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 4 }}>

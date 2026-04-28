@@ -17,6 +17,12 @@ export interface Account {
   balance_snapshot: number;
   /** When the user last set/reset the balance */
   balance_set_at: string;
+  /** Optional parser anchor: account number ending (4 digits). */
+  account_last4?: string | null;
+  /** Optional parser anchor: card ending (4 digits). */
+  card_last4?: string | null;
+  /** Optional parser anchor: IBAN ending (4 digits). */
+  iban_last4?: string | null;
   include_in_total: boolean;
   created_at: string;
   updated_at: string;
@@ -44,6 +50,15 @@ export interface Transaction {
   needs_review: boolean;
   parse_confidence: number | null;
   review_reason: string | null;
+  parser_source?: string | null;
+  merchant_raw?: string | null;
+  merchant_normalized?: string | null;
+  institution_name?: string | null;
+  channel?: 'apple_pay' | 'google_pay' | 'mada' | 'stc_pay' | 'urpay' | 'iban' | 'card' | null;
+  descriptor?: string | null;
+  from_last4?: string | null;
+  to_last4?: string | null;
+  ignored_values?: Array<{ kind: string; value: string }> | null;
   account_id: string | null;
   exclude_from_insights: boolean;
   deleted_at: string | null;
@@ -176,6 +191,8 @@ export interface ParsedTransaction {
   transaction_type: TransactionType;
   merchant: string | null;
   counterparty: string | null;
+  from_last4?: string | null;
+  to_last4?: string | null;
   description: string;
   date: string;
   parse_confidence: number;
@@ -416,6 +433,60 @@ export interface PaginatedResponse<T> {
 // ─── Smart Input Types ───────────────────────────────────────────────
 
 export type SmartInputSource = 'text' | 'sms' | 'voice' | 'ocr';
+
+// ─── Canonical SMS Parser Types (shared with parser-v2) ────────────
+
+export type MessageClass =
+  | 'purchase'
+  | 'refund'
+  | 'transfer'
+  | 'income'
+  | 'promotion_offer'
+  | 'balance_alert'
+  | 'otp'
+  | 'unknown';
+
+export type ParserSource = 'rules' | 'ai_fallback' | 'rules_then_ai';
+
+export type ParseChannel =
+  | 'apple_pay'
+  | 'google_pay'
+  | 'mada'
+  | 'stc_pay'
+  | 'urpay'
+  | 'iban'
+  | 'card'
+  | null;
+
+export interface ParseIgnoredValue {
+  kind: 'remaining_balance' | 'remaining_limit' | 'reference_number' | 'promo_amount';
+  value: string;
+}
+
+export interface ParseResult {
+  message_class: MessageClass;
+  should_create_transaction: boolean;
+  should_route_to_offers_feed: boolean;
+  amount: number | null;
+  currency: string;
+  timestamp: string | null;
+  institution_name: string | null;
+  merchant_raw: string | null;
+  merchant_normalized: string | null;
+  descriptor: string | null;
+  channel: ParseChannel;
+  country: string | null;
+  source_account_last4: string | null;
+  source_card_last4: string | null;
+  from_last4: string | null;
+  to_last4: string | null;
+  counterparty_name: string | null;
+  ignored_values: ParseIgnoredValue[];
+  confidence: number;
+  parse_reason: string;
+  review_flags: string[];
+  parser_source: ParserSource;
+}
 
 export interface SmartInputResult {
   amount: number | null;

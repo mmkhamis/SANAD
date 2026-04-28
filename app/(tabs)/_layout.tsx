@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Platform } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { LayoutGrid, BarChart3, Home, Coins, User } from 'lucide-react-native';
@@ -9,6 +9,11 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useWidgetSync } from '../../hooks/useWidgetSync';
 import { useT } from '../../lib/i18n';
 import { COLORS } from '../../constants/colors';
+import { RecordingOverlay } from '../../components/voice/RecordingOverlay';
+import { ProcessingOverlay } from '../../components/voice/ProcessingOverlay';
+import { MinimizedPill } from '../../components/voice/MinimizedPill';
+import { LiquidGlassFab } from '../../components/ui/LiquidGlassFab';
+import { useVoiceInputStore } from '../../store/voice-input-store';
 
 const TAB_ICON_SIZE = 22;
 const TAB_ICON_STROKE = 1.8;
@@ -17,9 +22,14 @@ const HOME_ICON_SIZE = 26;
 export default function TabsLayout(): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const router = useRouter();
   useWidgetSync();
 
+  // Tab bar bottom offset (must match tabBarStyle below) + tab bar height + breathing room
+  const fabBottom = (Platform.OS === 'ios' ? 24 : 14) + 72 + 14;
+
   return (
+    <>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -38,12 +48,11 @@ export default function TabsLayout(): React.ReactElement {
                 style={{
                   flex: 1,
                   backgroundColor: colors.isDark
-                    ? 'rgba(10,10,18,0.55)'   // Claude Design: rgba(10,10,18,0.55)
+                    ? 'rgba(10,10,18,0.55)'
                     : 'rgba(255,255,255,0.88)',
                 }}
               />
             </BlurView>
-            {/* Top-edge inset light */}
             {colors.isDark ? (
               <View
                 pointerEvents="none"
@@ -183,7 +192,7 @@ export default function TabsLayout(): React.ReactElement {
         }}
       />
 
-      {/* 5 — You (profile / settings / goals / bill split hub) */}
+      {/* 5 — Profile */}
       <Tabs.Screen
         name="profile"
         options={{
@@ -210,12 +219,23 @@ export default function TabsLayout(): React.ReactElement {
       <Tabs.Screen name="create-split-event" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="split-event" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
+    <RecordingOverlay />
+    <ProcessingOverlay />
+    <MinimizedPill />
+    <LiquidGlassFab
+      right={14}
+      bottom={fabBottom}
+      onPress={() => router.push('/(tabs)/smart-input')}
+      onVoice={() => { useVoiceInputStore.getState().startRecording(); }}
+      onScan={() => router.push('/(tabs)/smart-input?mode=scan')}
+      onManual={() => router.push('/(tabs)/smart-input?mode=manual')}
+    />
+    </>
   );
 }
 
 /**
  * Wraps an active icon with a subtle purple drop-shadow glow.
- * Mirrors the CSS `filter: drop-shadow(0 0 8px var(--p-glow))` from the prototype.
  */
 function IconWrap({ focused, children }: { focused: boolean; children: React.ReactNode }): React.ReactElement {
   if (!focused) return <>{children}</> as React.ReactElement;

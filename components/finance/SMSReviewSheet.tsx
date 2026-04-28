@@ -6,6 +6,7 @@ import { X, ChevronLeft, ChevronRight, Check } from 'lucide-react-native';
 import { impactLight, impactMedium, notifySuccess } from '../../utils/haptics';
 import { formatAmount } from '../../utils/currency';
 import { suggestCategory } from '../../utils/sms-parser';
+import { formatSmsPreview } from '../../utils/sms-display';
 import { CategoryPicker } from './CategoryPicker';
 import { AccountPicker } from './AccountPicker';
 import { useReviewTransaction } from '../../hooks/useReviewTransactions';
@@ -47,6 +48,7 @@ export function SMSReviewSheet({
     if (!tx?.notes) return null;
     return suggestCategory(tx.notes);
   }, [tx?.notes]);
+  const smsPreview = useMemo(() => (tx?.notes ? formatSmsPreview(tx.notes) : null), [tx?.notes]);
 
   // Auto-select suggested category when it changes
   React.useEffect(() => {
@@ -170,7 +172,7 @@ export function SMSReviewSheet({
             </Text>
 
             {/* Raw SMS */}
-            {tx.notes ? (
+            {smsPreview ? (
               <View
                 className="rounded-lg px-3 py-2"
                 style={{ backgroundColor: colors.surfaceSecondary }}
@@ -178,8 +180,8 @@ export function SMSReviewSheet({
                 <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textTertiary, marginBottom: 2 }}>
                   {t('SMS_ORIGINAL' as any)}
                 </Text>
-                <Text style={{ fontSize: 12, color: colors.textSecondary }} numberOfLines={4}>
-                  {tx.notes}
+                <Text style={{ fontSize: 12, lineHeight: 17, color: colors.textSecondary }} numberOfLines={8}>
+                  {smsPreview}
                 </Text>
               </View>
             ) : null}

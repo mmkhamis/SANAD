@@ -56,6 +56,8 @@ export const QUERY_KEYS = {
   monthlyLogs: ['monthly-logs'] as const,
   monthlySummary: ['monthly-summary'] as const,
   smartInputParse: ['smart-input-parse'] as const,
+  merchantCategoryRules: ['merchant-category-rules'] as const,
+  merchantCategorizationSetting: ['merchant-categorization-setting'] as const,
   subscriptions: ['subscriptions'] as const,
   commitments: ['commitments'] as const,
   commitmentsDue: (month: string) => ['commitments-due', month] as const,

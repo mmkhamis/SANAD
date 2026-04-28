@@ -7,6 +7,7 @@ export type BillingCycle = 'monthly' | 'quarterly' | 'yearly';
 export interface Subscription {
   id: string;
   user_id: string;
+  provider_key: string | null;
   name: string;
   icon: string;
   color: string;
@@ -22,6 +23,7 @@ export interface Subscription {
 
 export interface CreateSubscriptionInput {
   name: string;
+  provider_key?: string | null;
   icon: string;
   color: string;
   amount: number;
@@ -31,75 +33,228 @@ export interface CreateSubscriptionInput {
   notes?: string | null;
 }
 
-// ─── Preset subscriptions for Egypt & Saudi ──────────────────────────
-
 export interface SubscriptionPreset {
+  key: string;
   name: string;
-  /** Arabic display name */
   nameAr: string;
   icon: string;
   logo: string | null;
   color: string;
   category: string;
+  aliases: string[];
 }
+
+type SubscriptionIdentity = {
+  provider_key?: string | null;
+  name?: string | null;
+};
+
+const faviconLogo = (domain: string): string =>
+  `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://${domain}&size=128`;
+
+const preset = (
+  input: Omit<SubscriptionPreset, 'aliases'> & { aliases?: string[] },
+): SubscriptionPreset => ({
+  ...input,
+  aliases: input.aliases ?? [],
+});
+
+// ─── Preset subscriptions for Saudi + regional/global services ──────
 
 export const SUBSCRIPTION_PRESETS: SubscriptionPreset[] = [
   // Streaming
-  { name: 'Netflix', nameAr: 'نتفلكس', icon: '🎬', logo: 'https://cdn.simpleicons.org/netflix/E50914', color: '#E50914', category: 'Streaming' },
-  { name: 'Shahid VIP', nameAr: 'شاهد VIP', icon: '📺', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/Shahid_Logo.svg/512px-Shahid_Logo.svg.png', color: '#6C3EC1', category: 'Streaming' },
-  { name: 'Disney+', nameAr: 'ديزني+', icon: '🏰', logo: 'https://cdn.simpleicons.org/disneyplus/113CCF', color: '#113CCF', category: 'Streaming' },
-  { name: 'YouTube Premium', nameAr: 'يوتيوب بريميوم', icon: '▶️', logo: 'https://cdn.simpleicons.org/youtube/FF0000', color: '#FF0000', category: 'Streaming' },
-  { name: 'OSN+', nameAr: 'OSN+', icon: '📡', logo: 'https://logo.clearbit.com/osn.com', color: '#1A1A2E', category: 'Streaming' },
-  { name: 'STARZPLAY', nameAr: 'ستارز بلاي', icon: '⭐', logo: 'https://logo.clearbit.com/starzplay.com', color: '#0D0E13', category: 'Streaming' },
-  { name: 'TOD', nameAr: 'TOD', icon: '⚽', logo: 'https://logo.clearbit.com/tod.tv', color: '#FF6B00', category: 'Streaming' },
-  { name: 'Jawwy TV', nameAr: 'جوّي TV', icon: '📺', logo: 'https://logo.clearbit.com/jawwy.tv', color: '#4F008C', category: 'Streaming' },
-  // Music
-  { name: 'Spotify', nameAr: 'سبوتيفاي', icon: '🎵', logo: 'https://cdn.simpleicons.org/spotify/1DB954', color: '#1DB954', category: 'Music' },
-  { name: 'Apple Music', nameAr: 'أبل ميوزك', icon: '🎧', logo: 'https://cdn.simpleicons.org/applemusic/FC3C44', color: '#FC3C44', category: 'Music' },
-  { name: 'Anghami', nameAr: 'أنغامي', icon: '🎶', logo: 'https://cdn.simpleicons.org/anghami/6236FF', color: '#6236FF', category: 'Music' },
-  // Telecom — Saudi
-  { name: 'STC', nameAr: 'STC', icon: '📱', logo: 'https://logo.clearbit.com/stc.com.sa', color: '#4F008C', category: 'Telecom' },
-  { name: 'Mobily', nameAr: 'موبايلي', icon: '📱', logo: 'https://logo.clearbit.com/mobily.com.sa', color: '#00A651', category: 'Telecom' },
-  { name: 'Zain SA', nameAr: 'زين السعودية', icon: '📱', logo: 'https://logo.clearbit.com/sa.zain.com', color: '#6B2574', category: 'Telecom' },
-  // Telecom — Egypt
-  { name: 'Vodafone Egypt', nameAr: 'فودافون مصر', icon: '📱', logo: 'https://cdn.simpleicons.org/vodafone/E60000', color: '#E60000', category: 'Telecom' },
-  { name: 'Orange Egypt', nameAr: 'أورنج مصر', icon: '📱', logo: 'https://cdn.simpleicons.org/orange/FF6600', color: '#FF6600', category: 'Telecom' },
-  { name: 'Etisalat (e&)', nameAr: 'اتصالات (e&)', icon: '📱', logo: 'https://logo.clearbit.com/etisalat.eg', color: '#5F259F', category: 'Telecom' },
-  { name: 'WE Egypt', nameAr: 'WE مصر', icon: '📱', logo: 'https://logo.clearbit.com/te.eg', color: '#6B2D8B', category: 'Telecom' },
-  // Cloud & Productivity
-  { name: 'iCloud+', nameAr: 'آي كلاود+', icon: '☁️', logo: 'https://cdn.simpleicons.org/icloud/3693F3', color: '#3693F3', category: 'Cloud' },
-  { name: 'Google One', nameAr: 'قوقل ون', icon: '☁️', logo: 'https://cdn.simpleicons.org/google/4285F4', color: '#4285F4', category: 'Cloud' },
-  { name: 'Microsoft 365', nameAr: 'مايكروسوفت ٣٦٥', icon: '💼', logo: 'https://cdn.simpleicons.org/microsoft/D83B01', color: '#D83B01', category: 'Productivity' },
-  { name: 'Notion', nameAr: 'نوشن', icon: '📝', logo: 'https://cdn.simpleicons.org/notion/000000', color: '#000000', category: 'Productivity' },
-  { name: 'ChatGPT Plus', nameAr: 'ChatGPT بلس', icon: '🤖', logo: 'https://cdn.simpleicons.org/openai/10A37F', color: '#10A37F', category: 'Productivity' },
-  { name: 'Canva Pro', nameAr: 'كانفا برو', icon: '🎨', logo: 'https://cdn.simpleicons.org/canva/00C4CC', color: '#00C4CC', category: 'Productivity' },
+  preset({ key: 'netflix', name: 'Netflix', nameAr: 'نتفلكس', icon: '🎬', logo: faviconLogo('netflix.com'), color: '#E50914', category: 'Streaming', aliases: ['نتفلكس'] }),
+  preset({ key: 'shahid_vip', name: 'Shahid', nameAr: 'شاهد', icon: '📺', logo: faviconLogo('shahid.mbc.net'), color: '#00A6A6', category: 'Streaming', aliases: ['shahid vip', 'شاهد vip', 'shahid', 'شاهد'] }),
+  preset({ key: 'disney_plus', name: 'Disney+', nameAr: 'ديزني+', icon: '🏰', logo: faviconLogo('disneyplus.com'), color: '#113CCF', category: 'Streaming', aliases: ['disney plus', 'ديزني بلس'] }),
+  preset({ key: 'youtube_premium', name: 'YouTube Premium', nameAr: 'يوتيوب بريميوم', icon: '▶️', logo: faviconLogo('youtube.com'), color: '#FF0000', category: 'Streaming', aliases: ['youtube premium', 'يوتيوب premium'] }),
+  preset({ key: 'prime_video', name: 'Prime Video', nameAr: 'برايم فيديو', icon: '🎞️', logo: faviconLogo('primevideo.com'), color: '#1399FF', category: 'Streaming', aliases: ['amazon prime video', 'primevideo', 'برايم video'] }),
+  preset({ key: 'apple_tv_plus', name: 'Apple TV+', nameAr: 'أبل تي في+', icon: '🍎', logo: faviconLogo('tv.apple.com'), color: '#111111', category: 'Streaming', aliases: ['apple tv plus', 'ابل تي في+', 'apple tv'] }),
+  preset({ key: 'osn_plus', name: 'OSN+', nameAr: '+OSN', icon: '🎥', logo: faviconLogo('osnplus.com'), color: '#4C2D95', category: 'Streaming', aliases: ['osn plus', '+osn'] }),
+  preset({ key: 'starzplay', name: 'STARZPLAY', nameAr: 'ستارزبلاي', icon: '⭐', logo: faviconLogo('starzplay.com'), color: '#6B21A8', category: 'Streaming', aliases: ['starz play', 'ستارز بلاي'] }),
+  preset({ key: 'tod', name: 'TOD', nameAr: 'تود', icon: '⚽', logo: faviconLogo('tod.tv'), color: '#FF6B00', category: 'Streaming', aliases: ['tod tv', 'تود'] }),
+  preset({ key: 'stc_tv', name: 'stc tv', nameAr: 'stc tv', icon: '📡', logo: faviconLogo('stc.com.sa'), color: '#4F008C', category: 'Streaming', aliases: ['jawwy tv', 'jawwytv', 'جوّي tv', 'جوي tv', 'stctv'] }),
+
+  // Music & audio
+  preset({ key: 'spotify', name: 'Spotify', nameAr: 'سبوتيفاي', icon: '🎵', logo: faviconLogo('spotify.com'), color: '#1DB954', category: 'Music', aliases: ['سبوتفاي'] }),
+  preset({ key: 'apple_music', name: 'Apple Music', nameAr: 'أبل ميوزك', icon: '🎧', logo: faviconLogo('music.apple.com'), color: '#FA233B', category: 'Music', aliases: ['ابل ميوزك'] }),
+  preset({ key: 'anghami', name: 'Anghami', nameAr: 'أنغامي', icon: '🎶', logo: faviconLogo('anghami.com'), color: '#6236FF', category: 'Music', aliases: ['انغامي'] }),
+  preset({ key: 'youtube_music', name: 'YouTube Music', nameAr: 'يوتيوب ميوزك', icon: '🎼', logo: faviconLogo('music.youtube.com'), color: '#FF0033', category: 'Music', aliases: ['youtube music', 'يوتيوب music'] }),
+  preset({ key: 'deezer', name: 'Deezer', nameAr: 'ديزر', icon: '🎚️', logo: faviconLogo('deezer.com'), color: '#A238FF', category: 'Music', aliases: ['deezer', 'ديزر'] }),
+  preset({ key: 'audible', name: 'Audible', nameAr: 'أوديبل', icon: '🎙️', logo: faviconLogo('audible.com'), color: '#F7991C', category: 'Music', aliases: ['أودبل', 'audiobooks audible'] }),
+
+  // Telecom
+  preset({ key: 'stc', name: 'STC', nameAr: 'إس تي سي', icon: '📱', logo: faviconLogo('stc.com.sa'), color: '#4F008C', category: 'Telecom', aliases: ['اس تي سي', 'الاتصالات السعودية'] }),
+  preset({ key: 'mobily', name: 'Mobily', nameAr: 'موبايلي', icon: '📱', logo: faviconLogo('mobily.com.sa'), color: '#00A651', category: 'Telecom', aliases: ['موبايلى'] }),
+  preset({ key: 'zain_sa', name: 'Zain', nameAr: 'زين', icon: '📱', logo: faviconLogo('sa.zain.com'), color: '#7C3AED', category: 'Telecom', aliases: ['zain sa', 'زين السعودية'] }),
+  preset({ key: 'virgin_mobile_ksa', name: 'Virgin Mobile', nameAr: 'فيرجن موبايل', icon: '📱', logo: faviconLogo('virginmobile.sa'), color: '#D71920', category: 'Telecom', aliases: ['virgin mobile ksa', 'فيرجن'] }),
+  preset({ key: 'lebara_ksa', name: 'Lebara', nameAr: 'ليبارا', icon: '📱', logo: faviconLogo('lebara.sa'), color: '#FFC300', category: 'Telecom', aliases: ['lebara ksa', 'ليبرا'] }),
+  preset({ key: 'vodafone_egypt', name: 'Vodafone Egypt', nameAr: 'فودافون مصر', icon: '📱', logo: faviconLogo('vodafone.com.eg'), color: '#E60000', category: 'Telecom', aliases: ['vodafone egypt', 'فودافون'] }),
+  preset({ key: 'orange_egypt', name: 'Orange Egypt', nameAr: 'أورنج مصر', icon: '📱', logo: faviconLogo('orange.eg'), color: '#FF6600', category: 'Telecom', aliases: ['orange egypt', 'اورنج مصر'] }),
+  preset({ key: 'etisalat_egypt', name: 'Etisalat Egypt', nameAr: 'اتصالات مصر', icon: '📱', logo: faviconLogo('etisalat.eg'), color: '#5F259F', category: 'Telecom', aliases: ['etisalat e&', 'اتصالات'] }),
+  preset({ key: 'we_egypt', name: 'WE Egypt', nameAr: 'وي مصر', icon: '📱', logo: faviconLogo('te.eg'), color: '#6B2D8B', category: 'Telecom', aliases: ['we egypt', 'we', 'وي'] }),
+
+  // Cloud
+  preset({ key: 'icloud_plus', name: 'iCloud+', nameAr: 'آي كلاود+', icon: '☁️', logo: faviconLogo('icloud.com'), color: '#3693F3', category: 'Cloud', aliases: ['icloud', 'icloud plus', 'اي كلاود', 'آيكلاود'] }),
+  preset({ key: 'google_one', name: 'Google One', nameAr: 'جوجل ون', icon: '☁️', logo: faviconLogo('one.google.com'), color: '#4285F4', category: 'Cloud', aliases: ['googleone', 'قوقل ون', 'جوجل one'] }),
+  preset({ key: 'dropbox_plus', name: 'Dropbox', nameAr: 'دروب بوكس', icon: '📦', logo: faviconLogo('dropbox.com'), color: '#0061FF', category: 'Cloud', aliases: ['dropbox plus', 'دروبوكس'] }),
+
+  // Productivity
+  preset({ key: 'microsoft_365', name: 'Microsoft 365', nameAr: 'مايكروسوفت 365', icon: '💼', logo: faviconLogo('microsoft.com'), color: '#D83B01', category: 'Productivity', aliases: ['office 365', 'ms 365', 'مايكروسوفت ٣٦٥'] }),
+  preset({ key: 'notion', name: 'Notion', nameAr: 'نوشن', icon: '📝', logo: faviconLogo('notion.so'), color: '#111111', category: 'Productivity', aliases: ['notion ai', 'نوتشن'] }),
+  preset({ key: 'chatgpt_plus', name: 'ChatGPT Plus', nameAr: 'شات جي بي تي بلس', icon: '🤖', logo: faviconLogo('openai.com'), color: '#10A37F', category: 'Productivity', aliases: ['chatgpt', 'chat gpt plus', 'شات جي بي تي', 'جي بي تي بلس'] }),
+  preset({ key: 'canva_pro', name: 'Canva Pro', nameAr: 'كانفا برو', icon: '🎨', logo: faviconLogo('canva.com'), color: '#00C4CC', category: 'Productivity', aliases: ['canva', 'كانفا'] }),
+  preset({ key: 'adobe_creative_cloud', name: 'Adobe Creative Cloud', nameAr: 'أدوبي كريتيف كلاود', icon: '🖌️', logo: faviconLogo('adobe.com'), color: '#FF0000', category: 'Productivity', aliases: ['adobe cc', 'creative cloud', 'ادوبي'] }),
+  preset({ key: 'linkedin_premium', name: 'LinkedIn Premium', nameAr: 'لينكدإن بريميوم', icon: '💼', logo: faviconLogo('linkedin.com'), color: '#0A66C2', category: 'Productivity', aliases: ['linkedin premium', 'لينكد ان بريميوم'] }),
+
+  // Social
+  preset({ key: 'snapchat_plus', name: 'Snapchat+', nameAr: 'سناب شات+', icon: '👻', logo: faviconLogo('snapchat.com'), color: '#FFFC00', category: 'Social', aliases: ['snapchat plus', 'سناب+', 'سناب شات بلس'] }),
+  preset({ key: 'x_premium', name: 'X Premium', nameAr: 'إكس بريميوم', icon: '𝕏', logo: faviconLogo('x.com'), color: '#111111', category: 'Social', aliases: ['twitter blue', 'x premium+', 'اكس بريميوم'] }),
+  preset({ key: 'telegram_premium', name: 'Telegram Premium', nameAr: 'تيليجرام بريميوم', icon: '✈️', logo: faviconLogo('telegram.org'), color: '#229ED9', category: 'Social', aliases: ['telegram premium', 'تلجرام بريميوم'] }),
+
   // Gaming
-  { name: 'PlayStation Plus', nameAr: 'بلايستيشن بلس', icon: '🎮', logo: 'https://cdn.simpleicons.org/playstation/003791', color: '#003791', category: 'Gaming' },
-  { name: 'Xbox Game Pass', nameAr: 'إكس بوكس قيم باس', icon: '🎮', logo: 'https://cdn.simpleicons.org/xbox/107C10', color: '#107C10', category: 'Gaming' },
-  { name: 'Apple Arcade', nameAr: 'أبل آركيد', icon: '🕹️', logo: 'https://cdn.simpleicons.org/apple/007AFF', color: '#007AFF', category: 'Gaming' },
-  { name: 'EA Play', nameAr: 'EA Play', icon: '🎮', logo: 'https://cdn.simpleicons.org/ea/000000', color: '#000000', category: 'Gaming' },
-  // Shopping
-  { name: 'Amazon Prime', nameAr: 'أمازون برايم', icon: '📦', logo: 'https://cdn.simpleicons.org/amazon/FF9900', color: '#FF9900', category: 'Shopping' },
-  { name: 'Noon VIP', nameAr: 'نون VIP', icon: '🛒', logo: 'https://logo.clearbit.com/noon.com', color: '#FEEE00', category: 'Shopping' },
+  preset({ key: 'playstation_plus', name: 'PlayStation Plus', nameAr: 'بلايستيشن بلس', icon: '🎮', logo: faviconLogo('playstation.com'), color: '#003791', category: 'Gaming', aliases: ['ps plus', 'بلاي ستيشن بلس'] }),
+  preset({ key: 'xbox_game_pass', name: 'Xbox Game Pass', nameAr: 'إكس بوكس جيم باس', icon: '🎮', logo: faviconLogo('xbox.com'), color: '#107C10', category: 'Gaming', aliases: ['game pass', 'قيم باس', 'جيم باس'] }),
+  preset({ key: 'apple_arcade', name: 'Apple Arcade', nameAr: 'أبل آركيد', icon: '🕹️', logo: faviconLogo('apple.com'), color: '#7C3AED', category: 'Gaming', aliases: ['ابل اركيد'] }),
+  preset({ key: 'ea_play', name: 'EA Play', nameAr: 'إي إيه بلاي', icon: '🎮', logo: faviconLogo('ea.com'), color: '#FF4747', category: 'Gaming', aliases: ['ea', 'اي ايه بلاي'] }),
+  preset({ key: 'nintendo_switch_online', name: 'Nintendo Switch Online', nameAr: 'نينتندو سويتش أونلاين', icon: '🎮', logo: faviconLogo('nintendo.com'), color: '#E60012', category: 'Gaming', aliases: ['switch online', 'نينتندو اونلاين'] }),
+
+  // Shopping / memberships
+  preset({ key: 'amazon_prime', name: 'Amazon Prime', nameAr: 'أمازون برايم', icon: '📦', logo: faviconLogo('amazon.sa'), color: '#FF9900', category: 'Shopping', aliases: ['prime', 'امازون برايم', 'amazon prime saudi'] }),
+  preset({ key: 'noon_one', name: 'noon One', nameAr: 'نون One', icon: '🛒', logo: faviconLogo('noon.com'), color: '#F5D000', category: 'Shopping', aliases: ['noon one', 'نون ون', 'نون one'] }),
+  preset({ key: 'careem_plus', name: 'Careem Plus', nameAr: 'كريم بلس', icon: '🚗', logo: faviconLogo('careem.com'), color: '#00C7B1', category: 'Delivery', aliases: ['careem+', 'careem plus', 'كريم+', 'كريم بلس'] }),
+  preset({ key: 'noon_vip', name: 'Noon VIP', nameAr: 'نون VIP', icon: '🛍️', logo: faviconLogo('noon.com'), color: '#FEEE00', category: 'Shopping', aliases: ['noon vip', 'نون vip'] }),
+
+  // Delivery
+  preset({ key: 'jahez', name: 'Jahez', nameAr: 'جاهز', icon: '🛵', logo: faviconLogo('jahez.net'), color: '#FF474C', category: 'Delivery', aliases: ['جاهز'] }),
+  preset({ key: 'hungerstation', name: 'HungerStation', nameAr: 'هنقرستيشن', icon: '🍔', logo: faviconLogo('hungerstation.com'), color: '#FF6A00', category: 'Delivery', aliases: ['hunger station', 'هنقر ستيشن'] }),
+  preset({ key: 'talabat', name: 'Talabat', nameAr: 'طلبات', icon: '🍕', logo: faviconLogo('talabat.com'), color: '#FF5A00', category: 'Delivery', aliases: ['طلبات'] }),
+
   // Fitness
-  { name: 'Gym Membership', nameAr: 'اشتراك نادي رياضي', icon: '💪', logo: null, color: '#FF5722', category: 'Fitness' },
-  { name: 'Apple Fitness+', nameAr: 'أبل فتنس+', icon: '🏃', logo: 'https://cdn.simpleicons.org/apple/A2D729', color: '#A2D729', category: 'Fitness' },
-  // VPN & Security
-  { name: 'NordVPN', nameAr: 'نورد VPN', icon: '🔒', logo: 'https://cdn.simpleicons.org/nordvpn/4687FF', color: '#4687FF', category: 'Security' },
-  { name: 'ExpressVPN', nameAr: 'إكسبرس VPN', icon: '🔐', logo: 'https://logo.clearbit.com/expressvpn.com', color: '#DA3940', category: 'Security' },
-  // Delivery & Food
-  { name: 'Jahez', nameAr: 'جاهز', icon: '🛵', logo: 'https://logo.clearbit.com/jahez.net', color: '#FF474C', category: 'Delivery' },
-  { name: 'HungerStation', nameAr: 'هنقرستيشن', icon: '🍔', logo: 'https://logo.clearbit.com/hungerstation.com', color: '#FF6A00', category: 'Delivery' },
-  { name: 'Talabat', nameAr: 'طلبات', icon: '🍕', logo: 'https://logo.clearbit.com/talabat.com', color: '#FF5722', category: 'Delivery' },
+  preset({ key: 'gym_membership', name: 'Gym Membership', nameAr: 'اشتراك نادي رياضي', icon: '💪', logo: null, color: '#FF5722', category: 'Fitness', aliases: ['gym', 'جيم', 'gym membership'] }),
+  preset({ key: 'fitness_time', name: 'Fitness Time', nameAr: 'فتنس تايم', icon: '🏋️', logo: faviconLogo('fitnesstime.com.sa'), color: '#DC2626', category: 'Fitness', aliases: ['وقت اللياقة', 'fitness time'] }),
+  preset({ key: 'apple_fitness_plus', name: 'Apple Fitness+', nameAr: 'أبل فتنس+', icon: '🏃', logo: faviconLogo('apple.com'), color: '#7ED957', category: 'Fitness', aliases: ['apple fitness plus', 'ابل فتنس+'] }),
+
+  // Security
+  preset({ key: 'nordvpn', name: 'NordVPN', nameAr: 'نورد VPN', icon: '🔒', logo: faviconLogo('nordvpn.com'), color: '#4687FF', category: 'Security', aliases: ['nord vpn', 'نورد في بي ان'] }),
+  preset({ key: 'expressvpn', name: 'ExpressVPN', nameAr: 'إكسبرس VPN', icon: '🔐', logo: faviconLogo('expressvpn.com'), color: '#DA3940', category: 'Security', aliases: ['express vpn', 'اكسبرس vpn'] }),
+
   // Insurance
-  { name: 'Tawuniya', nameAr: 'التعاونية', icon: '🏥', logo: 'https://logo.clearbit.com/tawuniya.com.sa', color: '#006838', category: 'Insurance' },
-  { name: 'Bupa Arabia', nameAr: 'بوبا العربية', icon: '🏥', logo: 'https://logo.clearbit.com/bupa.com.sa', color: '#003DA5', category: 'Insurance' },
+  preset({ key: 'tawuniya', name: 'Tawuniya', nameAr: 'التعاونية', icon: '🏥', logo: faviconLogo('tawuniya.com.sa'), color: '#006838', category: 'Insurance', aliases: ['التعاونية للتأمين'] }),
+  preset({ key: 'bupa_arabia', name: 'Bupa Arabia', nameAr: 'بوبا العربية', icon: '🏥', logo: faviconLogo('bupa.com.sa'), color: '#003DA5', category: 'Insurance', aliases: ['bupa', 'بوبا'] }),
 ];
 
 export const SUBSCRIPTION_CATEGORIES = [
-  'Streaming', 'Music', 'Telecom', 'Cloud', 'Productivity',
-  'Gaming', 'Shopping', 'Fitness', 'Security', 'Delivery', 'Insurance', 'Other',
+  'Streaming',
+  'Music',
+  'Telecom',
+  'Cloud',
+  'Productivity',
+  'Social',
+  'Gaming',
+  'Shopping',
+  'Fitness',
+  'Security',
+  'Delivery',
+  'Insurance',
+  'Other',
 ];
+
+const PRESET_BY_KEY = new Map<string, SubscriptionPreset>();
+const PROVIDER_KEY_BY_ALIAS = new Map<string, string>();
+
+function normalizeLookupValue(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function compactLookupValue(value: string): string {
+  return normalizeLookupValue(value).replace(/[\s+().,'’\-_:/]/g, '');
+}
+
+function indexAlias(alias: string, providerKey: string): void {
+  const normalized = normalizeLookupValue(alias);
+  if (!normalized) return;
+  PROVIDER_KEY_BY_ALIAS.set(normalized, providerKey);
+  PROVIDER_KEY_BY_ALIAS.set(compactLookupValue(normalized), providerKey);
+}
+
+for (const item of SUBSCRIPTION_PRESETS) {
+  PRESET_BY_KEY.set(item.key, item);
+  indexAlias(item.key, item.key);
+  indexAlias(item.name, item.key);
+  indexAlias(item.nameAr, item.key);
+  for (const alias of item.aliases) {
+    indexAlias(alias, item.key);
+  }
+}
+
+export function getSubscriptionPresetByKey(key: string | null | undefined): SubscriptionPreset | null {
+  if (!key) return null;
+  return PRESET_BY_KEY.get(key) ?? null;
+}
+
+export function resolveSubscriptionProviderKey(name: string | null | undefined): string | null {
+  if (!name?.trim()) return null;
+  return PROVIDER_KEY_BY_ALIAS.get(normalizeLookupValue(name))
+    ?? PROVIDER_KEY_BY_ALIAS.get(compactLookupValue(name))
+    ?? null;
+}
+
+export function getSubscriptionPreset(
+  input: SubscriptionIdentity | string | null | undefined,
+): SubscriptionPreset | null {
+  if (!input) return null;
+  if (typeof input === 'string') {
+    return getSubscriptionPresetByKey(resolveSubscriptionProviderKey(input));
+  }
+  return getSubscriptionPresetByKey(input.provider_key)
+    ?? getSubscriptionPresetByKey(resolveSubscriptionProviderKey(input.name));
+}
+
+export function getSubscriptionDisplayName(
+  input: SubscriptionIdentity | string | null | undefined,
+  isRTL: boolean,
+): string {
+  const matchedPreset = getSubscriptionPreset(input);
+  if (matchedPreset) return isRTL ? matchedPreset.nameAr : matchedPreset.name;
+  if (typeof input === 'string') return input ?? '';
+  return input?.name ?? '';
+}
+
+export function getSubscriptionLogo(
+  input: SubscriptionIdentity | string | null | undefined,
+): string | null {
+  return getSubscriptionPreset(input)?.logo ?? null;
+}
+
+export function normalizeSubscriptionRecord(subscription: Subscription): Subscription {
+  const providerKey = subscription.provider_key ?? resolveSubscriptionProviderKey(subscription.name);
+  if (providerKey === subscription.provider_key) return subscription;
+  return { ...subscription, provider_key: providerKey };
+}
+
+function buildSubscriptionInsertPayload(
+  input: CreateSubscriptionInput,
+): Omit<Subscription, 'id' | 'user_id' | 'is_active' | 'created_at' | 'updated_at'> {
+  const trimmedName = input.name.trim();
+  const providerKey = input.provider_key ?? resolveSubscriptionProviderKey(trimmedName);
+  const matchedPreset = getSubscriptionPresetByKey(providerKey);
+
+  return {
+    provider_key: providerKey,
+    name: matchedPreset?.name ?? trimmedName,
+    icon: matchedPreset?.icon ?? input.icon,
+    color: matchedPreset?.color ?? input.color,
+    amount: input.amount,
+    billing_cycle: input.billing_cycle,
+    next_billing_date: input.next_billing_date,
+    category: matchedPreset?.category ?? input.category,
+    notes: input.notes ?? null,
+  };
+}
+
+function isMissingProviderKeyColumnError(errorMessage: string | undefined): boolean {
+  return /provider_key/i.test(errorMessage ?? '') && /column/i.test(errorMessage ?? '');
+}
 
 // ─── CRUD ────────────────────────────────────────────────────────────
 
@@ -110,7 +265,7 @@ export async function fetchSubscriptions(): Promise<Subscription[]> {
     .order('next_billing_date', { ascending: true });
 
   if (error) throw new Error(error.message);
-  return (data as Subscription[]) ?? [];
+  return ((data as Subscription[]) ?? []).map(normalizeSubscriptionRecord);
 }
 
 export async function createSubscription(
@@ -119,25 +274,34 @@ export async function createSubscription(
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.user?.id) throw new Error('No authenticated session');
 
-  const { data, error } = await supabase
+  const payload = buildSubscriptionInsertPayload(input);
+  let insertPayload: Record<string, unknown> = {
+    user_id: session.user.id,
+    ...payload,
+    is_active: true,
+  };
+
+  let { data, error } = await supabase
     .from('subscriptions')
-    .insert({
-      user_id: session.user.id,
-      name: input.name,
-      icon: input.icon,
-      color: input.color,
-      amount: input.amount,
-      billing_cycle: input.billing_cycle,
-      next_billing_date: input.next_billing_date,
-      category: input.category,
-      notes: input.notes ?? null,
-      is_active: true,
-    })
+    .insert(insertPayload)
     .select()
     .single();
 
+  // Safe fallback while the remote table is still pre-migration.
+  if (error && isMissingProviderKeyColumnError(error.message)) {
+    const { provider_key: _providerKey, ...legacyPayload } = insertPayload;
+    insertPayload = legacyPayload;
+    const retry = await supabase
+      .from('subscriptions')
+      .insert(insertPayload)
+      .select()
+      .single();
+    data = retry.data;
+    error = retry.error;
+  }
+
   if (error) throw new Error(error.message);
-  return data as Subscription;
+  return normalizeSubscriptionRecord(data as Subscription);
 }
 
 export async function deleteSubscription(id: string): Promise<void> {
@@ -161,12 +325,11 @@ export async function toggleSubscription(
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Subscription;
+  return normalizeSubscriptionRecord(data as Subscription);
 }
 
 /** Advance next_billing_date by the subscription's billing cycle. */
 export async function markSubscriptionPaid(id: string): Promise<Subscription> {
-  // Fetch current subscription to compute the next date
   const { data: sub, error: fetchErr } = await supabase
     .from('subscriptions')
     .select('*')
@@ -200,5 +363,5 @@ export async function markSubscriptionPaid(id: string): Promise<Subscription> {
     .single();
 
   if (error) throw new Error(error.message);
-  return data as Subscription;
+  return normalizeSubscriptionRecord(data as Subscription);
 }

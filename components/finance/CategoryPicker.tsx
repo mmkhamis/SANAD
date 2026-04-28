@@ -9,6 +9,8 @@ import { useRTL } from '../../hooks/useRTL';
 
 import { useGroupedCategoriesByType, useCategoriesByType } from '../../hooks/useCategories';
 import { useThemeColors } from '../../hooks/useThemeColors';
+import { useSubscription } from '../../hooks/useSubscription';
+import { getLevel } from '../../lib/plan';
 import type { Category, GroupedCategories, TransactionType } from '../../types/index';
 
 // ─── Props ───────────────────────────────────────────────────────────
@@ -263,11 +265,13 @@ function DrillDownPicker({
   selectedId,
   onSelect,
   onRequestCreateGroup,
+  showSubcategories = true,
 }: {
   grouped: GroupedCategories[];
   selectedId: string | null;
   onSelect: (category: Category) => void;
   onRequestCreateGroup?: () => void;
+  showSubcategories?: boolean;
 }): React.ReactElement {
   // Find which group currently holds the selected category
   const selectedGroup = useMemo((): GroupedCategories | null => {
@@ -275,11 +279,22 @@ function DrillDownPicker({
     return grouped.find((g) => g.categories.some((c) => c.id === selectedId)) ?? null;
   }, [grouped, selectedId]);
 
-  const [activeGroup, setActiveGroup] = useState<GroupedCategories | null>(selectedGroup);
+  const [activeGroup, setActiveGroup] = useState<GroupedCategories | null>(
+    showSubcategories ? selectedGroup : null,
+  );
 
   const handleSelectGroup = useCallback((g: GroupedCategories): void => {
-    setActiveGroup(g);
-  }, []);
+    if (showSubcategories) {
+      // Pro/Max: drill into subcategories
+      setActiveGroup(g);
+    } else {
+      // Free: auto-select the first subcategory in this group
+      if (g.categories.length > 0) {
+        impactLight();
+        onSelect(g.categories[0]);
+      }
+    }
+  }, [showSubcategories, onSelect]);
 
   const handleBack = useCallback((): void => {
     setActiveGroup(null);
@@ -322,6 +337,17 @@ export function CategoryPicker({
 }: CategoryPickerProps): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { entitlement } = useSubscription();
+  const plan = entitlement.effectivePlan;
+  const catLevel = getLevel(plan, 'categoriesLevel');
+  // free = 'all' (groups only, auto-select first subcategory)
+  // pro = 'all' (full drill-down into subcategories)
+  // max = 'all_plus_custom' (full drill-down + create custom)
+  // For free users: show groups, tap selects the first subcategory directly
+  // For pro+: show groups → drill into subcategories
+  const showSubcategories = plan !== 'free';
+  const canCreateCustom = catLevel === 'all_plus_custom';
+
   const { data: grouped, isLoading: groupedLoading } = useGroupedCategoriesByType(type);
   const { data: fetchedCategories, isLoading: flatLoading } = useCategoriesByType(type);
 
@@ -372,5 +398,13 @@ export function CategoryPicker({
     );
   }
 
-  return <DrillDownPicker grouped={grouped} selectedId={selectedId} onSelect={onSelect} onRequestCreateGroup={onRequestCreateGroup} />;
+  return (
+    <DrillDownPicker
+      grouped={grouped}
+      selectedId={selectedId}
+      onSelect={onSelect}
+      onRequestCreateGroup={canCreateCustom ? onRequestCreateGroup : undefined}
+      showSubcategories={showSubcategories}
+    />
+  );
 }

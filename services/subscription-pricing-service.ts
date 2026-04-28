@@ -17,7 +17,11 @@
  */
 
 import { supabase } from '../lib/supabase';
-import type { Subscription, BillingCycle } from './subscription-service';
+import {
+  resolveSubscriptionProviderKey,
+  type Subscription,
+  type BillingCycle,
+} from './subscription-service';
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -62,29 +66,8 @@ export interface SubscriptionSavingsInsight {
   reasonAr: string;
 }
 
-// ─── Provider key normalization ──────────────────────────────────────
-// Maps the user-facing subscription name to the catalog's canonical key.
-// Keep this list in sync with seeds in 037_subscription_plan_catalog.sql.
-
-const PROVIDER_KEY_BY_NAME: Record<string, string> = {
-  'Netflix': 'netflix',
-  'نتفلكس': 'netflix',
-  'Spotify': 'spotify',
-  'سبوتيفاي': 'spotify',
-  'YouTube Premium': 'youtube_premium',
-  'يوتيوب بريميوم': 'youtube_premium',
-  'Shahid VIP': 'shahid_vip',
-  'شاهد VIP': 'shahid_vip',
-  'Disney+': 'disney_plus',
-  'ديزني+': 'disney_plus',
-  'Apple Music': 'apple_music',
-  'أبل ميوزك': 'apple_music',
-  'Anghami': 'anghami',
-  'أنغامي': 'anghami',
-};
-
 export function resolveProviderKey(subscriptionName: string): string | null {
-  return PROVIDER_KEY_BY_NAME[subscriptionName] ?? null;
+  return resolveSubscriptionProviderKey(subscriptionName);
 }
 
 // ─── Catalog queries ─────────────────────────────────────────────────
@@ -200,7 +183,7 @@ export async function generateSavingsInsights(
   const providerToSubs = new Map<string, Subscription[]>();
   for (const sub of subscriptions) {
     if (!sub.is_active) continue;
-    const key = resolveProviderKey(sub.name);
+    const key = sub.provider_key ?? resolveProviderKey(sub.name);
     if (!key) continue;
     const list = providerToSubs.get(key) ?? [];
     list.push(sub);

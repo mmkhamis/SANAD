@@ -57,23 +57,24 @@ function PresetCard({
       <View style={{ flexDirection: rowDir, alignItems: 'center', marginBottom: 10 }}>
         <View
           style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
+            width: 36,
+            height: 36,
+            borderRadius: 10,
             alignItems: 'center',
             justifyContent: 'center',
-            marginEnd: 10,
+            marginEnd: 12,
             backgroundColor: preset.color + '18',
-            overflow: 'hidden',
           }}
         >
           {preset.logo ? (
-            <Image
-              source={{ uri: preset.logo }}
-              style={{ width: 28, height: 28, borderRadius: 6 }}
-              contentFit="contain"
-              transition={150}
-            />
+            <View style={{ width: 24, height: 24, overflow: 'hidden' }}>
+              <Image
+                source={{ uri: preset.logo }}
+                style={{ width: 24, height: 24 }}
+                contentFit="contain"
+                transition={150}
+              />
+            </View>
           ) : (
             <Text style={{ fontSize: 18, fontWeight: '700', color: preset.color }}>
               {preset.nameEn.charAt(0)}
@@ -263,16 +264,16 @@ export function SMSShortcutPresets(): React.ReactElement {
       <View style={{ flexDirection: rowDir, alignItems: 'center', marginBottom: 6 }}>
         <View
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 12,
+            width: 34,
+            height: 34,
+            borderRadius: 9,
             alignItems: 'center',
             justifyContent: 'center',
             marginEnd: 12,
             backgroundColor: colors.primary + '15',
           }}
         >
-          <ExternalLink size={20} color={colors.primary} strokeWidth={2} />
+          <ExternalLink size={17} color={colors.primary} strokeWidth={2} />
         </View>
         <View style={{ flex: 1 }}>
           <Text

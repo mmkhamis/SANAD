@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,20 +7,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
-  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withSequence,
-  withTiming,
-  withDelay,
-  Easing,
   FadeInDown,
 } from 'react-native-reanimated';
 import { Mail, CheckCircle } from 'lucide-react-native';
@@ -32,31 +22,8 @@ import { STRINGS } from '../../constants/strings';
 import { MAX_CONTENT_WIDTH } from '../../constants/layout';
 import { useT } from '../../lib/i18n';
 import { useRTL } from '../../hooks/useRTL';
-
-function Orb({ size, color, x, y, delay, dur, dx, dy }: {
-  size: number; color: string; x: number; y: number;
-  delay: number; dur: number; dx: number; dy: number;
-}): React.ReactElement {
-  const tx = useSharedValue(0);
-  const ty = useSharedValue(0);
-  useEffect(() => {
-    tx.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(dx, { duration: dur, easing: Easing.inOut(Easing.sin) }),
-      withTiming(0,  { duration: dur, easing: Easing.inOut(Easing.sin) }),
-    ), -1, true));
-    ty.value = withDelay(delay, withRepeat(withSequence(
-      withTiming(dy, { duration: dur * 1.3, easing: Easing.inOut(Easing.sin) }),
-      withTiming(0,  { duration: dur * 1.3, easing: Easing.inOut(Easing.sin) }),
-    ), -1, true));
-  }, []);
-  const style = useAnimatedStyle(() => ({ transform: [{ translateX: tx.value }, { translateY: ty.value }] }));
-  return (
-    <Animated.View style={[{
-      position: 'absolute', width: size, height: size,
-      borderRadius: size / 2, backgroundColor: color, left: x, top: y,
-    }, style]} />
-  );
-}
+import { AnimatedAuroraBg } from '../../components/ui/AnimatedAuroraBg';
+import { COLORS } from '../../constants/colors';
 
 function validateEmail(email: string): string | null {
   if (!email.trim()) return STRINGS.AUTH_ERROR_INVALID_EMAIL;
@@ -66,7 +33,6 @@ function validateEmail(email: string): string | null {
 function ForgotPasswordContent(): React.ReactElement {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width: W } = useWindowDimensions();
   const { mutate, isPending, isSuccess, error, reset } = useForgotPassword();
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
@@ -81,16 +47,8 @@ function ForgotPasswordContent(): React.ReactElement {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <LinearGradient
-        colors={['#4c1d95', '#7c3aed', '#6d28d9', '#4338ca']}
-        locations={[0, 0.35, 0.65, 1]}
-        start={{ x: 0.1, y: 0 }}
-        end={{ x: 0.9, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <Orb size={220} color="rgba(167,139,250,0.20)" x={-50}   y={-30}   delay={0}   dur={5500} dx={35} dy={25} />
-      <Orb size={170} color="rgba(99,102,241,0.22)"  x={W-110} y={80}    delay={600} dur={6500} dx={-40} dy={40} />
+    <View style={{ flex: 1, backgroundColor: COLORS.claude.bg0 }}>
+      <AnimatedAuroraBg variant="form" />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
@@ -129,7 +87,7 @@ function ForgotPasswordContent(): React.ReactElement {
                 style={{ marginTop: 32, height: 54, borderRadius: 16, paddingHorizontal: 40,
                   backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}
               >
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#7c3aed' }}>{t('AUTH_BACK_TO_SIGN_IN')}</Text>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: COLORS.claude.p600 }}>{t('AUTH_BACK_TO_SIGN_IN')}</Text>
               </Pressable>
             </Animated.View>
           ) : (
@@ -190,7 +148,7 @@ function ForgotPasswordContent(): React.ReactElement {
                     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 8,
                   })}
                 >
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: '#7c3aed' }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: COLORS.claude.p600 }}>
                     {isPending ? t('FORGOT_PASSWORD_SENDING') : STRINGS.FORGOT_PASSWORD_BUTTON}
                   </Text>
                 </Pressable>

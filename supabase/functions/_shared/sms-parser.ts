@@ -281,9 +281,15 @@ const TELCO_MERCHANT_RE = /\b(?:stc(?!\s*pay|\s*bank)|mobily|zain|etisalat|\bdu\
 const KEYWORD_TO_TAXONOMY: Array<[RegExp, string]> = [
   // Groceries & hypermarkets
   [/(carrefour|spinneys|panda|lulu|seoudi|kazyon|gomla|elgomla|بيت\s*الجملة|سوبر\s*ماركت|هايبر|بقالة|كارفور|بندة|danube|دانوب|othaim|عثيم|tamimi|تميمي|bin\s*dawood|بن\s*داود|farm\s*superstore|مزرعة|نستو|nesto)/i, 'groceries'],
-  // Food delivery & restaurants (MENA-specific brands roll up to restaurants)
-  [/(hungerstation|هنقرستيشن|talabat|طلبات|jahez|جاهز|mrsool|مرسول|toyou|to\s*you|chefz|شيفز|shgardy|شقردي|uber\s*eats|careem\s*food|deliveroo|ديليفرو|el?menus|elmenus|otlob)/i, 'restaurants'],
-  [/(restaurant|cafe|coffee|starbucks|mcdonalds|kfc|pizza|burger|مطعم|كافيه|قهوة|herfy|هرفي|albaik|al\s*baik|البيك|kudu|كودو)/i, 'restaurants'],
+  // Brand-specific food delivery — match exact subcategory keys first
+  [/(hungerstation|هنقرستيشن|hunger\s*station|هنقر\s*ستيشن)/i, 'hungerstation'],
+  [/(jahez|جاهز)/i, 'jahez'],
+  [/(mrsool|مرسول|marsool)/i, 'marsool'],
+  [/(talabat|طلبات)/i, 'talabat'],
+  [/(el?menus|المنيوز)/i, 'elmenus'],
+  [/(toyou|to\s*you|chefz|شيفز|shgardy|شقردي|uber\s*eats|careem\s*food|deliveroo|ديليفرو|otlob)/i, 'food_delivery'],
+  // Generic restaurants & cafes
+  [/(restaurant|cafe|coffee|starbucks|mcdonalds|kfc|pizza|burger|boba|bubble\s*tea|مطعم|كافيه|قهوة|herfy|هرفي|albaik|al\s*baik|البيك|kudu|كودو)/i, 'restaurants'],
   // Rideshare
   [/(uber|careem|bolt|taxi|lyft|اوبر|كريم|in\s*drive)/i, 'taxi_rideshare'],
   // Fuel
@@ -335,6 +341,27 @@ export function suggestUserCategory(
   const sameType = userCategories.filter((c) => c.type === txType);
   const exact = sameType.find((c) => c.taxonomy_key === taxKey);
   if (exact) return exact;
+
+  // Subcategory→parent fallback map for food delivery brands
+  const SUBCATEGORY_PARENTS: Record<string, string[]> = {
+    hungerstation: ['food_delivery', 'restaurants', 'food_dining'],
+    jahez: ['food_delivery', 'restaurants', 'food_dining'],
+    marsool: ['food_delivery', 'restaurants', 'food_dining'],
+    talabat: ['food_delivery', 'restaurants', 'food_dining'],
+    elmenus: ['food_delivery', 'restaurants', 'food_dining'],
+    food_delivery: ['restaurants', 'food_dining'],
+    restaurants: ['food_dining'],
+    cafes_coffee: ['food_dining'],
+    groceries: ['food_dining'],
+    taxi_rideshare: ['transport'],
+    fuel: ['transport'],
+  };
+
+  const fallbackKeys = SUBCATEGORY_PARENTS[taxKey] ?? [];
+  for (const fk of fallbackKeys) {
+    const fallback = sameType.find((c) => c.taxonomy_key === fk);
+    if (fallback) return fallback;
+  }
 
   // Fallback: case-insensitive name contains the taxonomy key root
   const nameMatch = sameType.find((c) =>

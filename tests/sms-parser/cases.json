@@ -1,0 +1,190 @@
+{
+  "$schema": "Each case = { name, text, ctx?, expected: <subset of ParseResult fields to assert> }",
+  "cases": [
+    {
+      "name": "01-stc-internet-purchase-arabic",
+      "text": "شراء انترنت\nبـ200 SAR\nمن 7402*\nمن STC Bank\nمدى-ابل *6156\nفي 20/04/26 17:45",
+      "ctx": { "ownedAccounts": [{ "id": "a1", "name": "STC", "type": "bank", "account_last4": "7402", "card_last4": "6156", "iban_last4": null }] },
+      "expected": {
+        "message_class": "purchase",
+        "amount": 200,
+        "currency": "SAR",
+        "institution_name": "STC Bank",
+        "channel": "apple_pay",
+        "source_account_last4": "7402",
+        "source_card_last4": "6156",
+        "should_create_transaction": true,
+        "should_route_to_offers_feed": false
+      }
+    },
+    {
+      "name": "02-applepay-hungerstation-mixed",
+      "text": "شراء إنترنت\nعبر تطبيق: Apple Pay\nمبلغ: 141.50 SAR\nبطاقة ائتمانية: *3452\nمن: HUNGERSTATION LLC\nفي: SA\nفي: 2026-04-21 18:10:07\nحد الصرف المتبقي: 2,295.59",
+      "ctx": { "ownedAccounts": [{ "id": "a2", "name": "Visa", "type": "credit_card", "account_last4": null, "card_last4": "3452", "iban_last4": null }] },
+      "expected": {
+        "message_class": "purchase",
+        "amount": 141.5,
+        "currency": "SAR",
+        "channel": "apple_pay",
+        "source_card_last4": "3452",
+        "merchant_raw": "HUNGERSTATION",
+        "should_create_transaction": true
+      }
+    },
+    {
+      "name": "03-internal-transfer-7402-to-5230",
+      "text": "من حساب *7402\nالى بطاقة **5230\nمبلغ SAR 1000.00\nفي 23/04/26 19:26\nالصرف المتبقي SAR 2031.14",
+      "ctx": { "ownedAccounts": [
+        { "id": "a1", "name": "STC", "type": "bank", "account_last4": "7402", "card_last4": null, "iban_last4": null },
+        { "id": "a2", "name": "Visa", "type": "credit_card", "account_last4": null, "card_last4": "5230", "iban_last4": null }
+      ] },
+      "expected": {
+        "message_class": "transfer",
+        "amount": 1000,
+        "from_last4": "7402",
+        "to_last4": "5230",
+        "should_create_transaction": true,
+        "should_route_to_offers_feed": false
+      }
+    },
+    {
+      "name": "03b-credit-card-settlement-transfer-ar",
+      "text": "سداد بطاقة ائتمانية\nمن حساب *7402\nالى بطاقة **5230\nمبلغ SAR 1000.00\nفي 23/04/26 19:26\nالصرف المتبقي SAR 2031.14",
+      "expected": {
+        "message_class": "transfer",
+        "amount": 1000,
+        "from_last4": "7402",
+        "to_last4": "5230",
+        "should_create_transaction": true
+      }
+    },
+    {
+      "name": "03c-credit-card-settlement-transfer-ar-merged",
+      "text": "سداد بطاقة ائتمانية من حساب *7402 الى بطاقة **5230 مبلغ SAR 1000.00 في 23/04/26 19:26 الصرف المتبقي SAR 2031.14",
+      "expected": {
+        "message_class": "transfer",
+        "amount": 1000,
+        "from_last4": "7402",
+        "to_last4": "5230",
+        "should_create_transaction": true
+      }
+    },
+    {
+      "name": "04-mobily-neqaty-promo",
+      "text": "Dear Customer,\n\nGet a SAR 140 discount on your next bill by redeeming 4000 points from your balance in Neqaty program.\n\nYou can redeem your Neqaty points through Mobily App: http://mobily.im/mobily-app\n\nMobily Ever Closer",
+      "expected": {
+        "message_class": "promotion_offer",
+        "should_create_transaction": false,
+        "should_route_to_offers_feed": true,
+        "institution_name": "Mobily"
+      }
+    },
+    {
+      "name": "05-alrajhi-purchase-grocery-arabic",
+      "text": "شراء بطاقة مدى\nمبلغ 87.40 SAR\nمن Panda\nبطاقة *9911\nالراجحي\nفي 25/04/26 12:14",
+      "expected": { "message_class": "purchase", "amount": 87.4, "institution_name": "Al Rajhi Bank", "merchant_raw": "Panda", "channel": "mada", "source_card_last4": "9911" }
+    },
+    {
+      "name": "06-snb-mada-pos-purchase",
+      "text": "شراء عبر مدى\nمبلغ: 220.00 SAR\nمن: Tamimi Markets\nبطاقة: *2244\nSNB\nفي: 2026-04-22 09:42",
+      "expected": { "message_class": "purchase", "amount": 220, "institution_name": "SNB", "merchant_raw": "Tamimi Markets", "channel": "mada", "source_card_last4": "2244" }
+    },
+    {
+      "name": "07-stcpay-p2p-incoming",
+      "text": "تم إضافة 350.00 SAR إلى محفظتك\nمن AHMED ALI\nعبر STC Pay\nفي 24/04/26 14:00",
+      "expected": { "message_class": "income", "amount": 350, "institution_name": "STC Pay", "channel": "stc_pay", "counterparty_name": "AHMED ALI" }
+    },
+    {
+      "name": "08-urpay-p2p-outgoing",
+      "text": "تحويل 120.00 SAR إلى MOHAMMED HASSAN\nعبر URPay\nفي 24/04/26 21:11",
+      "expected": { "message_class": "transfer", "amount": 120, "institution_name": "URPay", "channel": "urpay", "counterparty_name": "MOHAMMED HASSAN" }
+    },
+    {
+      "name": "09-cashback-credit-arabic",
+      "text": "تم إضافة 12.50 SAR كاسترداد نقدي على بطاقتك *7711\nالراجحي\nفي 26/04/26 18:00",
+      "expected": { "message_class": "income", "amount": 12.5, "institution_name": "Al Rajhi Bank", "source_card_last4": "7711" }
+    },
+    {
+      "name": "10-salary-deposit-mada",
+      "text": "تم إضافة 8500.00 SAR (راتب) إلى حسابك *4488\nSNB\nفي 27/04/26 06:01",
+      "expected": { "message_class": "income", "amount": 8500, "institution_name": "SNB", "source_account_last4": "4488" }
+    },
+    {
+      "name": "11-refund-amazon-sa",
+      "text": "تم استرجاع مبلغ 199.00 SAR إلى بطاقتك *3452\nمن Amazon SA\nفي 25/04/26 20:00",
+      "expected": { "message_class": "refund", "amount": 199, "merchant_raw": "Amazon", "source_card_last4": "3452" }
+    },
+    {
+      "name": "12-iban-incoming-transfer",
+      "text": "تم استلام تحويل بقيمة 5000 SAR إلى الايبان SA-**3344\nمن KHALID ABDULLAH\nالراجحي\nفي 26/04/26 09:15",
+      "expected": { "message_class": "income", "amount": 5000, "institution_name": "Al Rajhi Bank", "channel": "iban", "counterparty_name": "KHALID ABDULLAH" }
+    },
+    {
+      "name": "13-mixed-script-noisy-purchase",
+      "text": "Purchase شراء مبلغ 75.00 SAR من Café Nero بطاقة *6677 STC Bank في 23/04/26 11:00",
+      "expected": { "message_class": "purchase", "amount": 75, "institution_name": "STC Bank", "merchant_raw": "Café Nero", "source_card_last4": "6677" }
+    },
+    {
+      "name": "14-balance-alert-only-no-debit",
+      "text": "Available balance: 12,500.00 SAR\nالرصيد المتاح: 12,500.00 SAR\nSNB",
+      "expected": { "message_class": "balance_alert", "should_create_transaction": false, "should_route_to_offers_feed": false, "amount": null }
+    },
+    {
+      "name": "15-otp-banking-app",
+      "text": "رمز التحقق: 484920\nصالح لمدة 5 دقائق. لا تشاركه مع أحد.",
+      "expected": { "message_class": "otp", "should_create_transaction": false, "should_route_to_offers_feed": false }
+    },
+    {
+      "name": "16-promo-with-sar-amount-trap",
+      "text": "احصل على خصم 50 SAR على طلبك القادم باستخدام كود WELCOME50.\nصالح حتى 30/04/26.",
+      "expected": { "message_class": "promotion_offer", "should_create_transaction": false, "should_route_to_offers_feed": true }
+    },
+    {
+      "name": "17-amazon-sa-card-no-merchant-token",
+      "text": "شراء بطاقة\nمبلغ 350 SAR\nبطاقة *3452\nApple Pay\nSNB\nفي 24/04/26 16:00",
+      "expected": { "message_class": "purchase", "amount": 350, "institution_name": "SNB", "channel": "apple_pay", "source_card_last4": "3452", "merchant_raw": null }
+    },
+    {
+      "name": "18-talabat-discount-promo",
+      "text": "Talabat: Get 30% off your next order with code TALABAT30. Valid till 30 Apr 2026.",
+      "expected": { "message_class": "promotion_offer", "should_route_to_offers_feed": true }
+    },
+    {
+      "name": "19-stc-bank-purchase-with-2-amounts",
+      "text": "شراء انترنت\nمبلغ 99.00 SAR\nمن: Netflix\nبطاقة *8800\nSTC Bank\nفي 25/04/26 18:00\nحد الصرف المتبقي: 5,432.10 SAR",
+      "expected": { "message_class": "purchase", "amount": 99, "institution_name": "STC Bank", "merchant_raw": "Netflix", "source_card_last4": "8800" }
+    },
+    {
+      "name": "20-jazira-transfer-only-from-owned",
+      "text": "تحويل خارجي\nمن حساب *4422\nإلى **9988\nمبلغ 500 SAR\nبنك الجزيرة\nفي 22/04/26 10:00",
+      "ctx": { "ownedAccounts": [{ "id": "a1", "name": "Jazira", "type": "bank", "account_last4": "4422", "card_last4": null, "iban_last4": null }] },
+      "expected": { "message_class": "transfer", "amount": 500, "institution_name": "Bank Aljazira", "from_last4": "4422", "to_last4": "9988" }
+    },
+    {
+      "name": "21-bidi-marks-and-arabic-indic-digits",
+      "text": "شراء انترنت‏بمبلغ ٢٠٠ SAR‎\nمن 7402*\nSTC Bank",
+      "expected": { "message_class": "purchase", "amount": 200, "institution_name": "STC Bank", "source_account_last4": "7402" }
+    },
+    {
+      "name": "22-multi-line-formatted-receipt-style",
+      "text": "----- SAB -----\nPurchase\nAmount: 45.99 SAR\nMerchant: Starbucks\nCard: *1010\nDate: 2026-04-21 09:00\n---------------",
+      "expected": { "message_class": "purchase", "amount": 45.99, "institution_name": "SAB", "source_card_last4": "1010" }
+    },
+    {
+      "name": "23-foreign-currency-aed-purchase",
+      "text": "شراء بطاقة\nمبلغ 250.00 AED\nمن Carrefour Dubai\nبطاقة *7090\nالراجحي\nفي 22/04/26 14:00",
+      "expected": { "message_class": "purchase", "amount": 250, "currency": "AED", "merchant_raw": "Carrefour Dubai", "institution_name": "Al Rajhi Bank", "source_card_last4": "7090" }
+    },
+    {
+      "name": "24-zero-merchant-zero-last4-low-confidence",
+      "text": "شراء\n12 SAR\nفي 21/04/26",
+      "expected": { "message_class": "purchase", "amount": 12, "merchant_raw": null }
+    },
+    {
+      "name": "25-duplicate-of-01-different-formatting",
+      "text": "شراء انترنت بـ 200 SAR  من 7402*  من STC Bank  مدى-ابل *6156  في 20/04/26 17:45",
+      "ctx": { "ownedAccounts": [{ "id": "a1", "name": "STC", "type": "bank", "account_last4": "7402", "card_last4": "6156", "iban_last4": null }] },
+      "expected": { "message_class": "purchase", "amount": 200, "source_account_last4": "7402", "source_card_last4": "6156" }
+    }
+  ]
+}

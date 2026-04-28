@@ -13,7 +13,6 @@ import {
   ArrowLeftRight,
   Check,
   X,
-  Trash2,
   MessageSquare,
   Camera,
   Mic,
@@ -23,11 +22,18 @@ import {
 import { useThemeColors } from '../../hooks/useThemeColors';
 import { useT } from '../../lib/i18n';
 import { QUERY_KEYS } from '../../lib/query-client';
-import { formatAmount } from '../../utils/currency';
 import { suggestCategory } from '../../utils/sms-parser';
+import { formatSmsPreview } from '../../utils/sms-display';
 import { useUnreviewedTransactions, useReviewTransaction, useBulkReviewTransactions } from '../../hooks/useReviewTransactions';
+import {
+  useMerchantCategoryRules,
+  useMerchantCategorizationSetting,
+  useSaveMerchantCategoryRule,
+} from '../../hooks/useMerchantCategorization';
 import { useCategories } from '../../hooks/useCategories';
+import { useAccounts } from '../../hooks/useAccounts';
 import { deleteTransaction } from '../../services/transaction-service';
+import { findMerchantCategoryRuleInList } from '../../services/merchant-category-service';
 import { CategoryPicker } from '../../components/finance/CategoryPicker';
 import { ReviewBulkSaveBar } from '../../components/finance/ReviewBulkSaveBar';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -39,7 +45,8 @@ import { impactLight, impactMedium, notifySuccess, notifyError } from '../../uti
 import { useUsage, formatExhaustedMessage } from '../../hooks/useUsage';
 import { transcribeVoiceNote, ocrReceiptImage, parseTransactionText, matchCategory, matchVoiceToReview, createSmartTransaction } from '../../services/smart-input-service';
 import { COLORS } from '../../constants/colors';
-import type { Transaction, TransactionType, Category } from '../../types/index';
+import { useRTL } from '../../hooks/useRTL';
+import type { Transaction, TransactionType, Category, Account } from '../../types/index';
 
 // ─── Type selector chip ──────────────────────────────────────────────
 
@@ -60,15 +67,19 @@ function TypeChip({
 }): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { rowDir } = useRTL();
   const Icon = type.icon;
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center rounded-full px-3 py-2 mr-2"
+      className="rounded-full px-3 py-2"
       style={{
+        flexDirection: rowDir,
+        alignItems: 'center',
         backgroundColor: selected ? type.color + '15' : colors.surfaceSecondary,
         borderWidth: 1.5,
         borderColor: selected ? type.color : colors.border,
+        marginEnd: 8,
       }}
     >
       <Icon size={14} color={selected ? type.color : colors.textTertiary} strokeWidth={2} />
@@ -77,7 +88,7 @@ function TypeChip({
           fontSize: 13,
           fontWeight: '600',
           color: selected ? type.color : colors.textSecondary,
-          marginLeft: 4,
+          marginStart: 4,
         }}
       >
         {t(type.labelKey)}
@@ -86,12 +97,55 @@ function TypeChip({
   );
 }
 
+function formatChannelLabel(channel: Transaction['channel']): string | null {
+  if (!channel) return null;
+  switch (channel) {
+    case 'apple_pay': return 'Apple Pay';
+    case 'google_pay': return 'Google Pay';
+    case 'stc_pay': return 'STC Pay';
+    case 'urpay': return 'urpay';
+    case 'mada': return 'Mada';
+    case 'iban': return 'IBAN';
+    case 'card': return 'Card';
+    default: return null;
+  }
+}
+
+function resolveAccountName(last4: string, accounts: Account[]): string {
+  const match = accounts.find(
+    (a) => a.account_last4 === last4 || a.card_last4 === last4 || a.iban_last4 === last4,
+  );
+  return match ? match.name : `****${last4}`;
+}
+
+function buildParserMeta(transaction: Transaction, accounts: Account[] = []): string[] {
+  const parts: string[] = [];
+  const channel = formatChannelLabel(transaction.channel);
+  if (channel) parts.push(channel);
+
+  const isTransfer = (transaction.transaction_type ?? transaction.type) === 'transfer';
+
+  if (transaction.from_last4 && transaction.to_last4) {
+    const fromLabel = isTransfer ? resolveAccountName(transaction.from_last4, accounts) : `****${transaction.from_last4}`;
+    const toLabel = isTransfer ? resolveAccountName(transaction.to_last4, accounts) : `****${transaction.to_last4}`;
+    parts.push(`${fromLabel} → ${toLabel}`);
+  } else if (transaction.from_last4) {
+    parts.push(isTransfer ? resolveAccountName(transaction.from_last4, accounts) : `****${transaction.from_last4}`);
+  } else if (transaction.to_last4) {
+    parts.push(isTransfer ? resolveAccountName(transaction.to_last4, accounts) : `****${transaction.to_last4}`);
+  }
+
+  if (transaction.institution_name) parts.push(transaction.institution_name);
+  return parts;
+}
+
 // ─── Review item card ────────────────────────────────────────────────
 
 interface ReviewItemProps {
   transaction: Transaction;
   index: number;
   allCategories: Category[];
+  allAccounts: Account[];
   selectedCategory: Category | null;
   onCategoryChange: (id: string, category: Category | null) => void;
   onSave: (tx: Transaction, type: TransactionType, category: Category | null, editedAmount: number, editedDescription: string) => void;
@@ -99,9 +153,10 @@ interface ReviewItemProps {
   isSaving: boolean;
 }
 
-function ReviewItem({ transaction, index, allCategories, selectedCategory, onCategoryChange, onSave, onDiscard, isSaving }: ReviewItemProps): React.ReactElement {
+function ReviewItem({ transaction, index, allCategories, allAccounts, selectedCategory, onCategoryChange, onSave, onDiscard, isSaving }: ReviewItemProps): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { textAlign, rowDir, isRTL } = useRTL();
   const [selectedType, setSelectedType] = useState<TransactionType>(
     transaction.transaction_type ?? transaction.type,
   );
@@ -115,20 +170,21 @@ function ReviewItem({ transaction, index, allCategories, selectedCategory, onCat
     setEditedDescription(transaction.description ?? '');
   }, [transaction.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-suggest category from SMS text
+  // Auto-suggest category from merchant + SMS text (+description fallback)
   const suggestedName = useMemo(() => {
-    if (!transaction.notes) return null;
-    return suggestCategory(transaction.notes);
-  }, [transaction.notes]);
+    const haystack = [
+      transaction.merchant ?? '',
+      transaction.notes ?? '',
+      transaction.description ?? '',
+    ].join(' ');
+    if (!haystack.trim()) return null;
+    return suggestCategory(haystack);
+  }, [transaction.merchant, transaction.notes, transaction.description]);
 
   // Auto-select when suggestion matches
   React.useEffect(() => {
     if (suggestedName && allCategories.length && !selectedCategory) {
-      const match = allCategories.find(
-        (c) =>
-          c.name.toLowerCase() === suggestedName.toLowerCase() &&
-          c.type === selectedType,
-      );
+      const match = matchCategory(suggestedName, allCategories, selectedType);
       if (match) onCategoryChange(transaction.id, match);
     }
   }, [suggestedName, allCategories, selectedType, selectedCategory, transaction.id, onCategoryChange]);
@@ -143,6 +199,11 @@ function ReviewItem({ transaction, index, allCategories, selectedCategory, onCat
   const isTransfer = selectedType === 'transfer';
   const amountColor = isIncome ? colors.income : isTransfer ? colors.info : colors.expense;
   const sign = isIncome ? '+' : isTransfer ? '' : '-';
+  const parserMeta = buildParserMeta(transaction, allAccounts);
+  const smsPreview = useMemo(
+    () => (transaction.notes ? formatSmsPreview(transaction.notes) : null),
+    [transaction.notes],
+  );
 
   return (
     <View
@@ -154,15 +215,23 @@ function ReviewItem({ transaction, index, allCategories, selectedCategory, onCat
       }}
     >
       {/* Number badge & Amount */}
-      <View className="flex-row items-start justify-between mb-2">
+      <View style={{ flexDirection: rowDir, alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <View
-          className="h-7 w-7 rounded-full items-center justify-center mr-2 mt-0.5"
-          style={{ backgroundColor: colors.primary + '15' }}
+          style={{
+            height: 28,
+            width: 28,
+            borderRadius: 999,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginEnd: 8,
+            marginTop: 2,
+            backgroundColor: colors.primary + '15',
+          }}
         >
           <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>#{index}</Text>
         </View>
-        <View className="flex-1 mr-3">
-          <View className="flex-row items-center">
+        <View style={{ flex: 1, marginEnd: 10 }}>
+          <View style={{ flexDirection: rowDir, alignItems: 'center' }}>
             <Text style={{ fontSize: 22, fontWeight: '700', color: amountColor }}>{sign}</Text>
             <TextInput
               value={editedAmount}
@@ -176,6 +245,7 @@ function ReviewItem({ transaction, index, allCategories, selectedCategory, onCat
                 padding: 0,
                 borderBottomWidth: 1,
                 borderBottomColor: colors.border,
+                textAlign,
               }}
             />
           </View>
@@ -190,13 +260,19 @@ function ReviewItem({ transaction, index, allCategories, selectedCategory, onCat
               padding: 0,
               borderBottomWidth: 1,
               borderBottomColor: colors.border,
+              textAlign,
             }}
             placeholder={t('DESCRIPTION')}
             placeholderTextColor={colors.textTertiary}
           />
           {transaction.merchant ? (
-            <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 1 }}>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 1, textAlign, writingDirection: isRTL ? 'rtl' : 'ltr' }}>
               {transaction.merchant}
+            </Text>
+          ) : null}
+          {parserMeta.length > 0 ? (
+            <Text style={{ fontSize: 11.5, color: colors.textTertiary, marginTop: 2, textAlign, writingDirection: isRTL ? 'rtl' : 'ltr' }}>
+              {parserMeta.join(' · ')}
             </Text>
           ) : null}
         </View>
@@ -223,32 +299,52 @@ function ReviewItem({ transaction, index, allCategories, selectedCategory, onCat
       </View>
 
       {/* SMS preview */}
-      {transaction.notes ? (
+      {smsPreview ? (
         <View
           className="rounded-lg px-3 py-2 mb-3"
           style={{ backgroundColor: colors.surfaceSecondary }}
         >
-          <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textTertiary, marginBottom: 1 }}>
+          <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textTertiary, marginBottom: 1, textAlign }}>
             SMS
           </Text>
-          <Text numberOfLines={2} style={{ fontSize: 12, color: colors.textSecondary }}>
-            {transaction.notes}
+          <Text
+            numberOfLines={6}
+            style={{
+              fontSize: 12,
+              lineHeight: 17,
+              color: colors.textSecondary,
+              textAlign,
+              writingDirection: isRTL ? 'rtl' : 'ltr',
+            }}
+          >
+            {smsPreview}
           </Text>
         </View>
       ) : null}
 
-      {/* Review reason */}
-      {transaction.review_reason ? (
-        <Text style={{ fontSize: 12, color: colors.warning, marginBottom: 6 }}>
-          ⚠ {transaction.review_reason}
-        </Text>
-      ) : null}
+      {/* Review reason — hide confusing reasons for transfers */}
+      {(() => {
+        if (!transaction.review_reason) return null;
+        const filteredReason = isTransfer
+          ? transaction.review_reason
+              .split(';')
+              .map((s) => s.trim())
+              .filter((s) => !/missing_category|unknown merchant|transaction type unclear/i.test(s))
+              .join('; ')
+          : transaction.review_reason;
+        if (!filteredReason) return null;
+        return (
+          <Text style={{ fontSize: 12, color: colors.warning, marginBottom: 6, textAlign, writingDirection: isRTL ? 'rtl' : 'ltr' }}>
+            ⚠ {filteredReason}
+          </Text>
+        );
+      })()}
 
       {/* Type selector */}
-      <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textSecondary, marginBottom: 6 }}>
+      <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textSecondary, marginBottom: 6, textAlign }}>
         {t('REVIEW_TRANSACTION_TYPE' as any)}
       </Text>
-      <View className="flex-row mb-3">
+      <View style={{ flexDirection: rowDir, marginBottom: 12 }}>
         {TYPE_OPTIONS.map((opt) => (
           <TypeChip
             key={opt.value}
@@ -260,7 +356,7 @@ function ReviewItem({ transaction, index, allCategories, selectedCategory, onCat
       </View>
 
       {/* Category picker */}
-      <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textSecondary, marginBottom: 6 }}>
+      <Text style={{ fontSize: 13, fontWeight: '500', color: colors.textSecondary, marginBottom: 6, textAlign }}>
         {t('REVIEW_CATEGORY_OPTIONAL' as any)} {!selectedCategory ? <Text style={{ color: colors.textTertiary }}>({t('ACCOUNT_OPTIONAL')})</Text> : null}
       </Text>
       <CategoryPicker
@@ -270,7 +366,7 @@ function ReviewItem({ transaction, index, allCategories, selectedCategory, onCat
       />
 
       {/* Action buttons */}
-      <View className="flex-row mt-3" style={{ gap: 8 }}>
+      <View style={{ flexDirection: rowDir, marginTop: 12, gap: 8 }}>
         {/* Discard button */}
         <Pressable
           onPress={() => {
@@ -298,8 +394,9 @@ function ReviewItem({ transaction, index, allCategories, selectedCategory, onCat
             onSave(transaction, selectedType, selectedCategory, parsedAmount, editedDescription.trim());
           }}
           disabled={isSaving}
-          className="rounded-xl items-center justify-center flex-row flex-1"
+          className="rounded-xl items-center justify-center flex-1"
           style={{
+            flexDirection: rowDir,
             backgroundColor: colors.primary,
             height: 44,
             opacity: isSaving ? 0.7 : 1,
@@ -315,7 +412,7 @@ function ReviewItem({ transaction, index, allCategories, selectedCategory, onCat
                   fontSize: 15,
                   fontWeight: '600',
                   color: colors.textInverse,
-                  marginLeft: 6,
+                  marginStart: 6,
                 }}
               >
                 {selectedCategory ? t('REVIEW_CONFIRM' as any) : t('REVIEW_SAVE_UNCATEGORIZED' as any)}
@@ -333,17 +430,73 @@ function ReviewItem({ transaction, index, allCategories, selectedCategory, onCat
 export default function ReviewScreen(): React.ReactElement {
   const colors = useThemeColors();
   const t = useT();
+  const { textAlign, rowDir, isRTL } = useRTL();
   const insets = useSafeAreaInsets();
   const { data: transactions, isLoading, isError, error, refetch } = useUnreviewedTransactions();
-  const { mutateAsync: reviewAsync, isPending } = useReviewTransaction();
+  const { mutateAsync: reviewAsync } = useReviewTransaction();
   const { saveAll: bulkSaveAll, isSaving: isBulkSaving, progress: bulkProgress } = useBulkReviewTransactions();
+  const { enabled: categorizeByMerchantEnabled } = useMerchantCategorizationSetting();
+  const { data: merchantCategoryRules } = useMerchantCategoryRules(categorizeByMerchantEnabled);
+  const { mutateAsync: saveMerchantCategoryRuleAsync } = useSaveMerchantCategoryRule();
   const { data: allCategories } = useCategories();
+  const { data: allAccounts } = useAccounts();
   const queryClient = useQueryClient();
   const [savingId, setSavingId] = useState<string | null>(null);
   // Screen-level map: txId → chosen Category. Lifted out of ReviewItem so
   // the bulk "Save all" bars can see which rows are ready, and so FlashList
   // recycling does not lose selections.
   const [selectionMap, setSelectionMap] = useState<Map<string, Category>>(new Map());
+
+  useEffect(() => {
+    if (!transactions?.length || !allCategories?.length) return;
+
+    setSelectionMap((prev) => {
+      const next = new Map(prev);
+      let changed = false;
+      const validIds = new Set(transactions.map((tx) => tx.id));
+
+      for (const id of next.keys()) {
+        if (!validIds.has(id)) {
+          next.delete(id);
+          changed = true;
+        }
+      }
+
+      for (const tx of transactions) {
+        if (next.has(tx.id)) continue;
+        const txType = tx.transaction_type ?? tx.type;
+        let matchedCategory: Category | null = null;
+
+        if (categorizeByMerchantEnabled) {
+          const rule = findMerchantCategoryRuleInList(
+            merchantCategoryRules,
+            tx.merchant,
+            txType,
+          );
+          if (rule) {
+            matchedCategory =
+              allCategories.find((cat) => cat.id === rule.category_id && cat.type === txType)
+              ?? matchCategory(rule.category_name, allCategories, txType);
+          }
+        }
+
+        if (!matchedCategory) {
+          const haystack = [tx.merchant ?? '', tx.notes ?? '', tx.description ?? ''].join(' ');
+          const suggestedName = suggestCategory(haystack);
+          if (suggestedName) {
+            matchedCategory = matchCategory(suggestedName, allCategories, txType);
+          }
+        }
+
+        if (matchedCategory) {
+          next.set(tx.id, matchedCategory);
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [transactions, allCategories, merchantCategoryRules, categorizeByMerchantEnabled]);
 
   const handleCategoryChange = useCallback(
     (id: string, category: Category | null): void => {
@@ -382,6 +535,40 @@ export default function ReviewScreen(): React.ReactElement {
       setSavingId(tx.id);
       impactMedium();
       try {
+        // Auto-resolve account from last4 digits found in the transaction
+        // Prefer the account_id already set by server ingest
+        let accountId: string | null = tx.account_id ?? null;
+        let toAccountId: string | null = null;
+        const accounts = allAccounts ?? [];
+
+        const resolveAccount = (last4: string | null): string | null => {
+          if (!last4 || accounts.length === 0) return null;
+          const match = accounts.find(
+            (a) => a.account_last4 === last4 || a.card_last4 === last4 || a.iban_last4 === last4,
+          );
+          return match?.id ?? null;
+        };
+
+        if (type === 'transfer') {
+          // Transfer: debit from_last4 account, credit to_last4 account
+          accountId = resolveAccount(tx.from_last4 ?? null) ?? accountId;
+          toAccountId = resolveAccount(tx.to_last4 ?? null);
+        } else if (!accountId) {
+          // Expense/income: resolve from from_last4, or fall back to any
+          // masked card/account last4 in the SMS notes text
+          accountId = resolveAccount(tx.from_last4 ?? null);
+          if (!accountId && tx.notes && accounts.length > 0) {
+            const masked = tx.notes.match(/\*+\s*(\d{4})(?!\d)|(\d{4})\s*\*+|(?:رقم|no\.?)\s+(\d{4})(?!\d)/gi);
+            if (masked) {
+              for (const m of masked) {
+                const digits = m.replace(/[^\d]/g, '');
+                accountId = resolveAccount(digits);
+                if (accountId) break;
+              }
+            }
+          }
+        }
+
         await reviewAsync({
           id: tx.id,
           type,
@@ -391,7 +578,19 @@ export default function ReviewScreen(): React.ReactElement {
           category_color: category?.color ?? '#6B7280',
           amount: editedAmount,
           description: editedDescription,
+          account_id: accountId,
+          to_account_id: toAccountId,
         });
+        if (categorizeByMerchantEnabled && category && tx.merchant?.trim()) {
+          await saveMerchantCategoryRuleAsync({
+            merchant: tx.merchant,
+            type,
+            category_id: category.id,
+            category_name: category.name,
+            category_icon: category.icon,
+            category_color: category.color,
+          }).catch(() => {});
+        }
         notifySuccess();
       } catch {
         // Error handled by mutation state
@@ -399,28 +598,78 @@ export default function ReviewScreen(): React.ReactElement {
         setSavingId(null);
       }
     },
-    [reviewAsync],
+    [reviewAsync, categorizeByMerchantEnabled, saveMerchantCategoryRuleAsync, allAccounts],
   );
 
   const handleSaveAll = useCallback(async () => {
     if (!transactions || selectionMap.size === 0) return;
     impactMedium();
+    const accounts = allAccounts ?? [];
+    const resolveAccount = (last4: string | null): string | null => {
+      if (!last4 || accounts.length === 0) return null;
+      const match = accounts.find(
+        (a) => a.account_last4 === last4 || a.card_last4 === last4 || a.iban_last4 === last4,
+      );
+      return match?.id ?? null;
+    };
+
     const inputs = transactions
       .filter((tx) => selectionMap.has(tx.id))
       .map((tx) => {
         const cat = selectionMap.get(tx.id)!;
+        const txType = tx.transaction_type ?? tx.type;
+        let accountId: string | null = null;
+        let toAccountId: string | null = null;
+
+        if (txType === 'transfer') {
+          accountId = resolveAccount(tx.from_last4 ?? null);
+          toAccountId = resolveAccount(tx.to_last4 ?? null);
+        } else {
+          accountId = resolveAccount(tx.from_last4 ?? null);
+          if (!accountId && tx.notes) {
+            const masked = tx.notes.match(/\*+\s*(\d{4})(?!\d)|(\d{4})\s*\*+/g);
+            if (masked) {
+              for (const m of masked) {
+                const digits = m.replace(/[^\d]/g, '');
+                accountId = resolveAccount(digits);
+                if (accountId) break;
+              }
+            }
+          }
+        }
+
         return {
           id: tx.id,
-          type: tx.transaction_type ?? tx.type,
+          type: txType,
           category_id: cat.id,
           category_name: cat.name,
           category_icon: cat.icon,
           category_color: cat.color,
           amount: Math.abs(tx.amount),
           description: tx.description ?? '',
+          account_id: accountId,
+          to_account_id: toAccountId,
         };
       });
     const result = await bulkSaveAll(inputs);
+    if (categorizeByMerchantEnabled && result.saved.length > 0) {
+      const txById = new Map(transactions.map((tx) => [tx.id, tx]));
+      await Promise.allSettled(
+        result.saved.map(async (id) => {
+          const tx = txById.get(id);
+          const cat = selectionMap.get(id);
+          if (!tx?.merchant?.trim() || !cat) return;
+          await saveMerchantCategoryRuleAsync({
+            merchant: tx.merchant,
+            type: tx.transaction_type ?? tx.type,
+            category_id: cat.id,
+            category_name: cat.name,
+            category_icon: cat.icon,
+            category_color: cat.color,
+          });
+        }),
+      );
+    }
     if (result.failed.length === 0) {
       notifySuccess();
     } else {
@@ -435,7 +684,7 @@ export default function ReviewScreen(): React.ReactElement {
       for (const id of result.saved) next.delete(id);
       return next;
     });
-  }, [transactions, selectionMap, bulkSaveAll, t]);
+  }, [transactions, selectionMap, bulkSaveAll, t, categorizeByMerchantEnabled, saveMerchantCategoryRuleAsync, allAccounts]);
 
   const handleDiscard = useCallback(
     (tx: Transaction) => {
@@ -774,18 +1023,18 @@ export default function ReviewScreen(): React.ReactElement {
           borderBottomColor: colors.borderLight,
         }}
       >
-        <Text style={{ fontSize: 24, fontWeight: '700', color: colors.textPrimary }}>
+        <Text style={{ fontSize: 24, fontWeight: '700', color: colors.textPrimary, textAlign, writingDirection: isRTL ? 'rtl' : 'ltr' }}>
           {t('REVIEW_TITLE' as any)}
         </Text>
         {items.length > 0 ? (
-          <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 2 }}>
+          <Text style={{ fontSize: 14, color: colors.textSecondary, marginTop: 2, textAlign, writingDirection: isRTL ? 'rtl' : 'ltr' }}>
             {items.length} {t('REVIEW_NEEDS_ATTENTION' as any)}
           </Text>
         ) : null}
       </View>
 
       {/* Large Voice / OCR action cards — always visible */}
-      <View className="flex-row px-4 pt-3 pb-1" style={{ gap: 10 }}>
+      <View className="px-4 pt-3 pb-1" style={{ flexDirection: rowDir, gap: 10 }}>
         {/* Voice card */}
         <Pressable
           onPress={handleVoice}
@@ -803,18 +1052,18 @@ export default function ReviewScreen(): React.ReactElement {
           ) : isRecording ? (
             <>
               <Square size={28} color={colors.expense} strokeWidth={2.5} />
-              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.expense, marginTop: 8 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.expense, marginTop: 8, textAlign: 'center' }}>
                 {t('REVIEW_TAP_STOP' as any)}
               </Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>{t('REVIEW_RECORDING' as any)}</Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2, textAlign: 'center' }}>{t('REVIEW_RECORDING' as any)}</Text>
             </>
           ) : (
             <>
               <Mic size={28} color={colors.primary} strokeWidth={2} />
-              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary, marginTop: 8 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary, marginTop: 8, textAlign: 'center' }}>
                 {t('REVIEW_VOICE' as any)}
               </Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>{t('REVIEW_VOICE_HINT' as any)}</Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2, textAlign: 'center' }}>{t('REVIEW_VOICE_HINT' as any)}</Text>
             </>
           )}
         </Pressable>
@@ -836,10 +1085,10 @@ export default function ReviewScreen(): React.ReactElement {
           ) : (
             <>
               <Camera size={28} color={colors.primary} strokeWidth={2} />
-              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary, marginTop: 8 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary, marginTop: 8, textAlign: 'center' }}>
                 {t('REVIEW_SCAN_RECEIPT' as any)}
               </Text>
-              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>{t('REVIEW_CAMERA_OR_GALLERY' as any)}</Text>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2, textAlign: 'center' }}>{t('REVIEW_CAMERA_OR_GALLERY' as any)}</Text>
             </>
           )}
         </Pressable>
@@ -861,6 +1110,7 @@ export default function ReviewScreen(): React.ReactElement {
               transaction={item}
               index={idx + 1}
               allCategories={allCategories ?? []}
+              allAccounts={allAccounts ?? []}
               selectedCategory={selectionMap.get(item.id) ?? null}
               onCategoryChange={handleCategoryChange}
               onSave={handleSave}

@@ -30,6 +30,7 @@ import { useT } from '../../lib/i18n';
 import { useLanguageStore } from '../../store/language-store';
 import { useRTL } from '../../hooks/useRTL';
 import { COLORS } from '../../constants/colors';
+import { AnimatedAuroraBg } from '../../components/ui/AnimatedAuroraBg';
 
 // ─── Claude Design tokens (dark) ──────────────────────────────────────
 const C = {
@@ -367,6 +368,7 @@ function AuthContent(): React.ReactElement {
 
   return (
     <View style={[s.root, { backgroundColor: C.bg }]}>
+      <AnimatedAuroraBg variant="form" intensity={0.85} />
       <KeyboardAvoidingView style={s.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={[s.scroll, { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 32 }]}

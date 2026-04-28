@@ -1,12 +1,13 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Linking, Alert, Share, Platform, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Linking, Alert, Share, Platform, StyleSheet, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
-import { LogOut, ChevronRight, Check, Globe, Plus, Wallet, Trash2, MessageSquare, ExternalLink, HelpCircle, Copy, Zap, CheckCircle2, CircleAlert, ArrowRight, Play, Smartphone, MessageCircle, Moon, Sun, Monitor, Languages, Mail } from 'lucide-react-native';
+import { LogOut, ChevronRight, Check, Globe, Plus, Wallet, Trash2, MessageSquare, ExternalLink, HelpCircle, Copy, Zap, CheckCircle2, CircleAlert, Play, Smartphone, MessageCircle, Moon, Sun, Monitor, Languages, Camera, CreditCard, Banknote, PiggyBank } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 
 import { impactLight, impactMedium, notifyWarning, notifySuccess, notifyError } from '../../utils/haptics';
 import { formatAmount } from '../../utils/currency';
@@ -30,7 +31,10 @@ import { useResponsive } from '../../hooks/useResponsive';
 import { useLogout } from '../../hooks/useLogout';
 import { useUpdateProfile } from '../../hooks/useUpdateProfile';
 import { useAccounts, useCreateAccount, useDeleteAccount, useUpdateAccount } from '../../hooks/useAccounts';
-import { ALL_BANK_PRESETS, type BankPreset } from '../../constants/bank-presets';
+import { useMerchantCategorizationSetting } from '../../hooks/useMerchantCategorization';
+import { scanWalletScreenshot, type ExtractedAccount } from '../../services/wallet-scan-service';
+import { ScanWalletSheet } from '../../components/finance/ScanWalletSheet';
+import { ALL_BANK_PRESETS, findBankPreset, type BankPreset } from '../../constants/bank-presets';
 import { useRTL } from '../../hooks/useRTL';
 import type { AccountType } from '../../types/index';
 
@@ -108,8 +112,8 @@ function WhatsAppConnect(): React.ReactElement {
       {/* Header: RTL-aware row + logical margins so the green status pill lands
           at the trailing edge, not on top of the icon or title in Arabic. */}
       <View style={{ flexDirection: rowDir, alignItems: 'center', marginBottom: 12 }}>
-        <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginEnd: 12, backgroundColor: '#25D366' + '15' }}>
-          <MessageCircle size={20} color="#25D366" strokeWidth={2} />
+        <View style={{ width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginEnd: 12, backgroundColor: '#25D366' + '15' }}>
+          <MessageCircle size={17} color="#25D366" strokeWidth={2} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary, textAlign }}>
@@ -433,8 +437,8 @@ function SMSAutomationSetup(): React.ReactElement {
       {/* Header: RTL-aware. Icon sits on the reading-start edge, title reads
           from the same edge — never overlaps the icon or spills across. */}
       <View style={{ flexDirection: rowDir, alignItems: 'center', marginBottom: 4 }}>
-        <View style={{ width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginEnd: 12, backgroundColor: colors.primary + '15' }}>
-          <Zap size={20} color={colors.primary} strokeWidth={2} />
+        <View style={{ width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginEnd: 12, backgroundColor: colors.primary + '15' }}>
+          <Zap size={17} color={colors.primary} strokeWidth={2} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 16, fontWeight: '700', color: colors.textPrimary, textAlign }}>
@@ -641,11 +645,11 @@ const CURRENCY_OPTIONS: CurrencyOption[] = [
 
 // ─── Account type labels ─────────────────────────────────────────────
 
-const ACCOUNT_TYPE_META: Record<AccountType, { labelKey: string; icon: string }> = {
-  cash: { labelKey: 'ACCOUNT_CASH', icon: '💵' },
-  bank: { labelKey: 'ACCOUNT_BANK', icon: '🏦' },
-  savings: { labelKey: 'ACCOUNT_SAVINGS', icon: '🐖' },
-  credit_card: { labelKey: 'ACCOUNT_CREDIT_CARD', icon: '💳' },
+const ACCOUNT_TYPE_META: Record<AccountType, { labelKey: string; icon: string; Icon: typeof Wallet }> = {
+  cash: { labelKey: 'ACCOUNT_CASH', icon: '💵', Icon: Banknote },
+  bank: { labelKey: 'ACCOUNT_BANK', icon: '🏦', Icon: Wallet },
+  savings: { labelKey: 'ACCOUNT_SAVINGS', icon: '🐖', Icon: PiggyBank },
+  credit_card: { labelKey: 'ACCOUNT_CREDIT_CARD', icon: '💳', Icon: CreditCard },
 };
 
 const ACCOUNT_TYPES: AccountType[] = ['cash', 'bank', 'savings', 'credit_card'];
@@ -725,7 +729,7 @@ function SettingsRow({
         )}
       </Pressable>
       {!isLast ? (
-        <View style={{ height: 1, backgroundColor: colors.borderLight, marginLeft: 62 }} />
+        <View style={{ height: 1, backgroundColor: colors.borderLight, marginStart: 62 }} />
       ) : null}
     </>
   );
@@ -937,6 +941,11 @@ export default function ProfileScreen(): React.ReactElement {
   const { mutate: handleLogout, isPending: logoutPending } = useLogout();
   const { mutate: updateProfile, isPending: updatePending } = useUpdateProfile();
   const { data: accounts, isLoading: accountsLoading } = useAccounts();
+  const {
+    enabled: categorizeByMerchantEnabled,
+    isPending: merchantCategorizationPending,
+    setEnabledAsync: setCategorizeByMerchantEnabled,
+  } = useMerchantCategorizationSetting();
   const { mutate: addAccount, isPending: addingAccount } = useCreateAccount();
   const { mutate: removeAccount } = useDeleteAccount();
   const { mutate: editAccount, isPending: settlingAccount } = useUpdateAccount();
@@ -952,12 +961,51 @@ export default function ProfileScreen(): React.ReactElement {
   const [showSMS, setShowSMS] = useState(false);
   const [settleAccountId, setSettleAccountId] = useState<string | null>(null);
   const [settleAmount, setSettleAmount] = useState('');
+  const [editAccountLast4, setEditAccountLast4] = useState('');
+  const [editCardLast4, setEditCardLast4] = useState('');
+  const [editIbanLast4, setEditIbanLast4] = useState('');
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountType, setNewAccountType] = useState<AccountType>('bank');
   const [newAccountBalance, setNewAccountBalance] = useState('');
+  const [newAccountLast4, setNewAccountLast4] = useState('');
+  const [newCardLast4, setNewCardLast4] = useState('');
+  const [newIbanLast4, setNewIbanLast4] = useState('');
   const [newAccountColor, setNewAccountColor] = useState('#4A7AE8');
   const [newAccountLogo, setNewAccountLogo] = useState<string | null>(null);
+  const [scanningWallet, setScanningWallet] = useState(false);
+  const [scannedAccounts, setScannedAccounts] = useState<ExtractedAccount[] | null>(null);
   const [addAccountStep, setAddAccountStep] = useState<'pick' | 'form'>('pick');
+
+  const handleScanWallet = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please allow photo library access to scan wallet screenshots.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+      base64: true,
+      allowsEditing: false,
+    });
+
+    if (result.canceled || !result.assets?.[0]?.base64) return;
+
+    setScanningWallet(true);
+    try {
+      const extracted = await scanWalletScreenshot(result.assets[0].base64);
+      if (extracted.length === 0) {
+        Alert.alert('No accounts found', 'Could not detect any bank accounts or cards in this screenshot. Try a clearer image.');
+      } else {
+        setScannedAccounts(extracted);
+      }
+    } catch (e) {
+      Alert.alert('Scan failed', e instanceof Error ? e.message : 'Unknown error');
+    } finally {
+      setScanningWallet(false);
+    }
+  }, []);
 
   const currentCurrency =
     CURRENCY_OPTIONS.find((c) => c.code === user?.currency) ?? CURRENCY_OPTIONS[0];
@@ -988,12 +1036,18 @@ export default function ProfileScreen(): React.ReactElement {
         name: newAccountName.trim(),
         type: newAccountType,
         opening_balance: parseFloat(newAccountBalance) || 0,
+        account_last4: newAccountLast4.trim() || null,
+        card_last4: newCardLast4.trim() || null,
+        iban_last4: newIbanLast4.trim() || null,
       },
       {
         onSuccess: () => {
           notifySuccess();
           setNewAccountName('');
           setNewAccountBalance('');
+          setNewAccountLast4('');
+          setNewCardLast4('');
+          setNewIbanLast4('');
           setNewAccountColor('#4A7AE8');
           setNewAccountLogo(null);
           setAddAccountStep('pick');
@@ -1009,6 +1063,9 @@ export default function ProfileScreen(): React.ReactElement {
     setNewAccountType(preset.type);
     setNewAccountColor(preset.color);
     setNewAccountLogo(preset.logo);
+    setNewAccountLast4('');
+    setNewCardLast4('');
+    setNewIbanLast4('');
     setAddAccountStep('form');
   };
 
@@ -1016,6 +1073,24 @@ export default function ProfileScreen(): React.ReactElement {
     notifyWarning();
     removeAccount(id);
   };
+
+  const clearInlineAccountEditor = (): void => {
+    setSettleAccountId(null);
+    setSettleAmount('');
+    setEditAccountLast4('');
+    setEditCardLast4('');
+    setEditIbanLast4('');
+  };
+
+  const onToggleCategorizeByMerchant = useCallback(async (): Promise<void> => {
+    impactLight();
+    try {
+      await setCategorizeByMerchantEnabled(!categorizeByMerchantEnabled);
+      notifySuccess();
+    } catch {
+      notifyError();
+    }
+  }, [categorizeByMerchantEnabled, setCategorizeByMerchantEnabled]);
 
   const initials = user?.full_name
     ? user.full_name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
@@ -1128,7 +1203,7 @@ export default function ProfileScreen(): React.ReactElement {
         ) : null}
 
         <View>
-          <View style={{ height: 1, backgroundColor: colors.borderLight, marginLeft: 62 }} />
+          <View style={{ height: 1, backgroundColor: colors.borderLight, marginStart: 62 }} />
           <View style={{ flexDirection: rowDir, alignItems: 'center', paddingHorizontal: 16, paddingTop: 13, paddingBottom: 8 }}>
             <View style={{ width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginEnd: 12, backgroundColor: colors.surfaceSecondary }}>
               <Moon size={17} color={colors.textSecondary} strokeWidth={1.8} />
@@ -1155,7 +1230,7 @@ export default function ProfileScreen(): React.ReactElement {
         </View>
 
         <View>
-          <View style={{ height: 1, backgroundColor: colors.borderLight, marginLeft: 62 }} />
+          <View style={{ height: 1, backgroundColor: colors.borderLight, marginStart: 62 }} />
           <View style={{ flexDirection: rowDir, alignItems: 'center', paddingHorizontal: 16, paddingTop: 13, paddingBottom: 8 }}>
             <View style={{ width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginEnd: 12, backgroundColor: colors.surfaceSecondary }}>
               <Languages size={17} color={colors.textSecondary} strokeWidth={1.8} />
@@ -1180,6 +1255,41 @@ export default function ProfileScreen(): React.ReactElement {
             })}
           </View>
         </View>
+
+        <View>
+          <View style={{ height: 1, backgroundColor: colors.borderLight, marginStart: 62 }} />
+          <View
+            style={{
+              flexDirection: rowDir,
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              opacity: merchantCategorizationPending ? 0.6 : 1,
+            }}
+          >
+            <View style={{ width: 34, height: 34, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginEnd: 12, backgroundColor: colors.surfaceSecondary }}>
+              <MessageSquare size={17} color={colors.textSecondary} strokeWidth={1.8} />
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, color: colors.textPrimary, textAlign }}>
+                {t('SETTINGS_CATEGORIZE_BY_MERCHANT' as any)}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 1, textAlign }}>
+                {t('SETTINGS_CATEGORIZE_BY_MERCHANT_DESC' as any)}
+              </Text>
+            </View>
+
+            <Switch
+              value={categorizeByMerchantEnabled}
+              onValueChange={() => { void onToggleCategorizeByMerchant(); }}
+              trackColor={{ false: colors.borderLight, true: colors.primary }}
+              thumbColor="#fff"
+              ios_backgroundColor={colors.borderLight}
+              disabled={merchantCategorizationPending}
+            />
+          </View>
+        </View>
       </SettingsCard>
 
       {/* ACCOUNTS */}
@@ -1202,7 +1312,7 @@ export default function ProfileScreen(): React.ReactElement {
           <Text style={{ flex: 1, fontSize: 15, color: colors.textPrimary, textAlign }}>{t('PROFILE_MANAGE_ACCOUNTS' as any)}</Text>
           <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 6 }}>
             <Text style={{ fontSize: 13, color: colors.textTertiary }}>{(accounts ?? []).length}</Text>
-            <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} style={{ transform: [{ rotate: showAccounts ? '90deg' : '0deg' }, { scaleX: isRTL ? -1 : 1 }] }} />
+            <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} style={{ transform: [{ rotate: showAccounts ? '90deg' : (isRTL ? '180deg' : '0deg') }] }} />
           </View>
         </Pressable>
 
@@ -1214,16 +1324,48 @@ export default function ProfileScreen(): React.ReactElement {
             ) : (
               (accounts ?? []).map((account) => {
                 const meta = ACCOUNT_TYPE_META[account.type] ?? ACCOUNT_TYPE_META.bank;
+                const preset = findBankPreset(account.name);
                 const isSettling = settleAccountId === account.id;
+                const last4Tokens = [
+                  account.account_last4 ? `A • ${account.account_last4}` : null,
+                  account.card_last4 ? `Card • ${account.card_last4}` : null,
+                  account.iban_last4 ? `IBAN • ${account.iban_last4}` : null,
+                ].filter(Boolean) as string[];
                 return (
                   <View key={account.id} style={{ marginBottom: 6 }}>
                     <View style={{ flexDirection: rowDir, alignItems: 'center', paddingHorizontal: 12, paddingVertical: 11, borderRadius: 12, backgroundColor: colors.surfaceSecondary }}>
-                      <Text style={{ fontSize: 20, marginEnd: 10 }}>{meta.icon}</Text>
+                      {preset?.logo ? (
+                        <Image source={{ uri: preset.logo }} style={{ width: 28, height: 28, borderRadius: 7, marginEnd: 10 }} contentFit="cover" cachePolicy="memory-disk" />
+                      ) : (
+                        <View style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: preset?.color ?? colors.primary + '18', alignItems: 'center', justifyContent: 'center', marginEnd: 10 }}>
+                          {preset ? (
+                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFF' }}>{account.name.slice(0, 1)}</Text>
+                          ) : (
+                            <meta.Icon size={15} color={colors.textSecondary} strokeWidth={1.8} />
+                          )}
+                        </View>
+                      )}
                       <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary, textAlign }}>{account.name}</Text>
                         <Text style={{ fontSize: 11, color: colors.textTertiary, textAlign }}>{t(meta.labelKey as any)}</Text>
+                        {last4Tokens.length > 0 ? (
+                          <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2, textAlign }}>
+                            {last4Tokens.join(' · ')}
+                          </Text>
+                        ) : null}
                       </View>
-                      <Pressable onPress={() => { impactLight(); if (isSettling) { setSettleAccountId(null); setSettleAmount(''); } else { setSettleAccountId(account.id); setSettleAmount(String(account.current_balance)); } }} hitSlop={8} style={{ marginRight: 10 }}>
+                      <Pressable onPress={() => {
+                        impactLight();
+                        if (isSettling) {
+                          clearInlineAccountEditor();
+                        } else {
+                          setSettleAccountId(account.id);
+                          setSettleAmount(String(account.current_balance));
+                          setEditAccountLast4(account.account_last4 ?? '');
+                          setEditCardLast4(account.card_last4 ?? '');
+                          setEditIbanLast4(account.iban_last4 ?? '');
+                        }
+                      }} hitSlop={8} style={{ marginRight: 10 }}>
                         <Text style={{ fontSize: 14, fontWeight: '600', color: isSettling ? colors.primary : colors.textPrimary }}>{formatAmount(account.current_balance)}</Text>
                       </Pressable>
                       <Pressable onPress={() => onDeleteAccount(account.id)} hitSlop={8}>
@@ -1231,9 +1373,74 @@ export default function ProfileScreen(): React.ReactElement {
                       </Pressable>
                     </View>
                     {isSettling ? (
-                      <View style={{ flexDirection: rowDir, alignItems: 'center', marginTop: 6, marginStart: 12, gap: 8 }}>
-                        <TextInput style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.textPrimary, borderBottomWidth: 1.5, borderBottomColor: colors.primary, paddingBottom: 4 }} keyboardType="decimal-pad" value={settleAmount} onChangeText={setSettleAmount} autoFocus selectTextOnFocus placeholder="New balance" placeholderTextColor={colors.textTertiary} />
-                        <Pressable onPress={() => { const parsed = parseFloat(settleAmount); if (isNaN(parsed)) { notifyError(); return; } impactMedium(); editAccount({ id: account.id, input: { current_balance: Math.round(parsed * 100) / 100 } }, { onSuccess: () => { notifySuccess(); setSettleAccountId(null); setSettleAmount(''); } }); }} disabled={settlingAccount} style={{ borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: colors.primary }}>
+                      <View style={{ marginTop: 6, marginStart: 12, marginEnd: 4, gap: 8 }}>
+                        <TextInput
+                          style={{ fontSize: 15, fontWeight: '600', color: colors.textPrimary, borderBottomWidth: 1.5, borderBottomColor: colors.primary, paddingBottom: 4 }}
+                          keyboardType="decimal-pad"
+                          value={settleAmount}
+                          onChangeText={setSettleAmount}
+                          autoFocus
+                          selectTextOnFocus
+                          placeholder="New balance"
+                          placeholderTextColor={colors.textTertiary}
+                        />
+
+                        <View style={{ flexDirection: rowDir, gap: 8 }}>
+                          <TextInput
+                            style={{ flex: 1, fontSize: 13, color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 6, textAlign }}
+                            value={editAccountLast4}
+                            onChangeText={(v) => setEditAccountLast4(v.replace(/\D/g, '').slice(0, 4))}
+                            keyboardType="number-pad"
+                            maxLength={4}
+                            placeholder="Acct last4"
+                            placeholderTextColor={colors.textTertiary}
+                          />
+                          <TextInput
+                            style={{ flex: 1, fontSize: 13, color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 6, textAlign }}
+                            value={editCardLast4}
+                            onChangeText={(v) => setEditCardLast4(v.replace(/\D/g, '').slice(0, 4))}
+                            keyboardType="number-pad"
+                            maxLength={4}
+                            placeholder="Card last4"
+                            placeholderTextColor={colors.textTertiary}
+                          />
+                          <TextInput
+                            style={{ flex: 1, fontSize: 13, color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 6, textAlign }}
+                            value={editIbanLast4}
+                            onChangeText={(v) => setEditIbanLast4(v.replace(/\D/g, '').slice(0, 4))}
+                            keyboardType="number-pad"
+                            maxLength={4}
+                            placeholder="IBAN last4"
+                            placeholderTextColor={colors.textTertiary}
+                          />
+                        </View>
+
+                        <Pressable
+                          onPress={() => {
+                            const parsed = parseFloat(settleAmount);
+                            if (isNaN(parsed)) { notifyError(); return; }
+                            impactMedium();
+                            editAccount(
+                              {
+                                id: account.id,
+                                input: {
+                                  current_balance: Math.round(parsed * 100) / 100,
+                                  account_last4: editAccountLast4 || null,
+                                  card_last4: editCardLast4 || null,
+                                  iban_last4: editIbanLast4 || null,
+                                },
+                              },
+                              {
+                                onSuccess: () => {
+                                  notifySuccess();
+                                  clearInlineAccountEditor();
+                                },
+                              },
+                            );
+                          }}
+                          disabled={settlingAccount}
+                          style={{ borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: colors.primary, alignItems: 'center' }}
+                        >
                           <Text style={{ fontSize: 13, fontWeight: '600', color: '#FFFFFF' }}>{settlingAccount ? '...' : 'Set'}</Text>
                         </Pressable>
                       </View>
@@ -1270,7 +1477,7 @@ export default function ProfileScreen(): React.ReactElement {
                               <Image
                                 source={{ uri: preset.logo }}
                                 style={{ width: 32, height: 32, marginBottom: 6, borderRadius: 8 }}
-                                contentFit="contain"
+                                contentFit="cover"
                               />
                             ) : (
                               <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: preset.color, alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
@@ -1292,7 +1499,7 @@ export default function ProfileScreen(): React.ReactElement {
                       <Plus size={16} color={colors.primary} strokeWidth={2} />
                       <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{t('SUBS_CUSTOM' as any)}</Text>
                     </Pressable>
-                    <Pressable onPress={() => setShowAddAccount(false)} style={{ alignItems: 'center', paddingVertical: 8, marginTop: 6 }}>
+                    <Pressable onPress={() => { setShowAddAccount(false); setAddAccountStep('pick'); setNewAccountLast4(''); setNewCardLast4(''); setNewIbanLast4(''); }} style={{ alignItems: 'center', paddingVertical: 8, marginTop: 6 }}>
                       <Text style={{ fontSize: 13, color: colors.textTertiary }}>{t('CANCEL' as any)}</Text>
                     </Pressable>
                   </>
@@ -1308,24 +1515,75 @@ export default function ProfileScreen(): React.ReactElement {
                     <View style={{ flexDirection: rowDir, flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                       {ACCOUNT_TYPES.map((type) => { const meta = ACCOUNT_TYPE_META[type]; const isActive = newAccountType === type; return (
                         <Pressable key={type} onPress={() => setNewAccountType(type)} style={{ flexDirection: rowDir, alignItems: 'center', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: isActive ? colors.primary + '18' : colors.surface, borderWidth: 1, borderColor: isActive ? colors.primary : colors.borderLight }}>
-                          <Text style={{ fontSize: 13, marginEnd: 4 }}>{meta.icon}</Text>
+                          <meta.Icon size={14} color={isActive ? colors.primary : colors.textSecondary} strokeWidth={1.8} style={{ marginEnd: 5 }} />
                           <Text style={{ fontSize: 13, fontWeight: isActive ? '600' : '400', color: isActive ? colors.primary : colors.textSecondary }}>{t(meta.labelKey as any)}</Text>
                         </Pressable>
                       ); })}
                     </View>
                     <TextInput style={{ fontSize: 14, color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 8, marginBottom: 12, textAlign }} placeholder={t('ACCOUNT_BALANCE_PLACEHOLDER' as any)} placeholderTextColor={colors.textTertiary} value={newAccountBalance} onChangeText={setNewAccountBalance} keyboardType="decimal-pad" />
+                    <View style={{ flexDirection: rowDir, gap: 8, marginBottom: 12 }}>
+                      <TextInput
+                        style={{ flex: 1, fontSize: 13, color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 8, textAlign }}
+                        value={newAccountLast4}
+                        onChangeText={(v) => setNewAccountLast4(v.replace(/\D/g, '').slice(0, 4))}
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        placeholder="Acct last4"
+                        placeholderTextColor={colors.textTertiary}
+                      />
+                      <TextInput
+                        style={{ flex: 1, fontSize: 13, color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 8, textAlign }}
+                        value={newCardLast4}
+                        onChangeText={(v) => setNewCardLast4(v.replace(/\D/g, '').slice(0, 4))}
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        placeholder="Card last4"
+                        placeholderTextColor={colors.textTertiary}
+                      />
+                      <TextInput
+                        style={{ flex: 1, fontSize: 13, color: colors.textPrimary, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 8, textAlign }}
+                        value={newIbanLast4}
+                        onChangeText={(v) => setNewIbanLast4(v.replace(/\D/g, '').slice(0, 4))}
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        placeholder="IBAN last4"
+                        placeholderTextColor={colors.textTertiary}
+                      />
+                    </View>
                     <View style={{ flexDirection: rowDir, gap: 8 }}>
-                      <Pressable onPress={() => setAddAccountStep('pick')} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: colors.surface }}><Text style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>{t('BACK' as any)}</Text></Pressable>
+                      <Pressable onPress={() => { setAddAccountStep('pick'); setNewAccountLast4(''); setNewCardLast4(''); setNewIbanLast4(''); }} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: colors.surface }}><Text style={{ fontSize: 14, fontWeight: '500', color: colors.textSecondary }}>{t('BACK' as any)}</Text></Pressable>
                       <Pressable onPress={onAddAccount} disabled={addingAccount || !newAccountName.trim()} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: colors.primary, opacity: addingAccount ? 0.6 : 1 }}><Text style={{ fontSize: 14, fontWeight: '600', color: '#FFF' }}>{addingAccount ? '...' : t('ADD' as any)}</Text></Pressable>
                     </View>
                   </>
                 )}
               </View>
             ) : (
-              <Pressable onPress={() => { impactLight(); setShowAddAccount(true); }} style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, marginTop: 4, borderWidth: 1, borderColor: colors.borderLight, borderStyle: 'dashed' }}>
-                <Plus size={16} color={colors.primary} strokeWidth={2} />
-                <Text style={{ fontSize: 14, fontWeight: '500', color: colors.primary }}>{t('SETTINGS_ADD_ACCOUNT' as any)}</Text>
-              </Pressable>
+              <>
+                <Pressable onPress={() => { impactLight(); setShowAddAccount(true); setAddAccountStep('pick'); setNewAccountLast4(''); setNewCardLast4(''); setNewIbanLast4(''); }} style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, marginTop: 4, borderWidth: 1, borderColor: colors.borderLight, borderStyle: 'dashed' }}>
+                  <Plus size={16} color={colors.primary} strokeWidth={2} />
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: colors.primary }}>{t('SETTINGS_ADD_ACCOUNT' as any)}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => { impactLight(); handleScanWallet(); }}
+                  disabled={scanningWallet}
+                  style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, marginTop: 6, backgroundColor: colors.primary + '14' }}
+                >
+                  {scanningWallet ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <>
+                      <Camera size={16} color={colors.primary} strokeWidth={2} />
+                      <Text style={{ fontSize: 14, fontWeight: '500', color: colors.primary }}>{t('SCAN_WALLET_SCREENSHOT' as any) || 'Scan Wallet Screenshot'}</Text>
+                    </>
+                  )}
+                </Pressable>
+                {scannedAccounts && (
+                  <ScanWalletSheet
+                    accounts={scannedAccounts}
+                    onDone={() => { setScannedAccounts(null); setShowAddAccount(false); }}
+                  />
+                )}
+              </>
             )}
           </View>
         ) : null}
@@ -1339,9 +1597,7 @@ export default function ProfileScreen(): React.ReactElement {
           label={t('PROFILE_WHATSAPP_ROW' as any)}
           onPress={() => { impactLight(); setShowWhatsApp((v) => !v); setShowSMS(false); }}
           rightElement={
-            <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 6 }}>
-              <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} style={{ transform: [{ rotate: showWhatsApp ? '90deg' : '0deg' }] }} />
-            </View>
+            <ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} style={{ transform: [{ rotate: showWhatsApp ? '90deg' : (isRTL ? '180deg' : '0deg') }] }} />
           }
         />
         {showWhatsApp ? (
@@ -1351,13 +1607,13 @@ export default function ProfileScreen(): React.ReactElement {
           </View>
         ) : null}
 
-        <View style={{ height: 1, backgroundColor: colors.borderLight, marginLeft: 62 }} />
+        <View style={{ height: 1, backgroundColor: colors.borderLight, marginStart: 62 }} />
         <SettingsRow
           icon={<Zap size={17} color={colors.primary} strokeWidth={1.8} />}
           label={t('PROFILE_SMS_ROW' as any)}
           onPress={() => { impactLight(); setShowSMS((v) => !v); setShowWhatsApp(false); }}
           isLast
-          rightElement={<ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} style={{ transform: [{ rotate: showSMS ? '90deg' : '0deg' }] }} />}
+          rightElement={<ChevronRight size={16} color={colors.textTertiary} strokeWidth={2} style={{ transform: [{ rotate: showSMS ? '90deg' : (isRTL ? '180deg' : '0deg') }] }} />}
         />
         {showSMS ? (
           <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
@@ -1398,55 +1654,19 @@ export default function ProfileScreen(): React.ReactElement {
         <SupportChatCard />
       </View>
 
-      {/* SIGN OUT — presented as a dedicated card with a destructive accent
-          so it matches every other grouped section on the screen. */}
+      {/* SIGN OUT */}
       <SectionHeader label={t('PROFILE_SECTION_ACCOUNT' as any) || ''} />
       <SettingsCard>
-        <Pressable
+        <SettingsRow
+          icon={logoutPending
+            ? <ActivityIndicator size="small" color={colors.expense} />
+            : <LogOut size={17} color={colors.expense} strokeWidth={1.8} style={isRTL ? { transform: [{ scaleX: -1 }] } : undefined} />
+          }
+          label={t('LOGOUT_BUTTON')}
+          danger
+          isLast
           onPress={onLogout}
-          disabled={logoutPending}
-          style={({ pressed }) => ({
-            flexDirection: rowDir,
-            alignItems: 'center',
-            paddingHorizontal: 16,
-            paddingVertical: 16,
-            opacity: logoutPending ? 0.6 : pressed ? 0.7 : 1,
-          })}
-        >
-          <View
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 9,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginEnd: 12,
-              backgroundColor: colors.expenseBg,
-            }}
-          >
-            {logoutPending ? (
-              <ActivityIndicator size="small" color={colors.expense} />
-            ) : (
-              <LogOut
-                size={17}
-                color={colors.expense}
-                strokeWidth={1.8}
-                style={isRTL ? { transform: [{ scaleX: -1 }] } : undefined}
-              />
-            )}
-          </View>
-          <Text
-            style={{
-              flex: 1,
-              fontSize: 15,
-              fontWeight: '600',
-              color: colors.expense,
-              textAlign,
-            }}
-          >
-            {t('LOGOUT_BUTTON')}
-          </Text>
-        </Pressable>
+        />
       </SettingsCard>
     </ScrollView>
 
