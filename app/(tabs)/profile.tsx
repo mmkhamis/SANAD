@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Linking, Alert, Share, Platform, StyleSheet, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { ErrorBoundary } from '../../components/ui/ErrorBoundary';
@@ -745,14 +745,42 @@ function SettingsCard({
   return (
     <View
       style={{
-        borderRadius: 16,
+        borderRadius: 20,
         overflow: 'hidden',
-        backgroundColor: colors.surface,
+        backgroundColor: colors.isDark ? undefined : colors.surface,
         borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderColor: colors.isDark ? COLORS.claude.stroke : colors.borderLight,
         marginBottom: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: colors.isDark ? 0.25 : 0.06,
+        shadowRadius: colors.isDark ? 2 : 4,
+        elevation: 2,
       }}
     >
+      {/* Glass gradient (dark mode) */}
+      {colors.isDark ? (
+        <LinearGradient
+          colors={['rgba(255,255,255,0.045)', 'rgba(255,255,255,0.02)']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+      ) : null}
+      {/* Inset top highlight (dark mode) */}
+      {colors.isDark ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 1,
+            backgroundColor: COLORS.claude.insetLight,
+          }}
+        />
+      ) : null}
       {children}
     </View>
   );
@@ -930,6 +958,7 @@ export default function ProfileScreen(): React.ReactElement {
   const { hPad } = useResponsive();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams<{ highlightAccount?: string }>();
   const user = useAuthStore((s) => s.user);
   const themeMode = useThemeStore((s) => s.mode);
   const setThemeMode = useThemeStore((s) => s.setMode);
@@ -974,6 +1003,25 @@ export default function ProfileScreen(): React.ReactElement {
   const [scanningWallet, setScanningWallet] = useState(false);
   const [scannedAccounts, setScannedAccounts] = useState<ExtractedAccount[] | null>(null);
   const [addAccountStep, setAddAccountStep] = useState<'pick' | 'form'>('pick');
+
+  // ── Deep-link highlight: when navigated from hero card bank chip ──
+  const scrollRef = useRef<ScrollView>(null);
+  const accountsSectionY = useRef(0);
+  const [highlightedAccountId, setHighlightedAccountId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!params.highlightAccount) return;
+    // Expand accounts section and highlight the tapped account
+    setShowAccounts(true);
+    setHighlightedAccountId(params.highlightAccount);
+    // Scroll to accounts section after layout settles
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: accountsSectionY.current - 20, animated: true });
+    }, 300);
+    // Clear highlight after 2s
+    const timer = setTimeout(() => setHighlightedAccountId(null), 2000);
+    return () => clearTimeout(timer);
+  }, [params.highlightAccount]);
 
   const handleScanWallet = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -1097,8 +1145,27 @@ export default function ProfileScreen(): React.ReactElement {
 
   return (
     <ErrorBoundary>
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.isDark ? COLORS.claude.bg0 : colors.background }}>
+      {/* Ambient purple glow — top-left (dark only) */}
+      {colors.isDark ? (
+        <LinearGradient
+          colors={['rgba(91,47,199,0.28)', 'transparent']}
+          start={{ x: 0.2, y: 0 }}
+          end={{ x: 0.8, y: 0.5 }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '60%' }}
+        />
+      ) : null}
+      {/* Ambient blue glow — bottom-right (dark only) */}
+      {colors.isDark ? (
+        <LinearGradient
+          colors={['transparent', 'rgba(60,120,190,0.18)']}
+          start={{ x: 0, y: 0.4 }}
+          end={{ x: 1, y: 1 }}
+          style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '55%' }}
+        />
+      ) : null}
     <ScrollView
+      ref={scrollRef}
       style={{ flex: 1 }}
       contentContainerStyle={{
         paddingHorizontal: hPad,
@@ -1292,6 +1359,7 @@ export default function ProfileScreen(): React.ReactElement {
       </SettingsCard>
 
       {/* ACCOUNTS */}
+      <View onLayout={(e) => { accountsSectionY.current = e.nativeEvent.layout.y; }}>
       <SectionHeader label={t('SETTINGS_ACCOUNTS' as any)} />
       <View style={{ flexDirection: rowDir, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderRadius: 14, marginBottom: 8, backgroundColor: colors.primary + '10', borderWidth: 1, borderColor: colors.primary + '25' }}>
         <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 10 }}>
@@ -1343,9 +1411,10 @@ export default function ProfileScreen(): React.ReactElement {
                     setEditIbanLast4(account.iban_last4 ?? '');
                   }
                 };
+                const isHighlighted = highlightedAccountId === account.id;
                 return (
                   <View key={account.id} style={{ marginBottom: 6 }}>
-                    <Pressable onPress={openEditor} style={{ flexDirection: rowDir, alignItems: 'center', paddingHorizontal: 12, paddingVertical: 11, borderRadius: 12, backgroundColor: colors.surfaceSecondary }}>
+                    <Pressable onPress={openEditor} style={{ flexDirection: rowDir, alignItems: 'center', paddingHorizontal: 12, paddingVertical: 11, borderRadius: 12, backgroundColor: isHighlighted ? colors.primary + '18' : colors.surfaceSecondary, borderWidth: isHighlighted ? 1.5 : 0, borderColor: isHighlighted ? colors.primary : 'transparent' }}>
                       {/* Bank chip — colored container so favicon white-padding doesn't read as a glow */}
                       <View
                         style={{
@@ -1604,6 +1673,7 @@ export default function ProfileScreen(): React.ReactElement {
           </View>
         ) : null}
       </SettingsCard>
+      </View>
 
       {/* AUTOMATION */}
       <SectionHeader label={t('PROFILE_SECTION_AUTOMATION' as any)} />

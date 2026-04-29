@@ -191,6 +191,8 @@ export default function SMSProcessorScreen(): React.ReactElement {
           return;
         }
 
+        console.log('[sms] ▶ processing SMS, length=', decoded.length, 'first40=', decoded.slice(0, 40));
+
         // Navigate immediately — processing continues in background
         navigateToTabs();
 
@@ -198,6 +200,7 @@ export default function SMSProcessorScreen(): React.ReactElement {
         // PATH 1: ONLINE → Edge function (AI) handles everything
         // ──────────────────────────────────────────────────────────
         try {
+          console.log('[sms] calling edge function...');
           const ingest = await invokeWithRetry<IngestSmsResponse>('ingest-sms', {
             body: { message: decoded },
           });

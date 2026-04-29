@@ -65,6 +65,7 @@ export async function ingestSmsMessage({
   defaultCountry = 'SA',
   ingestSource,
 }: IngestParams): Promise<IngestOutcome> {
+  console.log('[sms-ingest-v2] START, msgLen=', message.length, 'first50=', message.slice(0, 50));
   try {
     // 1) Load parser context
     const [accountsRes, promoRes] = await Promise.all([
@@ -119,6 +120,15 @@ export async function ingestSmsMessage({
           txType,
           userCats,
         );
+
+    // Refund class → force refund_rebate category
+    if (parsed.message_class === 'refund' && !matchedCategory) {
+      const incomeCats = userCats.filter((c) => c.type === 'income');
+      matchedCategory = incomeCats.find((c) => c.taxonomy_key === 'refund_rebate') ?? null;
+      if (!matchedCategory) {
+        matchedCategory = resolveParentCategory('refund_rebate', incomeCats);
+      }
+    }
 
     // 3b) Check merchant→category cache before calling AI
     const merchantKey = parsed.merchant_raw?.toLowerCase().trim() ?? null;
@@ -339,15 +349,6 @@ export async function ingestSmsMessage({
     }
 
     // 8) Build transaction row
-    const reasons: string[] = [];
-    if (!matchedCategory) reasons.push('missing_category');
-    reasons.push(parsed.parse_reason);
-    for (const f of parsed.review_flags) reasons.push(f);
-    const reviewReason = reasons.filter(Boolean).join('; ');
-
-    const needsReview = txType === 'transfer'
-      ? !(fromAccountId || toAccountId)  // transfers only need review if no accounts matched
-      : !matchedCategory || (parsed.confidence < 0.70);
     const isoDate = (parsed.timestamp ?? new Date().toISOString()).slice(0, 10);
 
     // Match account by last4 digits (exact or suffix match for NNN*NNN format)
@@ -359,6 +360,16 @@ export async function ingestSmsMessage({
 
     const fromAccountId = parsed.from_last4 ? matchAccount(parsed.from_last4)?.id ?? null : null;
     const toAccountId = parsed.to_last4 ? matchAccount(parsed.to_last4)?.id ?? null : null;
+
+    const reasons: string[] = [];
+    if (!matchedCategory) reasons.push('missing_category');
+    reasons.push(parsed.parse_reason);
+    for (const f of parsed.review_flags) reasons.push(f);
+    const reviewReason = reasons.filter(Boolean).join('; ');
+
+    const needsReview = txType === 'transfer'
+      ? !(fromAccountId || toAccountId)  // transfers only need review if no accounts matched
+      : !matchedCategory || (parsed.confidence < 0.70);
 
     // For non-transfer transactions, resolve account_id from source_card_last4
     // or source_account_last4 (the user's own card/account that was charged)
@@ -414,6 +425,8 @@ export async function ingestSmsMessage({
       ignored_values: parsed.ignored_values,
       idempotency_key: dedupKey,
     };
+
+    console.log('[sms-ingest-v2] INSERTING tx:', { txType, amount: parsed.amount, accountId, fromAccountId, toAccountId, dedupKey, needsReview });
 
     const { data: inserted, error: insertErr } = await sb
       .from('transactions')
@@ -506,6 +519,7 @@ export async function ingestSmsMessage({
     return outcome;
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[sms-ingest-v2] CRASH:', message, err instanceof Error ? err.stack : '');
     return { ok: false, status: 'error', error: message };
   }
 }

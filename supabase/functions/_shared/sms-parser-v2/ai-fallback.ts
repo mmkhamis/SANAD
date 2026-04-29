@@ -98,7 +98,11 @@ export function mergeRulesAndAI(rules: ParseResult, ai: Partial<ParseResult>): P
     ...rules,
     // AI wins on these "soft" fields
     message_class: mergedClass,
-    should_create_transaction: ai.should_create_transaction ?? rules.should_create_transaction,
+    // Rules win on should_create_transaction when rules found an amount and
+    // classified the message — AI should not be able to suppress a valid transaction.
+    should_create_transaction: (rules.amount !== null && rules.message_class !== 'unknown')
+      ? rules.should_create_transaction
+      : ai.should_create_transaction ?? rules.should_create_transaction,
     should_route_to_offers_feed: ai.should_route_to_offers_feed ?? rules.should_route_to_offers_feed,
     merchant_raw: ai.merchant_raw ?? rules.merchant_raw,
     merchant_normalized: ai.merchant_normalized ?? rules.merchant_normalized,

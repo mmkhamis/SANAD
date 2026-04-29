@@ -1811,9 +1811,27 @@ function AnalyticsContent(): React.ReactElement {
   }
 
   return (
-    <>
+      <View style={{ flex: 1, backgroundColor: colors.isDark ? COLORS.claude.bg0 : colors.background }}>
+        {/* Ambient purple glow — top-left (dark only) */}
+        {colors.isDark ? (
+          <LinearGradient
+            colors={['rgba(91,47,199,0.28)', 'transparent']}
+            start={{ x: 0.2, y: 0 }}
+            end={{ x: 0.8, y: 0.5 }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '60%' }}
+          />
+        ) : null}
+        {/* Ambient blue glow — bottom-right (dark only) */}
+        {colors.isDark ? (
+          <LinearGradient
+            colors={['transparent', 'rgba(60,120,190,0.18)']}
+            start={{ x: 0, y: 0.4 }}
+            end={{ x: 1, y: 1 }}
+            style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '55%' }}
+          />
+        ) : null}
       <ScrollView
-        style={{ flex: 1, backgroundColor: colors.background }}
+        style={{ flex: 1 }}
         contentContainerStyle={{
           paddingTop: insets.top + 16,
           paddingBottom: insets.bottom + 120,
@@ -1947,7 +1965,7 @@ function AnalyticsContent(): React.ReactElement {
           }}
         />
       </View>
-    </>
+    </View>
   );
 }
 

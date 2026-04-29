@@ -366,6 +366,7 @@ export async function createSMSTransaction(
         .eq('amount', input.amount)
         .eq('date', input.date)
         .ilike('notes', `%${refNumber}%`)
+        .is('deleted_at', null)
         .limit(1);
 
       if (refMatches && refMatches.length > 0) {
@@ -379,11 +380,14 @@ export async function createSMSTransaction(
     }
 
     // Fall back to exact notes text matching (same SMS, same day)
+    // Must exclude soft-deleted rows — a deleted SMS transaction should
+    // not block re-ingestion of the same message.
     const { data: existing } = await supabase
       .from('transactions')
       .select('id')
       .eq('user_id', session.user.id)
       .eq('notes', input.notes)
+      .is('deleted_at', null)
       .limit(1);
 
     if (existing && existing.length > 0) {
@@ -465,7 +469,8 @@ export async function createSMSTransaction(
   if (cleanedReviewReason) reasons.push(cleanedReviewReason);
   const reviewReason = reasons.length > 0 ? reasons.join('; ') : null;
 
-  const description = txType === 'transfer' && /card payment/i.test(input.description)
+  // Only override generic descriptions — keep Arabic descriptions like "سداد بطاقة ائتمانية"
+  const description = txType === 'transfer' && input.description === 'Card payment'
     ? 'Internal transfer'
     : input.description;
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 
 import { COLORS } from '../../constants/colors';
@@ -12,6 +12,8 @@ interface AccountChipProps {
   color: string;
   /** Optional logo URL — shows logo instead of initial letter */
   logo?: string | null;
+  /** Called when the chip is tapped */
+  onPress?: () => void;
 }
 
 /**
@@ -29,26 +31,29 @@ export const AccountChip = React.memo(function AccountChip({
   amount,
   color,
   logo,
+  onPress,
 }: AccountChipProps): React.ReactElement {
   const colors = useThemeColors();
   const [imgError, setImgError] = useState(false);
   const showLogo = !!logo && !imgError;
+  const chipStyle = {
+    flexDirection: 'row' as const,
+    flexWrap: 'nowrap' as const,
+    alignItems: 'center' as const,
+    alignSelf: 'flex-start' as const,
+    flexShrink: 0,
+    gap: 7,
+    paddingVertical: 5,
+    paddingLeft: 6,
+    paddingRight: 10,
+    borderRadius: 9999,
+    backgroundColor: colors.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
+    borderWidth: 1,
+    borderColor: colors.isDark ? COLORS.claude.stroke : 'rgba(0,0,0,0.06)',
+  };
 
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 7,
-        paddingVertical: 5,
-        paddingLeft: 6,
-        paddingRight: 10,
-        borderRadius: 9999,
-        backgroundColor: colors.isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
-        borderWidth: 1,
-        borderColor: colors.isDark ? COLORS.claude.stroke : 'rgba(0,0,0,0.06)',
-      }}
-    >
+  const content = (
+    <>
       {/* Bank logo or initial dot */}
       {showLogo ? (
         <Image
@@ -86,6 +91,7 @@ export const AccountChip = React.memo(function AccountChip({
         style={{
           fontSize: 11.5,
           color: colors.isDark ? COLORS.claude.fg2 : colors.textSecondary,
+          flexShrink: 0,
         }}
         numberOfLines={1}
       >
@@ -93,13 +99,33 @@ export const AccountChip = React.memo(function AccountChip({
       </Text>
 
       {/* Amount */}
-      <CurrencyAmount
-        value={amount}
-        color={colors.isDark ? COLORS.claude.fg : colors.textPrimary}
-        fontSize={11.5}
-        fontWeight="600"
-        iconSize={10}
-      />
-    </View>
+      <View style={{ flexShrink: 0 }}>
+        <CurrencyAmount
+          value={amount}
+          color={colors.isDark ? COLORS.claude.fg : colors.textPrimary}
+          fontSize={11.5}
+          fontWeight="600"
+          iconSize={10}
+        />
+      </View>
+    </>
+  );
+
+  if (!onPress) {
+    return (
+      <View style={chipStyle}>
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={4}
+      style={chipStyle}
+    >
+      {content}
+    </Pressable>
   );
 });

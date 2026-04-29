@@ -487,7 +487,7 @@ function DashboardContent(): React.ReactElement {
                       nestedScrollEnabled
                       directionalLockEnabled
                       style={{ marginTop: 16, marginHorizontal: -22 }}
-                      contentContainerStyle={{ paddingHorizontal: 22, gap: 8 }}
+                      contentContainerStyle={{ paddingHorizontal: 22, gap: 8, alignItems: 'center' }}
                     >
                       {accts.map((acct) => {
                         const preset = findBankPreset(acct.name);
@@ -504,6 +504,10 @@ function DashboardContent(): React.ReactElement {
                               : acct.type === 'savings' ? COLORS.claude.amber
                               : COLORS.claude.p500)
                             }
+                            onPress={() => {
+                              impactLight();
+                              router.push(`/(tabs)/profile?highlightAccount=${acct.id}`);
+                            }}
                           />
                         );
                       })}
