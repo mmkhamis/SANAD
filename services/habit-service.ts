@@ -165,39 +165,70 @@ function buildHabit(
 
 // ─── Public API ──────────────────────────────────────────────────────
 
-export async function fetchHabitInsights(month?: string): Promise<HabitInsights> {
+export interface HabitInsightsHydration {
+  /** Full transaction rows for the current month (any type/flag). Filtered client-side. */
+  monthTransactions?: Transaction[];
+}
+
+export async function fetchHabitInsights(
+  month?: string,
+  hydration?: HabitInsightsHydration,
+): Promise<HabitInsights> {
   const now = month ? new Date(`${month}-01`) : new Date();
   const start = format(startOfMonth(now), 'yyyy-MM-dd');
   const end = format(endOfMonth(now), 'yyyy-MM-dd');
 
-  // Also fetch previous month for MoM comparison
   const prevStart = format(startOfMonth(subMonths(now, 1)), 'yyyy-MM-dd');
   const prevEnd = format(endOfMonth(subMonths(now, 1)), 'yyyy-MM-dd');
 
-  const [currentResult, prevResult] = await Promise.all([
-    supabase
-      .from('transactions')
-      .select('*')
-      .is('deleted_at', null)
-      .eq('type', 'expense')
-      .eq('exclude_from_insights', false)
-      .gte('date', start)
-      .lte('date', end)
-      .order('date', { ascending: true }),
-    supabase
+  // Reuse the dashboard's pre-fetched current-month rows when available.
+  // Filters that the legacy query embedded (type='expense',
+  // exclude_from_insights=false) get applied client-side.
+  let currentTxns: Transaction[];
+  let prevTxns: Transaction[];
+
+  if (hydration?.monthTransactions) {
+    currentTxns = hydration.monthTransactions
+      .filter((t) => t.type === 'expense' && !t.exclude_from_insights)
+      .slice()
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const { data: prevData, error: prevErr } = await supabase
       .from('transactions')
       .select('*')
       .is('deleted_at', null)
       .eq('type', 'expense')
       .eq('exclude_from_insights', false)
       .gte('date', prevStart)
-      .lte('date', prevEnd),
-  ]);
+      .lte('date', prevEnd);
+    if (prevErr) throw new Error(prevErr.message);
+    prevTxns = (prevData ?? []) as Transaction[];
+  } else {
+    const [currentResult, prevResult] = await Promise.all([
+      supabase
+        .from('transactions')
+        .select('*')
+        .is('deleted_at', null)
+        .eq('type', 'expense')
+        .eq('exclude_from_insights', false)
+        .gte('date', start)
+        .lte('date', end)
+        .order('date', { ascending: true }),
+      supabase
+        .from('transactions')
+        .select('*')
+        .is('deleted_at', null)
+        .eq('type', 'expense')
+        .eq('exclude_from_insights', false)
+        .gte('date', prevStart)
+        .lte('date', prevEnd),
+    ]);
 
-  if (currentResult.error) throw new Error(currentResult.error.message);
+    if (currentResult.error) throw new Error(currentResult.error.message);
 
-  const currentTxns = (currentResult.data ?? []) as Transaction[];
-  const prevTxns = (prevResult.data ?? []) as Transaction[];
+    currentTxns = (currentResult.data ?? []) as Transaction[];
+    prevTxns = (prevResult.data ?? []) as Transaction[];
+  }
   const totalMonthExpense = currentTxns.reduce((s, t) => s + t.amount, 0);
 
   // Detect habits from both merchant and category groupings

@@ -42,7 +42,100 @@ export function extractMerchant(text: string, isPurchase: boolean): MerchantResu
     }
   }
 
+  // MOI / government service sub-categorization
+  // SMS from MOI often has "الجهة: ..." or "الخدمة: ..." lines
+  const moiMerchant = extractMOIService(text);
+  if (moiMerchant) return { merchant_raw: moiMerchant, missing_merchant: false };
+
   return { merchant_raw: null, missing_merchant: isPurchase };
+}
+
+// ── MOI / Government sub-categorization ──────────────────────────
+// Saudi MOI SMS format: "الجهة: المرور" / "الخدمة: مخالفات مرورية"
+// Maps specific service lines to merchant names for taxonomy matching.
+const MOI_SERVICE_RE = /(?:الجه[ةه]|الخدم[ةه]|service|department)\s*[:：]\s*([^\n,]+)/i;
+const MOI_SENDER_RE = /\b(MOI|وزار[ةه]\s*الداخلي[ةه]|absher|ابشر|مرور|muroor|najm|نجم|balady|بلدي|ejar|ايجار)\b/i;
+
+// Map MOI sub-services to normalized merchant names for taxonomy_key resolution
+const MOI_SERVICE_MAP: Record<string, string> = {
+  // Traffic
+  'مرور': 'مخالفات مرورية',
+  'المرور': 'مخالفات مرورية',
+  'مخالفات': 'مخالفات مرورية',
+  'مخالفات مرورية': 'مخالفات مرورية',
+  'مخالفه مروريه': 'مخالفات مرورية',
+  'ساهر': 'مخالفات مرورية',
+  'saher': 'مخالفات مرورية',
+  'traffic': 'مخالفات مرورية',
+  'traffic fines': 'مخالفات مرورية',
+  'muroor': 'مخالفات مرورية',
+  // Licensing
+  'رخصة قيادة': 'رخص قيادة',
+  'رخصه قياده': 'رخص قيادة',
+  'تجديد استمارة': 'تجديد استمارة',
+  'تجديد استماره': 'تجديد استمارة',
+  'رخصة سير': 'تجديد استمارة',
+  'رخصه سير': 'تجديد استمارة',
+  'vehicle registration': 'تجديد استمارة',
+  // Passport / civil
+  'جوازات': 'جوازات',
+  'الجوازات': 'جوازات',
+  'passport': 'جوازات',
+  'احوال': 'أحوال مدنية',
+  'الاحوال': 'أحوال مدنية',
+  'احوال مدنيه': 'أحوال مدنية',
+  'civil affairs': 'أحوال مدنية',
+  // Municipal
+  'بلدي': 'بلدي',
+  'balady': 'بلدي',
+  'أمانة': 'بلدي',
+  'امانه': 'بلدي',
+  // Ejar (rental)
+  'ايجار': 'إيجار',
+  'ejar': 'إيجار',
+  'عقد ايجار': 'إيجار',
+  // Absher
+  'ابشر': 'أبشر',
+  'absher': 'أبشر',
+  // Najm (insurance/accidents)
+  'نجم': 'نجم',
+  'najm': 'نجم',
+};
+
+function extractMOIService(text: string): string | null {
+  // Only try MOI parsing if sender looks governmental
+  if (!MOI_SENDER_RE.test(text)) return null;
+
+  const m = text.match(MOI_SERVICE_RE);
+  if (m) {
+    const raw = m[1].trim().toLowerCase()
+      .replace(/[ً-ْٰ]/g, '')
+      .replace(/أ|إ|آ/g, 'ا')
+      .replace(/ى/g, 'ي')
+      .replace(/ة/g, 'ه');
+    // Try exact match then substring match
+    for (const [key, val] of Object.entries(MOI_SERVICE_MAP)) {
+      const normKey = key.toLowerCase()
+        .replace(/[ً-ْٰ]/g, '')
+        .replace(/أ|إ|آ/g, 'ا')
+        .replace(/ى/g, 'ي')
+        .replace(/ة/g, 'ه');
+      if (raw.includes(normKey)) return val;
+    }
+    return m[1].trim(); // Return raw service name if no map match
+  }
+
+  // Fallback: check for known MOI keywords directly in the text
+  const lowerText = text.toLowerCase()
+    .replace(/[ً-ْٰ]/g, '')
+    .replace(/أ|إ|آ/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه');
+  if (/مخالف[هة]?\s*مروري|ساهر|saher/i.test(lowerText)) return 'مخالفات مرورية';
+  if (/تجديد\s*استمار/i.test(lowerText)) return 'تجديد استمارة';
+  if (/رخص[هة]\s*قياد/i.test(lowerText)) return 'رخص قيادة';
+
+  return null;
 }
 
 function cleanCandidate(raw: string): string | null {

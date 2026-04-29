@@ -27,13 +27,13 @@ const CURRENCY_PATTERN = CURRENCY_SYMBOLS.map((s) =>
 
 // ─── Amount extraction ───────────────────────────────────────────────
 
-const BIDI_MARKS_RE = /[‎‏‪-‮⁦-⁩﻿]/g;
-const AMOUNT_HINT_RE = /(amount|مبلغ|بقيمة|قيمة|سداد|payment|paid|خصم|تحويل)/i;
+const BIDI_MARKS_RE = /[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF\u00AD]/g;
+const AMOUNT_HINT_RE = /(amount|مبلغ|بقيمة|قيمة|سداد|payment|paid|خصم|تحويل|حوالة|القسط|قسط)/i;
 const BALANCE_HINT_RE = /(remaining|available|limit|balance|المتبقي|الرصيد|حد الصرف|الصرف المتبقي)/i;
-const MASKED_LAST4_RE = /\*+\s*(\d{4})(?!\d)|(\d{4})\s*\*+|(?:رقم|no\.?)\s+(\d{4})(?!\d)/gi;
+const MASKED_LAST4_RE = /\*+\s*(\d{4})(?!\d)|(\d{4})\s*\*+|(?:رقم|no\.?)\s+(\d{4})(?!\d)|\b(\d{3})\*(\d{3})\b/gi;
 
 const EXPLICIT_AMOUNT_RE = new RegExp(
-  `(?:amount|مبلغ|بقيمة|قيمة|سداد)\\s*[:\\-]?\\s*(?:${CURRENCY_PATTERN}\\s*)?([\\d,]+\\.?\\d*)`,
+  `(?:amount|مبلغ|بقيمة|قيمة|سداد|القسط|قسط)\\s*[:\\-]?\\s*(?:${CURRENCY_PATTERN}\\s*)?([\\d,]+\\.?\\d*)`,
   'i',
 );
 
@@ -50,11 +50,12 @@ const CURRENCY_AFTER_RE = new RegExp(
 const STANDALONE_NUMBER_RE = /(\d[\d,]*\.?\d*)/g;
 const STRUCTURE_MARKERS: RegExp[] = [
   /(سداد\s+بطاق(?:ة|ه)\s+ائتمان(?:ية|يه)?)/gi,
-  /((?:من|from)\s*حساب)/gi,
-  /((?:الى|إلى|to)\s*بطاق[ةت]\w*)/gi,
-  /((?:الى|إلى|to)\s*حساب\w*)/gi,
-  /((?:مبلغ|amount|بقيمة|value))/gi,
-  /((?:في)\s*\d{1,2}\/\d{1,2}\/\d{2,4}(?:\s+\d{1,2}:\d{2})?)/gi,
+  /((?:من|from)\s*[:\-]?\s*(?:حساب|بطاق|\*|\d))/gi,
+  /((?:الى|إلى|to)\s*[:\-]?\s*(?:بطاق[ةت]\w*|حساب\w*|[A-Za-z\u0600-\u06FF]))/gi,
+  /((?:مبلغ|amount|بقيمة|value)\s*[:\-]?)/gi,
+  /((?:في|on)\s*[:\-]?\s*\d{1,2}\/\d{1,2}\/\d{2,4}(?:\s+\d{1,2}:\d{2})?)/gi,
+  /((?:عبر|via)\s*[:\-]?)/gi,
+  /((?:آيبان|ايبان|iban)\s*[:\-]?)/gi,
   /((?:الصرف|حد\s+الصرف|الرصيد)\s*المتبقي|remaining\s+balance|available\s+balance)/gi,
 ];
 
@@ -185,40 +186,66 @@ function extractAmount(text: string): number | null {
 }
 
 // ─── Transaction type detection ──────────────────────────────────────
+// Comprehensive Saudi bank SMS vocabulary (Al Rajhi, Al Inma, SNB, Riyad Bank,
+// AlBilad, SABB, BSF, ANB, STC Pay, Al Jazeera).
 
 const EXPENSE_KEYWORDS = [
-  // English
+  // English — unambiguous expense signals
   'purchase', 'spent', 'paid', 'payment', 'debit', 'deducted',
   'withdrawn', 'withdrawal', 'charged', 'debited', 'pos',
   'buy', 'bought', 'sale', 'bill', 'card purchase',
-  // Arabic
-  'شراء', 'سحب', 'خصم', 'دفع', 'مشتريات', 'نقطة بيع',
+  // Arabic — unambiguous expense signals
+  'شراء', 'عملية شراء', 'سحب', 'سحب نقدي', 'مشتريات', 'نقطة بيع',
+  'خصم', 'دفع', 'رسوم', 'عمولة', 'غرامة', 'مخالفة',
+  // Arabic personal expense verbs (P2P outgoing)
   'حولت', 'بعت', 'ارسلت', 'دفعت', 'حوّلت',
 ];
 
 const INCOME_KEYWORDS = [
   // English — avoid bare "credit" which false-matches "credit card"
-  'received', 'credited to', 'deposit', 'salary',
+  'received', 'credited to', 'deposit', 'deposited',
+  'salary', 'wage', 'payroll', 'pension', 'bonus', 'allowance',
   'transfer in', 'incoming', 'refund', 'cash back', 'cashback',
-  // Arabic — avoid bare "ائتمان" which false-matches "بطاقة ائتمانية" (credit card)
-  'إيداع', 'تحويل وارد', 'راتب', 'استرداد',
-  'حولي', 'حوّل لي', 'حوّلي', 'بعتلي', 'بعت لي', 'ارسل لي', 'ارسلي', 'وصلي', 'وصل لي', 'جالي', 'جا لي',
+  // Arabic — both hamza variants + plurals + synonyms
+  'إيداع', 'ايداع', 'إيداع رواتب', 'ايداع رواتب', 'ايداع نقدي',
+  'تحويل وارد', 'استرداد',
+  'راتب', 'رواتب', 'مرتب', 'مرتبات', 'أجر', 'اجر', 'أجور', 'اجور',
+  'معاش', 'مكافأة', 'بدل',
+  // Arabic personal income verbs (P2P incoming)
+  'حولي', 'حوّل لي', 'حوّلي', 'بعتلي', 'بعت لي',
+  'ارسل لي', 'ارسلي', 'وصلي', 'وصل لي', 'جالي', 'جا لي',
 ];
 
 const TRANSFER_KEYWORDS = [
   // English
   'transfer to', 'transfer from', 'moved to', 'internal transfer',
-  'transferred to', 'transferred from',
-  // Arabic
-  'تحويل إلى', 'تحويل من', 'نقل إلى', 'تحويل لحظي', 'تحويل بنكي',
+  'transferred to', 'transferred from', 'remittance',
+  // Arabic — all transfer/remittance variants
+  'تحويل إلى', 'تحويل من', 'نقل إلى',
+  'تحويل لحظي', 'تحويل بنكي', 'تحويل صادر',
+  'حوالة صادرة', 'حوالة واردة', 'حوالة محلية', 'حوالة دولية',
+  'حوالة صادرة محلية', 'حوالة صادرة دولية',
+  'حوالة واردة محلية', 'حوالة سريعة',
+  'حوالة',           // generic remittance
+  'سداد بطاقة',      // card settlement
 ];
 
 const ARABIC_BANK_TRANSFER = [
-  'تحويل لحظي',   // instant transfer
-  'تحويل بنكي',   // bank transfer
-  'تم تحويل',     // was transferred
-  'تحويل إلى حساب', // transfer to account
-  'تحويل من حساب', // transfer from account
+  'تحويل لحظي',          // instant transfer (SARIE/IPS)
+  'تحويل بنكي',          // bank transfer
+  'تم تحويل',            // was transferred
+  'تحويل إلى حساب',      // transfer to account
+  'تحويل من حساب',       // transfer from account
+  'تحويل صادر',          // outgoing transfer
+  'حوالة صادرة محلية',   // outgoing local remittance
+  'حوالة واردة محلية',   // incoming local remittance
+  'حوالة صادرة دولية',   // outgoing international remittance
+  'حوالة صادرة',         // outgoing remittance
+  'حوالة واردة',         // incoming remittance
+  'حوالة محلية',         // local remittance
+  'حوالة دولية',         // international remittance
+  'حوالة سريعة',         // quick remittance
+  'حوالة',               // generic remittance
 ];
 
 // Arabic personal transfer verbs — check before generic expense keywords
@@ -237,23 +264,37 @@ interface DirectionalLast4 {
 
 function extractDirectionalLast4(text: string): DirectionalLast4 {
   const fromMatch =
-    text.match(/(?:من|from)\s*(?:حساب\w*|account\w*|بطاق[ةت]\w*|card\w*)?\s*[:\-]?\s*(?:\*+\s*(\d{4})|(?:رقم|no\.?)\s+(\d{4}))/i)
+    text.match(/(?:من|from)\s*(?:حساب\w*|account\w*|بطاق[ةت]\w*|card\w*)?\s*[:\-]?\s*(?:\*+\s*(\d{4})|(\d{4})\s*\*+|(?:رقم|no\.?)\s+(\d{4}))/i)
     ?? text.match(/(?:بطاق[ةت]\w*|card\w*)\s*(?:الخصم\s+)?(?:المباشر\s+)?(?:رقم|no\.?)\s+(\d{4})/i)
     ?? text.match(/\*+\s*(\d{4})\s*(?=(?:من|from)\s*(?:حساب|account|بطاق|card))/i);
   const toMatch =
-    text.match(/(?:إلى|الى|to)\s*(?:حساب\w*|account\w*|بطاق[ةت]\w*|card\w*)?\s*[:\-]?\s*(?:\*+\s*(\d{4})|(?:رقم|no\.?)\s+(\d{4}))/i)
+    text.match(/(?:إلى|الى|to)\s*(?:حساب\w*|account\w*|بطاق[ةت]\w*|card\w*)?\s*[:\-]?\s*(?:\*+\s*(\d{4})|(\d{4})\s*\*+|(?:رقم|no\.?)\s+(\d{4}))/i)
+    ?? text.match(/(?:آيبان|ايبان|الايبان|iban)\s*[:\-]?\s*(?:\*+\s*(\d{4})|(\d{4})\s*\*+)/i)
     ?? text.match(/\*+\s*(\d{4})\s*(?=(?:إلى|الى|to)\s*(?:حساب|account|بطاق|card))/i);
 
-  let from = fromMatch?.[1] ?? fromMatch?.[2] ?? null;
-  let to = toMatch?.[1] ?? toMatch?.[2] ?? null;
+  let from = fromMatch?.[1] ?? fromMatch?.[2] ?? fromMatch?.[3] ?? null;
+  let to = toMatch?.[1] ?? toMatch?.[2] ?? toMatch?.[3] ?? null;
 
-  const hasDirectionalCue = /(?:من|from|إلى|الى|to)\s*(?:حساب|account|بطاق|card)/i.test(text);
+  const hasDirectionalCue = /(?:من|from|إلى|الى|to)\s*[:\-]?\s*(?:حساب|account|بطاق|card|\*|\d)/i.test(text);
   if ((!from || !to) && hasDirectionalCue) {
     const masked = Array.from(text.matchAll(MASKED_LAST4_RE))
-      .map((m) => m[1] ?? m[2] ?? m[3] ?? null)
+      .map((m) => {
+        // Groups 4+5: Saudi NNN*NNN format → combine and take last 4
+        if (m[4] && m[5]) return (m[4] + m[5]).slice(-4);
+        return m[1] ?? m[2] ?? m[3] ?? null;
+      })
       .filter((x): x is string => !!x);
     if (!from && masked.length >= 1) from = masked[0];
     if (!to && masked.length >= 2) to = masked[1];
+  }
+
+  // For single-account transfers, infer direction from incoming/outgoing keywords.
+  // "حوالة واردة" = incoming → account is destination (to), not source (from).
+  // "حوالة صادرة" = outgoing → account is source (from).
+  const INCOMING_RE = /واردة|واردت|وارد|incoming|received/i;
+  if (from && !to && INCOMING_RE.test(text)) {
+    to = from;
+    from = null;
   }
 
   return {
@@ -275,20 +316,33 @@ function extractDirectionalLast4(text: string): DirectionalLast4 {
 //   "تم إضافة 1000 جنيه لحسابكم" → income (bank SMS)
 
 const ARABIC_BANK_INCOMING = [
-  'تم إضافة',    // has been added
-  'تم اضافة',    // alternate spelling
-  'تم استلام',   // has been received
-  'تم ايداع',    // has been deposited
-  'تم إيداع',    // has been deposited (alt)
+  'تم إضافة',         // has been added
+  'تم اضافة',         // alternate spelling
+  'تم استلام',        // has been received
+  'تم ايداع',         // has been deposited
+  'تم إيداع',         // has been deposited (alt)
+  'ايداع رواتب',      // salary deposit
+  'إيداع رواتب',      // salary deposit (alt)
+  'ايداع راتب',       // salary deposit singular
+  'إيداع راتب',       // salary deposit singular (alt)
+  'ايداع نقدي',       // cash deposit
+  'إيداع نقدي',       // cash deposit (alt)
 ];
 
 const ARABIC_BANK_OUTGOING = [
-  'تم خصم',      // has been deducted
-  'تم إرسال',    // has been sent
-  'تم ارسال',    // alternate spelling
-  'تم الدفع',    // payment was made (full phrase, not just دفع)
-  'تم السحب',    // withdrawal was made
-  'تم سحب',      // was withdrawn
+  'تم خصم',           // has been deducted
+  'خصم قسط',          // installment deducted
+  'تم إرسال',         // has been sent
+  'تم ارسال',         // alternate spelling
+  'تم الدفع',         // payment was made (full phrase, not just دفع)
+  'تم السحب',         // withdrawal was made
+  'تم سحب',           // was withdrawn
+  'مدفوعات',          // payments (e.g. MOI government payments)
+  'قسط تمويل',        // loan installment
+  'سداد فاتورة',      // bill payment
+  'دفع فاتورة',       // bill payment (alt)
+  'عملية شراء',       // purchase operation
+  'سحب نقدي',         // cash withdrawal
 ];
 
 // Contextual cues reinforcing direction (secondary priority)
@@ -704,18 +758,29 @@ export function parseSmsToTransaction(message: string): ParsedTransaction | null
   const counterparty = extractBankSMSCounterparty(normalizedMessage, directionForCounterparty);
 
   // Build description — prefer counterparty over merchant for P2P
-  const person = counterparty || merchant;
-  const description = person
-    ? transactionType === 'income'
-      ? `Received from ${person}`
-      : transactionType === 'transfer'
-        ? `Transfer to ${person}`
-        : `Payment to ${person}`
-    : transactionType === 'income'
-      ? 'Incoming transfer'
-      : transactionType === 'transfer'
-        ? 'Internal transfer'
-        : 'Card payment';
+  const isCardSettlement = CARD_SETTLEMENT_TRANSFER_RE.test(normalizedMessage);
+  const isIncomingTransfer = /واردة|واردت|وارد|incoming|received/i.test(normalizedMessage);
+  const firstName = counterparty?.split(/\s+/)[0] ?? null;
+  const isInternal = directional.from_last4 && directional.to_last4;
+
+  let description: string;
+  if (transactionType === 'transfer') {
+    if (isCardSettlement) {
+      description = 'سداد بطاقة ائتمانية';
+    } else if (isInternal) {
+      description = 'تحويل داخلي';
+    } else if (isIncomingTransfer) {
+      description = firstName ? `تحويل من ${firstName}` : 'تحويل وارد';
+    } else {
+      description = firstName ? `تحويل إلى ${firstName}` : 'تحويل صادر';
+    }
+  } else if (transactionType === 'income') {
+    description = firstName ? `تحويل من ${firstName}` : (merchant ?? 'إيداع');
+  } else {
+    description = (counterparty || merchant)
+      ? `${counterparty || merchant}`
+      : 'Card payment';
+  }
 
   const { confidence, needsReview, reviewReason } = computeConfidence(
     amount,

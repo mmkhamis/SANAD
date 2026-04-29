@@ -3,7 +3,7 @@
 // pair: { original, lower } where lower is for case- and digit-insensitive
 // keyword scans.
 
-const BIDI_MARKS = /[‎‏‪-‮⁦-⁩﻿]/g;
+const BIDI_MARKS = /[\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFEFF\u00AD]/g;
 
 const ARABIC_INDIC_DIGITS: Record<string, string> = {
   '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',

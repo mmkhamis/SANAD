@@ -141,6 +141,50 @@ const MERCHANT_ALIASES: Record<string, string> = {
 
   // Fitness
   'fitness time': 'Fitness Time',
+  'gymnation': 'GymNation',
+
+  // Shipping & Logistics
+  'aramex': 'Aramex',
+  'smsa': 'SMSA',
+  'dhl': 'DHL',
+  'fedex': 'FedEx',
+  'naqel': 'Naqel',
+
+  // Airlines & Travel
+  'saudia': 'Saudia',
+  'saudi airlines': 'Saudia',
+  'flynas': 'Flynas',
+  'flyadeal': 'Flyadeal',
+  'emirates': 'Emirates',
+  'etihad': 'Etihad',
+  'almosafer': 'Almosafer',
+
+  // BNPL & Fintech
+  'tabby': 'Tabby',
+  'tamara': 'Tamara',
+  'stc pay': 'STC Pay',
+  'stcpay': 'STC Pay',
+  'mobily pay': 'Mobily Pay',
+  'mobilypay': 'Mobily Pay',
+  'urpay': 'urpay',
+  'fawry': 'Fawry',
+
+  // More Food & Delivery
+  'the chefz': 'The Chefz',
+  'chefz': 'The Chefz',
+  'wssel': 'Wssel',
+  'nana': 'Nana',
+  'dose': 'Dose Café',
+  'jeeny': 'Jeeny',
+  'leem': 'Leem',
+
+  // Home & DIY
+  'saco': 'SACO',
+
+  // Fuel
+  'aldrees': 'Aldrees',
+  'petromin': 'Petromin',
+  'naft': 'Naft',
 };
 
 /**

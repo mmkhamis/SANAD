@@ -7,7 +7,7 @@
 // completely cost-free in the normal (online) path.
 
 import React, { useEffect, useRef } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Animated, Text, View, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
@@ -19,7 +19,7 @@ const ANIMATION_DURATION = 260;
 
 export function OfflineBanner(): React.ReactElement | null {
   const { isOnline } = useNetworkStatus();
-  const { pendingCount, isReplaying } = useOfflineQueue();
+  const { pendingCount, isReplaying, clearQueue } = useOfflineQueue();
   const colors = useThemeColors();
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -51,7 +51,7 @@ export function OfflineBanner(): React.ReactElement | null {
         ? `Syncing ${pendingCount} pending item${pendingCount === 1 ? '' : 's'}…`
         : 'Syncing…';
   } else if (pendingCount > 0) {
-    label = `${pendingCount} item${pendingCount === 1 ? '' : 's'} pending sync`;
+    label = `${pendingCount} item${pendingCount === 1 ? '' : 's'} pending sync — tap to dismiss`;
   } else {
     label = '';
   }
@@ -73,7 +73,12 @@ export function OfflineBanner(): React.ReactElement | null {
       accessibilityLiveRegion="polite"
       accessibilityLabel={isVisible ? label : undefined}
     >
-      <View
+      <Pressable
+        onPress={() => {
+          if (isOnline && !isReplaying && pendingCount > 0) {
+            clearQueue();
+          }
+        }}
         style={{
           height: BANNER_HEIGHT + insets.top,
           backgroundColor: bgColor,
@@ -94,7 +99,7 @@ export function OfflineBanner(): React.ReactElement | null {
         >
           {label}
         </Text>
-      </View>
+      </Pressable>
     </Animated.View>
   );
 }

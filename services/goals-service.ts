@@ -4,8 +4,27 @@ import { supabase } from '../lib/supabase';
 import { translateCategory, t } from '../lib/i18n';
 import { fetchActiveBudgets } from './budget-service';
 import { fetchCategories, fetchCategoryGroups } from './category-service';
-import type { Budget, BudgetGoal, GoalsSummary, GoalStatus } from '../types/index';
+import type {
+  Budget,
+  BudgetGoal,
+  Category,
+  CategoryGroup,
+  GoalsSummary,
+  GoalStatus,
+  Transaction,
+} from '../types/index';
 import { formatAmount } from '../utils/currency';
+
+/**
+ * Optional pre-fetched data the dashboard already paid for. When supplied,
+ * we skip the Supabase round-trips and derive everything client-side.
+ */
+export interface GoalsSummaryHydration {
+  /** Full transaction rows for the requested month (any type, any flag). */
+  monthTransactions?: Transaction[];
+  categories?: Category[];
+  groups?: CategoryGroup[];
+}
 
 // ─── Compute period range from budget ────────────────────────────────
 
@@ -38,7 +57,10 @@ function getStatus(percent: number): GoalStatus {
 
 // ─── Fetch Goals Summary ─────────────────────────────────────────────
 
-export async function fetchGoalsSummary(month?: string): Promise<GoalsSummary> {
+export async function fetchGoalsSummary(
+  month?: string,
+  hydration?: GoalsSummaryHydration,
+): Promise<GoalsSummary> {
   const refDate = month ? new Date(`${month}-01`) : new Date();
   const monthRange = {
     start: format(startOfMonth(refDate), 'yyyy-MM-dd'),
@@ -47,8 +69,8 @@ export async function fetchGoalsSummary(month?: string): Promise<GoalsSummary> {
 
   const [budgets, categories, groups] = await Promise.all([
     fetchActiveBudgets(),
-    fetchCategories(),
-    fetchCategoryGroups(),
+    hydration?.categories ? Promise.resolve(hydration.categories) : fetchCategories(),
+    hydration?.groups ? Promise.resolve(hydration.groups) : fetchCategoryGroups(),
   ]);
 
   if (budgets.length === 0) {
@@ -63,23 +85,32 @@ export async function fetchGoalsSummary(month?: string): Promise<GoalsSummary> {
     };
   }
 
-  // Fetch all expense transactions in the month
-  const { data: txData, error } = await supabase
-    .from('transactions')
-    .select('amount, category_id')
-    .is('deleted_at', null)
-    .eq('exclude_from_insights', false)
-    .eq('type', 'expense')
-    .gte('date', monthRange.start)
-    .lte('date', monthRange.end);
-
-  if (error) throw new Error(error.message);
-
-  // Aggregate spending by category_id
+  // Aggregate spending by category_id — prefer the dashboard's pre-fetched
+  // snapshot (filtered + reduced client-side) over a fresh Supabase round-trip.
   const spendingMap = new Map<string, number>();
-  for (const tx of txData ?? []) {
-    if (tx.category_id) {
-      spendingMap.set(tx.category_id, (spendingMap.get(tx.category_id) ?? 0) + tx.amount);
+  if (hydration?.monthTransactions) {
+    for (const tx of hydration.monthTransactions) {
+      if (tx.type !== 'expense' || tx.exclude_from_insights) continue;
+      if (tx.category_id) {
+        spendingMap.set(tx.category_id, (spendingMap.get(tx.category_id) ?? 0) + tx.amount);
+      }
+    }
+  } else {
+    const { data: txData, error } = await supabase
+      .from('transactions')
+      .select('amount, category_id')
+      .is('deleted_at', null)
+      .eq('exclude_from_insights', false)
+      .eq('type', 'expense')
+      .gte('date', monthRange.start)
+      .lte('date', monthRange.end);
+
+    if (error) throw new Error(error.message);
+
+    for (const tx of txData ?? []) {
+      if (tx.category_id) {
+        spendingMap.set(tx.category_id, (spendingMap.get(tx.category_id) ?? 0) + tx.amount);
+      }
     }
   }
 

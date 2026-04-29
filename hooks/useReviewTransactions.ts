@@ -24,6 +24,10 @@ export function useUnreviewedTransactions(enabled = true): UseUnreviewedResult {
   const { data, isLoading, isError, error, refetch } = useQuery<Transaction[], Error>({
     queryKey: QUERY_KEYS.unreviewedTransactions,
     queryFn: fetchUnreviewedTransactions,
+    // Bumped from 0 → 5min. This list only grows via SMS ingest (which
+    // invalidates the key) so refetching on every dashboard re-mount was
+    // pure waste.
+    staleTime: 5 * 60 * 1000,
     enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 

@@ -26,6 +26,7 @@ import {
   TrendingDown,
   TrendingUp,
   Target,
+  Tag,
 } from 'lucide-react-native';
 import { CategoryIcon } from '../../components/ui/CategoryIcon';
 import { format } from 'date-fns';
@@ -55,6 +56,7 @@ import { useBenchmarks } from '../../hooks/useBenchmarks';
 import { useHabitInsights } from '../../hooks/useHabits';
 import { useSubscriptions } from '../../hooks/useSubscriptions';
 import { useGoals } from '../../hooks/useGoals';
+import { useOffers, type Offer } from '../../hooks/useOffers';
 import { formatCompactNumberLocale } from '../../utils/currency';
 import { useLanguageStore } from '../../store/language-store';
 import { usePrivacyStore, maskIfHidden } from '../../store/privacy-store';
@@ -78,7 +80,7 @@ import type { Subscription, BillingCycle } from '../../services/subscription-ser
 
 // ─── Types ────────────────────────────────────────────────────────────
 
-type ActiveSheet = 'money' | 'subscriptions' | 'tips' | null;
+type ActiveSheet = 'money' | 'subscriptions' | 'tips' | 'offers' | null;
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 
@@ -1298,6 +1300,166 @@ const SubscriptionsCard = React.memo(function SubscriptionsCard({ subs, hidden, 
   );
 });
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Card 4: Offers & Promos
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+interface OffersCardProps {
+  offers: Offer[];
+  onPress: () => void;
+}
+
+const OffersCard = React.memo(function OffersCard({ offers, onPress }: OffersCardProps): React.ReactElement {
+  const colors = useThemeColors();
+  const t = useT();
+  const { rowDir } = useRTL();
+
+  const previews = offers.slice(0, 3);
+  const uniqueBanks = [...new Set(offers.map((o) => o.institution_name).filter(Boolean))];
+
+  return (
+    <AnalyticsCard onPress={onPress} accentColor="#F59E0B" delay={240}>
+      <CardHeader icon={Tag} title={t('OFFERS')} iconColor="#F59E0B" />
+
+      <View style={{ flexDirection: rowDir, alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+        <View>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: '#F59E0B' }}>
+            {offers.length}
+          </Text>
+          <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>{t('OFFERS_COUNT')}</Text>
+        </View>
+        {uniqueBanks.length > 0 && (
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 12, color: colors.textTertiary }}>
+              {uniqueBanks.slice(0, 3).join(', ')}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {previews.length > 0 ? (
+        <>
+          <LinearGradient
+            colors={['transparent', colors.isDark ? 'rgba(100,116,139,0.2)' : 'rgba(203,213,225,0.4)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ height: 1, marginBottom: 12 }}
+          />
+          {previews.map((offer) => (
+            <View
+              key={offer.id}
+              style={{
+                flexDirection: rowDir,
+                alignItems: 'center',
+                marginBottom: 8,
+                gap: 8,
+              }}
+            >
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 7,
+                  backgroundColor: 'rgba(245,158,11,0.12)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Tag size={14} color="#F59E0B" />
+              </View>
+              <Text
+                numberOfLines={1}
+                style={{
+                  flex: 1,
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                }}
+              >
+                {offer.institution_name ? `${offer.institution_name}: ` : ''}
+                {offer.body.slice(0, 60)}
+              </Text>
+            </View>
+          ))}
+        </>
+      ) : (
+        <>
+          <LinearGradient
+            colors={['transparent', colors.isDark ? 'rgba(100,116,139,0.2)' : 'rgba(203,213,225,0.4)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ height: 1, marginBottom: 12 }}
+          />
+          <Text style={{ fontSize: 13, color: colors.textTertiary }}>{t('NO_OFFERS_YET')}</Text>
+        </>
+      )}
+    </AnalyticsCard>
+  );
+});
+
+// ─── Offers Sheet Content ─────────────────────────────────────────────
+
+function OffersSheetContent({ offers }: { offers: Offer[] }): React.ReactElement {
+  const colors = useThemeColors();
+  const t = useT();
+  const { isRTL, rowDir } = useRTL();
+
+  if (offers.length === 0) {
+    return (
+      <View style={{ padding: 48, alignItems: 'center' }}>
+        <Tag size={32} color={colors.textTertiary} />
+        <Text style={{ fontSize: 15, color: colors.textTertiary, textAlign: 'center', marginTop: 12 }}>
+          {t('NO_OFFERS_YET')}
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ gap: 12 }}>
+      {offers.map((offer) => {
+        const date = new Date(offer.received_at);
+        const dateStr = format(date, 'dd/MM');
+        return (
+          <View
+            key={offer.id}
+            style={{
+              backgroundColor: colors.isDark ? 'rgba(245,158,11,0.06)' : 'rgba(245,158,11,0.04)',
+              borderRadius: 12,
+              padding: 14,
+              borderWidth: 1,
+              borderColor: colors.isDark ? 'rgba(245,158,11,0.12)' : 'rgba(245,158,11,0.08)',
+            }}
+          >
+            <View style={{ flexDirection: rowDir, justifyContent: 'space-between', marginBottom: 8 }}>
+              {offer.institution_name ? (
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#F59E0B' }}>
+                  {offer.institution_name}
+                </Text>
+              ) : null}
+              <Text style={{ fontSize: 11, color: colors.textTertiary }}>{dateStr}</Text>
+            </View>
+            <Text
+              style={{
+                fontSize: 14,
+                color: colors.textSecondary,
+                lineHeight: 20,
+                textAlign: isRTL ? 'right' : 'left',
+              }}
+            >
+              {offer.body}
+            </Text>
+            {offer.cta_url ? (
+              <Text style={{ fontSize: 12, color: '#F59E0B', fontWeight: '600', marginTop: 8 }}>
+                {t('VIEW_OFFER')} →
+              </Text>
+            ) : null}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── Subscriptions Sheet Content ──────────────────────────────────────
 
 function SubscriptionsSheetContent({
@@ -1616,9 +1778,11 @@ function AnalyticsContent(): React.ReactElement {
   const { data: habitInsights } = useHabitInsights(selectedMonth);
   const { data: rawSubs } = useSubscriptions();
   const { data: goalsSummary } = useGoals(selectedMonth);
+  const { data: rawOffers } = useOffers();
   const hidden = usePrivacyStore((s) => s.hidden);
 
   const subscriptions: Subscription[] = rawSubs ?? [];
+  const offers: Offer[] = rawOffers ?? [];
 
   // ── Handlers ─────────────────────────────────────────────────────
   const refetchAll = useCallback((): void => {
@@ -1711,6 +1875,12 @@ function AnalyticsContent(): React.ReactElement {
           hidden={hidden}
           onPress={() => openSheet('subscriptions')}
         />
+
+        {/* ─── Card 4: Offers & Promos ─── */}
+        <OffersCard
+          offers={offers}
+          onPress={() => openSheet('offers')}
+        />
       </ScrollView>
 
       {/* ─── Money Analysis Sheet ─── */}
@@ -1749,6 +1919,13 @@ function AnalyticsContent(): React.ReactElement {
       <AnalyticsSheet visible={activeSheet === 'subscriptions'} onClose={closeSheet} title={t('SUBSCRIPTIONS')}>
         {activeSheet === 'subscriptions' ? (
           <SubscriptionsSheetContent subs={subscriptions} hidden={hidden} />
+        ) : null}
+      </AnalyticsSheet>
+
+      {/* ─── Offers Sheet ─── */}
+      <AnalyticsSheet visible={activeSheet === 'offers'} onClose={closeSheet} title={t('OFFERS')}>
+        {activeSheet === 'offers' ? (
+          <OffersSheetContent offers={offers} />
         ) : null}
       </AnalyticsSheet>
 

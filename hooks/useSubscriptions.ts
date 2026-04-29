@@ -24,7 +24,10 @@ export function useSubscriptions(enabled = true): {
   const { data, isLoading, isError, error, refetch } = useQuery<Subscription[], Error>({
     queryKey: QUERY_KEYS.subscriptions,
     queryFn: fetchSubscriptions,
-    staleTime: 10 * 60 * 1000,
+    // Subscriptions only change via explicit user mutation (which invalidates
+    // this key). Allow a long stale window so revisiting the home tab does
+    // not trigger needless background refetches.
+    staleTime: 30 * 60 * 1000,
     enabled: enabled && useAuthStore.getState().isAuthenticated,
   });
 

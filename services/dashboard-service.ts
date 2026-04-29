@@ -9,7 +9,11 @@ import {
 } from 'date-fns';
 
 import { supabase } from '../lib/supabase';
+import { fetchCategories, fetchCategoryGroups } from './category-service';
 import type {
+  Account,
+  Category,
+  CategoryGroup,
   MonthSummary,
   CategorySpending,
   Transaction,
@@ -29,72 +33,41 @@ function getMonthRange(month?: string): { start: string; end: string; month: str
   };
 }
 
-// ─── Month Summary ───────────────────────────────────────────────────
+const round2 = (n: number): number => Math.round(n * 100) / 100;
 
-export async function fetchMonthSummary(month?: string): Promise<MonthSummary> {
-  const range = getMonthRange(month);
+// ─── Pure derivers ───────────────────────────────────────────────────
+// Operate on a single in-memory snapshot of the current month's
+// transactions. Replaces three separate Supabase queries.
 
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('amount, type')
-    .is('deleted_at', null)
-    .eq('needs_review', false)
-    .eq('exclude_from_insights', false)
-    .gte('date', range.start)
-    .lte('date', range.end);
+function deriveMonthSummary(rows: Transaction[], monthKey: string): MonthSummary {
+  let income = 0;
+  let expense = 0;
+  let count = 0;
 
-  if (error) {
-    throw new Error(error.message);
+  for (const r of rows) {
+    if (r.exclude_from_insights) continue;
+    if (r.type === 'income') income += r.amount;
+    else if (r.type === 'expense') expense += r.amount;
+    count += 1;
   }
 
-  const rows = data ?? [];
-  let totalIncome = 0;
-  let totalExpense = 0;
-
-  for (const row of rows) {
-    if (row.type === 'income') {
-      totalIncome = Math.round((totalIncome + row.amount) * 100) / 100;
-    } else if (row.type === 'expense') {
-      totalExpense = Math.round((totalExpense + row.amount) * 100) / 100;
-    }
-  }
+  income = round2(income);
+  expense = round2(expense);
 
   return {
-    total_income: totalIncome,
-    total_expense: totalExpense,
-    net_balance: Math.round((totalIncome - totalExpense) * 100) / 100,
-    transaction_count: rows.length,
-    month: range.month,
+    total_income: income,
+    total_expense: expense,
+    net_balance: round2(income - expense),
+    transaction_count: count,
+    month: monthKey,
   };
 }
 
-// ─── Category Spending ───────────────────────────────────────────────
-
-export async function fetchCategorySpending(month?: string): Promise<CategorySpending[]> {
-  const range = getMonthRange(month);
-
-  // Fetch transactions + categories + groups in parallel
-  const [txResult, catResult, grpResult] = await Promise.all([
-    supabase
-      .from('transactions')
-      .select('amount, category_id, category_name, category_color, category_icon')
-      .is('deleted_at', null)
-      .eq('needs_review', false)
-      .eq('exclude_from_insights', false)
-      .eq('type', 'expense')
-      .gte('date', range.start)
-      .lte('date', range.end),
-    supabase.from('categories').select('id, group_id'),
-    supabase.from('category_groups').select('id, name, icon, color'),
-  ]);
-
-  if (txResult.error) throw new Error(txResult.error.message);
-
-  const rows = txResult.data ?? [];
-  const categories = catResult.data ?? [];
-  const groups = grpResult.data ?? [];
-
-  // Build lookup maps: category_id → group_id, group_id → group details
+function deriveCategorySpending(
+  rows: Transaction[],
+  categories: Category[],
+  groups: CategoryGroup[],
+): CategorySpending[] {
   const catToGroup = new Map<string, string>();
   for (const c of categories) {
     if (c.group_id) catToGroup.set(c.id, c.group_id);
@@ -104,95 +77,110 @@ export async function fetchCategorySpending(month?: string): Promise<CategorySpe
     groupMap.set(g.id, { name: g.name, icon: g.icon, color: g.color });
   }
 
-  const categoryMap = new Map<string, CategorySpending>();
-  let grandTotal = 0;
+  const map = new Map<string, CategorySpending>();
+  let total = 0;
 
-  for (const row of rows) {
-    grandTotal = Math.round((grandTotal + row.amount) * 100) / 100;
+  for (const r of rows) {
+    if (r.type !== 'expense' || r.exclude_from_insights) continue;
+    total = round2(total + r.amount);
 
-    // Resolve to parent group if available
-    const groupId = row.category_id ? catToGroup.get(row.category_id) : null;
+    const groupId = r.category_id ? catToGroup.get(r.category_id) : null;
     const group = groupId ? groupMap.get(groupId) : null;
+    const key = groupId ?? r.category_id ?? '__uncategorized__';
+    const displayName = group?.name ?? r.category_name ?? 'Uncategorized';
+    const displayIcon = group?.icon ?? r.category_icon ?? '📦';
+    const displayColor = group?.color ?? r.category_color ?? '#94A3B8';
 
-    // Use group as the key if available, otherwise fall back to category_id
-    const key = groupId ?? row.category_id ?? '__uncategorized__';
-    const displayName = group?.name ?? row.category_name;
-    const displayIcon = group?.icon ?? row.category_icon;
-    const displayColor = group?.color ?? row.category_color;
-
-    const existing = categoryMap.get(key);
-
+    const existing = map.get(key);
     if (existing) {
-      existing.total = Math.round((existing.total + row.amount) * 100) / 100;
+      existing.total = round2(existing.total + r.amount);
       existing.transaction_count += 1;
     } else {
-      categoryMap.set(key, {
+      map.set(key, {
         category_id: key,
         category_name: displayName,
         category_color: displayColor,
         category_icon: displayIcon,
-        total: row.amount,
+        total: r.amount,
         percentage: 0,
         transaction_count: 1,
       });
     }
   }
 
-  const result = Array.from(categoryMap.values())
-    .map((cat) => ({
-      ...cat,
-      percentage: grandTotal > 0 ? (cat.total / grandTotal) * 100 : 0,
-    }))
+  return Array.from(map.values())
+    .map((c) => ({ ...c, percentage: total > 0 ? (c.total / total) * 100 : 0 }))
     .sort((a, b) => b.total - a.total);
-
-  return result;
 }
 
-// ─── Recent Transactions ─────────────────────────────────────────────
-
-export async function fetchRecentTransactions(_month?: string): Promise<Transaction[]> {
-  const query = supabase
-    .from('transactions')
-    .select('*')
-    .is('deleted_at', null)
-    // Home "Recent" should prioritize what was just confirmed/edited/added,
-    // even if the transaction date itself is older (e.g. backfilled SMS).
-    .order('updated_at', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(DASHBOARD_RECENT_TRANSACTIONS_LIMIT);
-
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data as Transaction[]) ?? [];
+function deriveMonthExpenseTransactions(rows: Transaction[]): Transaction[] {
+  // Matches the legacy fetchMonthExpenseTransactions filter:
+  // type = 'expense' (includes needs_review and exclude_from_insights)
+  return rows
+    .filter((r) => r.type === 'expense')
+    .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-// ─── Month Expense Transactions (for budget ribbon) ──────────────────
+// ─── Cheap, focused queries used by the dashboard ────────────────────
 
-export async function fetchMonthExpenseTransactions(month?: string): Promise<Transaction[]> {
+/** Single fetch of the current month's full transaction rows. */
+async function fetchMonthTransactions(month?: string): Promise<Transaction[]> {
   const range = getMonthRange(month);
-
   const { data, error } = await supabase
     .from('transactions')
     .select('*')
     .is('deleted_at', null)
-    .eq('needs_review', false)
-    .eq('type', 'expense')
     .gte('date', range.start)
-    .lte('date', range.end)
-    .order('date', { ascending: false });
+    .lte('date', range.end);
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   return (data as Transaction[]) ?? [];
 }
 
-// ─── AI Insight ──────────────────────────────────────────────────────
+/** Lightweight totals-only fetch for the previous month. */
+async function fetchPrevMonthSummary(prevMonth: string): Promise<MonthSummary> {
+  const range = getMonthRange(prevMonth);
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('amount, type')
+    .is('deleted_at', null)
+    .eq('exclude_from_insights', false)
+    .gte('date', range.start)
+    .lte('date', range.end);
+
+  if (error) throw new Error(error.message);
+
+  let income = 0;
+  let expense = 0;
+  for (const row of data ?? []) {
+    if (row.type === 'income') income += row.amount;
+    else if (row.type === 'expense') expense += row.amount;
+  }
+
+  income = round2(income);
+  expense = round2(expense);
+
+  return {
+    total_income: income,
+    total_expense: expense,
+    net_balance: round2(income - expense),
+    transaction_count: (data ?? []).length,
+    month: range.month,
+  };
+}
+
+export async function fetchRecentTransactions(_month?: string): Promise<Transaction[]> {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .is('deleted_at', null)
+    .order('updated_at', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(DASHBOARD_RECENT_TRANSACTIONS_LIMIT);
+
+  if (error) throw new Error(error.message);
+  return (data as Transaction[]) ?? [];
+}
 
 export async function fetchLatestAIInsight(): Promise<AIInsight | null> {
   const { data, error } = await supabase
@@ -203,53 +191,62 @@ export async function fetchLatestAIInsight(): Promise<AIInsight | null> {
     .limit(1)
     .maybeSingle();
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
+  if (error) throw new Error(error.message);
   return (data as AIInsight | null) ?? null;
 }
 
-// ─── Combined Dashboard ──────────────────────────────────────────────
-
-/** Compute live balance: sum of current_balance across included accounts.
- *  current_balance is atomically adjusted on every transaction via adjustAccountBalance,
- *  and updated directly when the user sets a new balance. */
-async function fetchComputedBalance(): Promise<number> {
-  const { data: accountsData } = await supabase
+async function fetchAccountsForBalance(): Promise<Account[]> {
+  const { data, error } = await supabase
     .from('accounts')
-    .select('current_balance, include_in_total');
+    .select('*')
+    .order('created_at', { ascending: true });
 
-  const includedAccts = (accountsData ?? []).filter(
-    (a: { include_in_total: boolean }) => a.include_in_total,
-  );
-
-  if (includedAccts.length === 0) return 0;
-
-  const total = includedAccts.reduce(
-    (s: number, a: { current_balance: number }) => s + a.current_balance,
-    0,
-  );
-
-  return Math.round(total * 100) / 100;
+  if (error) throw new Error(error.message);
+  return (data as Account[]) ?? [];
 }
 
-export async function fetchDashboardData(month?: string): Promise<DashboardData> {
-  // Compute previous month string
-  const currentDate = month ? new Date(`${month}-01`) : new Date();
-  const prevDate = subMonths(currentDate, 1);
-  const prevMonth = format(prevDate, 'yyyy-MM');
+function computeBalanceFromAccounts(accounts: Account[]): number {
+  const total = accounts
+    .filter((a) => a.include_in_total)
+    .reduce((s, a) => s + a.current_balance, 0);
+  return round2(total);
+}
 
-  const [summary, prevSummary, categorySpending, recentTransactions, monthExpenseTxns, aiInsight, computedBalance] =
+// ─── Combined Dashboard ──────────────────────────────────────────────
+//
+// One trip fan-out:
+//   1. all current-month transactions (covers summary + category spending +
+//      budget ribbon + downstream caches like goals/habits)
+//   2. prev-month summary totals (lightweight, amount/type only)
+//   3. recent transactions (cross-month, ordered by updated_at)
+//   4. accounts (full rows — reused to compute balance AND seeded into
+//      the accounts query cache by useDashboard)
+//   5. categories + category groups (cached for 15+ min via category-service)
+//   6. ai insight (latest unread)
+//
+// Total: 6 parallel network calls instead of the previous 9, and the
+// current-month transactions table is now read once instead of three times.
+
+export async function fetchDashboardData(month?: string): Promise<DashboardData> {
+  const currentDate = month ? new Date(`${month}-01`) : new Date();
+  const prevMonth = format(subMonths(currentDate, 1), 'yyyy-MM');
+  const range = getMonthRange(month);
+
+  const [monthTxns, prevSummary, recentTransactions, accounts, categories, groups, aiInsight] =
     await Promise.all([
-      fetchMonthSummary(month),
-      fetchMonthSummary(prevMonth),
-      fetchCategorySpending(month),
-      fetchRecentTransactions(month),
-      fetchMonthExpenseTransactions(month),
+      fetchMonthTransactions(month),
+      fetchPrevMonthSummary(prevMonth),
+      fetchRecentTransactions(),
+      fetchAccountsForBalance(),
+      fetchCategories(),
+      fetchCategoryGroups(),
       fetchLatestAIInsight(),
-      fetchComputedBalance(),
     ]);
+
+  const summary = deriveMonthSummary(monthTxns, range.month);
+  const categorySpending = deriveCategorySpending(monthTxns, categories, groups);
+  const monthExpenseTxns = deriveMonthExpenseTransactions(monthTxns);
+  const computedBalance = computeBalanceFromAccounts(accounts);
 
   return {
     summary,
@@ -259,7 +256,85 @@ export async function fetchDashboardData(month?: string): Promise<DashboardData>
     month_expense_transactions: monthExpenseTxns,
     ai_insight: aiInsight,
     computed_balance: computedBalance,
+    // Hydration payload — consumed by useDashboard to seed sibling caches
+    // so deferred queries (useAccounts, useCategories, useGoals,
+    // useHabitInsights) become instant cache hits on cold start.
+    _hydration: {
+      accounts,
+      categories,
+      groups,
+      month_transactions: monthTxns,
+    },
   };
+}
+
+// ─── Legacy single-purpose exports (kept for back-compat) ────────────
+
+export async function fetchMonthSummary(month?: string): Promise<MonthSummary> {
+  const range = getMonthRange(month);
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('amount, type')
+    .is('deleted_at', null)
+    .eq('exclude_from_insights', false)
+    .gte('date', range.start)
+    .lte('date', range.end);
+
+  if (error) throw new Error(error.message);
+
+  let income = 0;
+  let expense = 0;
+  for (const row of data ?? []) {
+    if (row.type === 'income') income += row.amount;
+    else if (row.type === 'expense') expense += row.amount;
+  }
+  income = round2(income);
+  expense = round2(expense);
+
+  return {
+    total_income: income,
+    total_expense: expense,
+    net_balance: round2(income - expense),
+    transaction_count: (data ?? []).length,
+    month: range.month,
+  };
+}
+
+export async function fetchCategorySpending(month?: string): Promise<CategorySpending[]> {
+  const range = getMonthRange(month);
+  const [txResult, catResult, grpResult] = await Promise.all([
+    supabase
+      .from('transactions')
+      .select('amount, type, needs_review, exclude_from_insights, category_id, category_name, category_color, category_icon')
+      .is('deleted_at', null)
+      .gte('date', range.start)
+      .lte('date', range.end),
+    supabase.from('categories').select('id, group_id'),
+    supabase.from('category_groups').select('id, name, icon, color'),
+  ]);
+
+  if (txResult.error) throw new Error(txResult.error.message);
+
+  return deriveCategorySpending(
+    (txResult.data ?? []) as Transaction[],
+    (catResult.data ?? []) as Category[],
+    (grpResult.data ?? []) as CategoryGroup[],
+  );
+}
+
+export async function fetchMonthExpenseTransactions(month?: string): Promise<Transaction[]> {
+  const range = getMonthRange(month);
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .is('deleted_at', null)
+    .eq('type', 'expense')
+    .gte('date', range.start)
+    .lte('date', range.end)
+    .order('date', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data as Transaction[]) ?? [];
 }
 
 // ─── Expense Trend (day / week / month) ──────────────────────────────
@@ -274,11 +349,9 @@ export async function fetchExpenseTrend(
   let end: Date;
 
   if (mode === 'month') {
-    // Last 12 months
     start = startOfMonth(subYears(now, 1));
     end = endOfMonth(now);
   } else {
-    // Current month for day / week
     start = startOfMonth(now);
     end = endOfMonth(now);
   }
@@ -290,7 +363,6 @@ export async function fetchExpenseTrend(
     .from('transactions')
     .select('amount, date')
     .is('deleted_at', null)
-    .eq('needs_review', false)
     .eq('type', 'expense')
     .eq('exclude_from_insights', false)
     .gte('date', startStr)
@@ -309,7 +381,7 @@ export async function fetchExpenseTrend(
         .reduce((s, r) => s + r.amount, 0);
       return {
         label: format(day, 'd'),
-        value: Math.round(total * 100) / 100,
+        value: round2(total),
         fullLabel: format(day, 'MMM d'),
       };
     });
@@ -326,13 +398,12 @@ export async function fetchExpenseTrend(
       }).reduce((s, r) => s + r.amount, 0);
       return {
         label: `W${idx + 1}`,
-        value: Math.round(total * 100) / 100,
+        value: round2(total),
         fullLabel: `${format(weekStart, 'MMM d')} – ${format(clampedEnd, 'MMM d')}`,
       };
     });
   }
 
-  // mode === 'month'
   const months = eachMonthOfInterval({ start, end });
   return months.map((m) => {
     const mStart = startOfMonth(m);
@@ -343,7 +414,7 @@ export async function fetchExpenseTrend(
     }).reduce((s, r) => s + r.amount, 0);
     return {
       label: format(m, 'MMM'),
-      value: Math.round(total * 100) / 100,
+      value: round2(total),
       fullLabel: format(m, 'MMM yyyy'),
     };
   });

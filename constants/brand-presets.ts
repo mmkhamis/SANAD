@@ -178,6 +178,59 @@ export const FITNESS_BRANDS: BrandPreset[] = [
   { nameEn: 'GymNation', nameAr: 'جيم نيشن', logo: gFav('gymnation.com'), category: 'Fitness & Sports', icon: 'dumbbell', domain: 'gymnation.com', aliases: ['gymnation', 'جيم نيشن'] },
 ];
 
+// ─── Shipping & Logistics ───────────────────────────────────────────
+
+export const SHIPPING_BRANDS: BrandPreset[] = [
+  { nameEn: 'Aramex', nameAr: 'أرامكس', logo: gFav('aramex.com'), category: 'Shipping', icon: 'truck', domain: 'aramex.com', aliases: ['aramex', 'أرامكس'] },
+  { nameEn: 'SMSA', nameAr: 'سمسا', logo: gFav('smsaexpress.com'), category: 'Shipping', icon: 'truck', domain: 'smsaexpress.com', aliases: ['smsa', 'سمسا'] },
+  { nameEn: 'DHL', nameAr: 'دي إتش إل', logo: gFav('dhl.com'), category: 'Shipping', icon: 'truck', domain: 'dhl.com', aliases: ['dhl'] },
+  { nameEn: 'FedEx', nameAr: 'فيدكس', logo: gFav('fedex.com'), category: 'Shipping', icon: 'truck', domain: 'fedex.com', aliases: ['fedex', 'فيدكس'] },
+  { nameEn: 'Naqel', nameAr: 'ناقل', logo: gFav('naqelexpress.com'), category: 'Shipping', icon: 'truck', domain: 'naqelexpress.com', aliases: ['naqel', 'ناقل'] },
+];
+
+// ─── Airlines & Travel ──────────────────────────────────────────────
+
+export const TRAVEL_BRANDS: BrandPreset[] = [
+  { nameEn: 'Saudia', nameAr: 'الخطوط السعودية', logo: gFav('saudia.com'), category: 'Travel', icon: 'plane', domain: 'saudia.com', aliases: ['saudia', 'saudi airlines', 'الخطوط السعودية', 'السعودية'] },
+  { nameEn: 'Flynas', nameAr: 'طيران ناس', logo: gFav('flynas.com'), category: 'Travel', icon: 'plane', domain: 'flynas.com', aliases: ['flynas', 'طيران ناس', 'ناس'] },
+  { nameEn: 'Flyadeal', nameAr: 'طيران أديل', logo: gFav('flyadeal.com'), category: 'Travel', icon: 'plane', domain: 'flyadeal.com', aliases: ['flyadeal', 'طيران أديل', 'اديل'] },
+  { nameEn: 'Emirates', nameAr: 'طيران الإمارات', logo: gFav('emirates.com'), category: 'Travel', icon: 'plane', domain: 'emirates.com', aliases: ['emirates', 'طيران الإمارات'] },
+  { nameEn: 'Etihad', nameAr: 'الاتحاد للطيران', logo: gFav('etihad.com'), category: 'Travel', icon: 'plane', domain: 'etihad.com', aliases: ['etihad', 'الاتحاد'] },
+  { nameEn: 'Booking.com', nameAr: 'بوكنج', logo: gFav('booking.com'), category: 'Travel', icon: 'hotel', domain: 'booking.com', aliases: ['booking', 'booking.com', 'بوكنج'] },
+  { nameEn: 'Almosafer', nameAr: 'المسافر', logo: gFav('almosafer.com'), category: 'Travel', icon: 'plane', domain: 'almosafer.com', aliases: ['almosafer', 'المسافر'] },
+];
+
+// ─── BNPL & Fintech ─────────────────────────────────────────────────
+
+export const FINTECH_BRANDS: BrandPreset[] = [
+  { nameEn: 'Tabby', nameAr: 'تابي', logo: gFav('tabby.ai'), category: 'BNPL', icon: 'credit-card', domain: 'tabby.ai', aliases: ['tabby', 'تابي'] },
+  { nameEn: 'Tamara', nameAr: 'تمارا', logo: gFav('tamara.co'), category: 'BNPL', icon: 'credit-card', domain: 'tamara.co', aliases: ['tamara', 'تمارا'] },
+  { nameEn: 'STC Pay', nameAr: 'اس تي سي باي', logo: gFav('stcpay.com.sa'), category: 'Wallet', icon: 'wallet', domain: 'stcpay.com.sa', aliases: ['stc pay', 'stcpay', 'اس تي سي باي'] },
+  { nameEn: 'Mobily Pay', nameAr: 'موبايلي باي', logo: gFav('mobilypay.com.sa'), category: 'Wallet', icon: 'wallet', domain: 'mobilypay.com.sa', aliases: ['mobily pay', 'mobilypay', 'موبايلي باي'] },
+  { nameEn: 'urpay', nameAr: 'يورباي', logo: gFav('urpay.com.sa'), category: 'Wallet', icon: 'wallet', domain: 'urpay.com.sa', aliases: ['urpay', 'يورباي'] },
+  { nameEn: 'Fawry', nameAr: 'فوري', logo: gFav('fawry.com'), category: 'Payments', icon: 'credit-card', domain: 'fawry.com', aliases: ['fawry', 'فوري'] },
+];
+
+// ─── More Food & Cafes ──────────────────────────────────────────────
+
+export const MORE_FOOD_BRANDS: BrandPreset[] = [
+  { nameEn: 'The Chefz', nameAr: 'ذا شفز', logo: gFav('thechefz.com'), category: 'Food & Dining', icon: 'chef-hat', domain: 'thechefz.com', aliases: ['the chefz', 'chefz', 'ذا شفز'] },
+  { nameEn: 'Wssel', nameAr: 'وصّل', logo: gFav('wssel.com'), category: 'Food & Dining', icon: 'bike', domain: 'wssel.com', aliases: ['wssel', 'وصل'] },
+  { nameEn: 'Nana', nameAr: 'نعناع', logo: gFav('nana.sa'), category: 'Groceries', icon: 'shopping-cart', domain: 'nana.sa', aliases: ['nana', 'نعناع'] },
+  { nameEn: 'Dose Café', nameAr: 'دوز كافيه', logo: gFav('dosecafe.com'), category: 'Food & Dining', icon: 'coffee', domain: 'dosecafe.com', aliases: ['dose', 'dose cafe', 'دوز'] },
+  { nameEn: 'Jeeny', nameAr: 'جيني', logo: gFav('jeeny.com'), category: 'Transportation', icon: 'car-taxi-front', domain: 'jeeny.com', aliases: ['jeeny', 'جيني'] },
+  { nameEn: 'Leem', nameAr: 'ليم', logo: gFav('leem.sa'), category: 'Transportation', icon: 'car-taxi-front', domain: 'leem.sa', aliases: ['leem', 'ليم'] },
+];
+
+// ─── Government & Services ──────────────────────────────────────────
+
+export const GOVT_BRANDS: BrandPreset[] = [
+  { nameEn: 'SACO', nameAr: 'ساكو', logo: gFav('sfranchise.com'), category: 'Shopping', icon: 'wrench', domain: 'sfranchise.com', aliases: ['saco', 'ساكو'] },
+  { nameEn: 'Aldrees', nameAr: 'الدريس', logo: gFav('aldrees.com'), category: 'Transportation', icon: 'fuel', domain: 'aldrees.com', aliases: ['aldrees', 'الدريس'] },
+  { nameEn: 'Petromin', nameAr: 'بترومين', logo: gFav('petromin.com'), category: 'Transportation', icon: 'fuel', domain: 'petromin.com', aliases: ['petromin', 'بترومين'] },
+  { nameEn: 'Naft', nameAr: 'نفط', logo: null, category: 'Transportation', icon: 'fuel', domain: null, aliases: ['naft', 'نفط'] },
+];
+
 // ─── Combined ────────────────────────────────────────────────────────
 
 export const ALL_BRAND_PRESETS: BrandPreset[] = [
@@ -193,6 +246,11 @@ export const ALL_BRAND_PRESETS: BrandPreset[] = [
   ...HOME_BRANDS,
   ...EDUCATION_BRANDS,
   ...FITNESS_BRANDS,
+  ...SHIPPING_BRANDS,
+  ...TRAVEL_BRANDS,
+  ...FINTECH_BRANDS,
+  ...MORE_FOOD_BRANDS,
+  ...GOVT_BRANDS,
 ];
 
 // ─── Lookup helpers ──────────────────────────────────────────────────

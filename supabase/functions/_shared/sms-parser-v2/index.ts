@@ -18,16 +18,55 @@ export * from './types.ts';
 export { buildDedupKey, bodyHash } from './dedup.ts';
 export { shouldCallAI, callAI, mergeRulesAndAI } from './ai-fallback.ts';
 export { SYSTEM_PROMPT, buildUserMessage } from './ai-prompt.ts';
+export { redactPII } from './redact-pii.ts';
 
 // Hard debit verbs — absolute priority over income verb check.
-// "شراء" (purchase), "تم خصم" (deducted) are unambiguous expense verbs.
-const HARD_DEBIT_RE = /(شراء|تم خصم|pos\b|purchase)/i;
+// Unambiguous expense signals that can NEVER be income/transfer.
+const HARD_DEBIT_RE = /(شراء|عمليه شراء|تم خصم|خصم\s+قسط|pos\b|purchase|نقطه بيع|transaction approved|cash out|merchant payment)/i;
 
-// Regexes applied against ORIGINAL text (not lower) so Arabic chars stay
-// verbatim. /i covers Latin case.
-const REFUND_RE = /(refund|cashback|reverse|تم استرجاع|استرجاع\s+مبلغ|استرداد\s+مبلغ|استرداد\s+نقدي)/i;
-const INCOME_VERB_RE = /(deposited|credited|تم إضافة|إيداع|تم تحويل\s+لك|راتب|salary|تم استلام)/i;
-const TRANSFER_VERB_RE = /(تحويل|transfer|transferred)/i;
+// All Arabic patterns below use NORMALIZED forms (أ/إ/آ→ا, ة→ه, ى→ي, diacritics stripped)
+// to match against the `lower` view from normalize().
+//
+// ── INCOME: unambiguous credit signals ──
+// "ايداع" = deposit, "راتب/رواتب" = salary, "تم اضافه" = was added, etc.
+const INCOME_VERB_RE = new RegExp([
+  // Arabic compound (high confidence — check first)
+  'تم اضافه', 'تم استلام', 'تم ايداع',
+  'ايداع رواتب', 'ايداع راتب', 'ايداع نقدي',
+  // Arabic single words (pure income — no transfer ambiguity)
+  'ايداع', 'راتب', 'رواتب', 'مرتب', 'مرتبات',
+  'اجر', 'اجور', 'معاش', 'مكافاه', 'بدل',
+  // English
+  'deposited', 'credited', 'salary', 'wage', 'payroll',
+  'pension', 'bonus', 'allowance',
+  // Arabic personal verbs (P2P incoming)
+  'تم تحويل\\s+لك',
+].join('|'), 'i');
+
+// ── REFUND: explicit reverse/return signals ──
+// MUST be checked BEFORE income because "reversal" + "credited" both appear in refund SMS
+const REFUND_RE = /(refund|cashback|reverse|reversal|reversed|online reversal|تم استرجاع|استرجاع\s+مبلغ|استرداد\s+مبلغ|استرداد\s+نقدي)/i;
+
+// ── TRANSFER: money movement between accounts ──
+// "تحويل" = transfer, "حواله" = remittance, "سداد بطاقه" = card settlement
+const TRANSFER_VERB_RE = new RegExp([
+  // Arabic compound
+  'تحويل لحظي', 'تحويل بنكي', 'تحويل صادر',
+  'حواله صادره', 'حواله محليه', 'حواله دوليه', 'حواله سريعه',
+  'سداد\\s+بطاق[هة]\\s*ائتمان', 'سداد\\s+بطاقه',
+  'تم تحويل',
+  // Arabic single (only "حواله" — "تحويل" needs structural context to avoid
+  // false positives on "تحويل وارد" which is income)
+  'حواله',
+  // English
+  'transfer', 'transferred', 'remittance',
+  // Wallet patterns
+  'top up', 'p2p transfer',
+].join('|'), 'i');
+
+// ── GOVERNMENT / BILL PAYMENT: expense with gov/utility context ──
+// "سداد" alone is too broad (also matches card settlement). Require "فاتوره" or gov keywords.
+const GOVT_PAYMENT_RE = /(مدفوعات|سداد\s+فاتور|دفع\s+فاتور|فاتوره|مخالف|غرامه|fine|penalty|violation|government payment|rent payment|tuition payment|bill paid|bank fee|fee\/charge)/i;
 
 export function parseSms(rawText: string, ctx: ParseContext = {}): ParseResult {
   const { original, lower } = normalize(rawText);
@@ -77,18 +116,22 @@ export function parseSms(rawText: string, ctx: ParseContext = {}): ParseResult {
   const last4 = extractLast4(original);
   const transfer = isTransfer(original, last4);
 
-  // Class precedence:
-  //  - hard debit verbs (شراء/تم خصم/purchase/POS) win first — unambiguous expense
-  //  - income only when "تم إضافة"/"deposited" is present WITHOUT a hard debit verb
-  //  - refund only when an explicit reverse/refund verb is present
-  //  - transfer when both from+to last4 hits OR transfer verb present
-  //  - purchase otherwise (with a debit verb + amount)
+  // Class precedence (run against `lower` for normalized Arabic matching):
+  //  0. Hard debit verbs FIRST — "شراء"/"خصم قسط" are NEVER transfers or income.
+  //  1. Income verbs — "ايداع رواتب"/"راتب" beat generic transfer keywords.
+  //     Without this, "ايداع" loses to "تحويل" if both appear in the message.
+  //  2. Refund — explicit reverse/return verbs.
+  //  3. Transfer — structural (from+to hits) or transfer keywords.
+  //     "حوالة واردة" is a transfer, not income.
+  //  4. Government/bill payment.
+  //  5. Any remaining debit verb with an amount = purchase.
   let messageClass: MessageClass = 'unknown';
-  if (HARD_DEBIT_RE.test(original) && amt.amount !== null) messageClass = 'purchase';
-  else if (INCOME_VERB_RE.test(original)) messageClass = 'income';
-  else if (REFUND_RE.test(original)) messageClass = 'refund';
-  else if (transfer || TRANSFER_VERB_RE.test(original)) messageClass = 'transfer';
-  else if (DEBIT_VERB_RE.test(original) && amt.amount !== null) messageClass = 'purchase';
+  if (HARD_DEBIT_RE.test(lower) && amt.amount !== null) messageClass = 'purchase';
+  else if (REFUND_RE.test(lower)) messageClass = 'refund';
+  else if (INCOME_VERB_RE.test(lower)) messageClass = 'income';
+  else if (GOVT_PAYMENT_RE.test(lower) && amt.amount !== null) messageClass = 'purchase';
+  else if (transfer || TRANSFER_VERB_RE.test(lower)) messageClass = 'transfer';
+  else if (DEBIT_VERB_RE.test(lower) && amt.amount !== null) messageClass = 'purchase';
 
   const isPurchase = messageClass === 'purchase';
   const isIncoming = messageClass === 'income' || messageClass === 'refund';
@@ -137,12 +180,34 @@ export function parseSms(rawText: string, ctx: ParseContext = {}): ParseResult {
   const cardHit = mapped.find((h) => h.role === 'card');
   const acctHit = mapped.find((h) => h.role === 'account');
 
+  // For transfers with only 'account' hits (no from/to role), infer direction
+  // from "واردة/وارد" (incoming) vs "صادرة/صادر" (outgoing) keywords.
+  const INCOMING_DIR_RE = /(وارده|وارد|incoming|received|تم استلام|تم اضافه)/i;
+  const OUTGOING_DIR_RE = /(صادره|صادر|outgoing|sent)/i;
+  let inferredFromHit = fromHit;
+  let inferredToHit = toHit;
+  if (messageClass === 'transfer' && !fromHit && !toHit && acctHit) {
+    if (INCOMING_DIR_RE.test(lower)) {
+      // Incoming transfer: the account is the destination (user's own)
+      inferredToHit = acctHit;
+    } else if (OUTGOING_DIR_RE.test(lower)) {
+      // Outgoing transfer: the account is the source
+      inferredFromHit = acctHit;
+    } else {
+      // Ambiguous direction — default to source (outgoing)
+      inferredFromHit = acctHit;
+    }
+  }
+
   if (own.isInternalTransfer) messageClass = 'transfer';
 
   const verbIdx = original.toLowerCase().search(DEBIT_VERB_RE);
   const amountIdx = amt.amount !== null ? original.search(/\d/) : -1;
   const amountNearVerb = verbIdx !== -1 && amountIdx !== -1 && Math.abs(verbIdx - amountIdx) <= 80;
   const mixedScript = /[A-Za-z]/.test(original) && /[؀-ۿ]/.test(original);
+  // Don't flag mixed_script when the only Latin chars are currency codes or common bank terms
+  const latinOnly = original.replace(/\b(SAR|EGP|AED|USD|EUR|GBP|KWD|QAR|BHD|OMR|JOD|POS|ATM|PIN|OTP|SMS|STC|mada|MADA)\b/gi, '');
+  const trueMixedScript = mixedScript && /[A-Za-z]{3,}/.test(latinOnly);
 
   const merchantSource: Parameters<typeof score>[0]['merchantSource'] =
     merch.merchant_raw ? 'extracted'
@@ -152,8 +217,8 @@ export function parseSms(rawText: string, ctx: ParseContext = {}): ParseResult {
   const reviewFlags: string[] = [];
   if (merch.missing_merchant) reviewFlags.push('missing_merchant');
   if (amt.amountConflict) reviewFlags.push('amount_conflict');
-  if (mixedScript) reviewFlags.push('mixed_script');
-  if (own.hits.length >= 2 && !own.isInternalTransfer && !fromHit?.ownedAccountId && !toHit?.ownedAccountId) {
+  if (trueMixedScript) reviewFlags.push('mixed_script');
+  if (own.hits.length >= 2 && !own.isInternalTransfer && !inferredFromHit?.ownedAccountId && !inferredToHit?.ownedAccountId) {
     reviewFlags.push('unknown_transfer');
   }
 
@@ -195,8 +260,8 @@ export function parseSms(rawText: string, ctx: ParseContext = {}): ParseResult {
 
     source_account_last4: messageClass !== 'transfer' ? (effectiveAcctHit?.digits ?? null) : null,
     source_card_last4:    messageClass !== 'transfer' ? (effectiveCardHit?.digits ?? null) : null,
-    from_last4: messageClass === 'transfer' ? (fromHit?.digits ?? null) : null,
-    to_last4:   messageClass === 'transfer' ? (toHit?.digits ?? null)   : null,
+    from_last4: messageClass === 'transfer' ? (inferredFromHit?.digits ?? null) : null,
+    to_last4:   messageClass === 'transfer' ? (inferredToHit?.digits ?? null)   : null,
     counterparty_name: counterparty,
 
     ignored_values: amt.ignored,

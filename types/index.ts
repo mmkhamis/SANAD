@@ -60,6 +60,8 @@ export interface Transaction {
   to_last4?: string | null;
   ignored_values?: Array<{ kind: string; value: string }> | null;
   account_id: string | null;
+  from_account_id?: string | null;
+  to_account_id?: string | null;
   exclude_from_insights: boolean;
   deleted_at: string | null;
   created_at: string;
@@ -325,6 +327,18 @@ export interface DashboardData {
   ai_insight: AIInsight | null;
   /** Computed balance: sum(balance_snapshot) + income − expenses since each account's balance_set_at */
   computed_balance: number;
+  /**
+   * Internal hydration payload — written by `fetchDashboardData` and consumed
+   * by `useDashboard` to seed sibling react-query caches (accounts, categories,
+   * category-groups, raw month transactions) so deferred queries resolve from
+   * cache without an extra round-trip. Stripped before downstream UI sees it.
+   */
+  _hydration?: {
+    accounts: Account[];
+    categories: Category[];
+    groups: CategoryGroup[];
+    month_transactions: Transaction[];
+  };
 }
 
 // ─── Spending Habits ─────────────────────────────────────────────────

@@ -265,6 +265,12 @@ export const LiquidGlassFab = React.memo(function LiquidGlassFab({
   const fabLeft = containerW - FAB_SIZE - PAD;
   const fabTop = containerH - FAB_SIZE - PAD;
 
+  // The arc fan area must NOT receive taps while the menu is closed — only
+  // the FAB itself does. We achieve that by wrapping the GestureDetector
+  // around the FAB-sized box only; the bubbles, pulse rings, and press-ring
+  // sit as siblings with pointerEvents="none". Once the Pan gesture activates
+  // on the FAB, react-native-gesture-handler keeps tracking the finger across
+  // the rest of the screen, so the radial drag still works.
   return (
     <View
       pointerEvents="box-none"
@@ -276,98 +282,96 @@ export const LiquidGlassFab = React.memo(function LiquidGlassFab({
         bottom: bottom - PAD,
       }}
     >
-      <GestureDetector gesture={gesture}>
-        <View style={{ width: containerW, height: containerH }}>
-          {/* Radial options */}
-          {OPTIONS.map((_, i) => (
-            <OptionBubble
-              key={i}
-              index={i}
-              theme={theme}
-              isMenuOpen={isMenuOpen}
-              activeIndex={activeIndex}
-              fabLeft={fabLeft}
-              fabTop={fabTop}
-            />
-          ))}
+      {/* Radial options */}
+      {OPTIONS.map((_, i) => (
+        <OptionBubble
+          key={i}
+          index={i}
+          theme={theme}
+          isMenuOpen={isMenuOpen}
+          activeIndex={activeIndex}
+          fabLeft={fabLeft}
+          fabTop={fabTop}
+        />
+      ))}
 
-          {/* Listening pulse rings */}
-          {isListening && (
-            <>
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  {
-                    position: 'absolute',
-                    left: fabLeft - 8,
-                    top: fabTop - 8,
-                    width: FAB_SIZE + 16,
-                    height: FAB_SIZE + 16,
-                    borderRadius: (FAB_SIZE + 16) / 2,
-                    borderWidth: 2,
-                    borderColor: COLORS.claude.p500,
-                  },
-                  ringAStyle,
-                ]}
-              />
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  {
-                    position: 'absolute',
-                    left: fabLeft - 8,
-                    top: fabTop - 8,
-                    width: FAB_SIZE + 16,
-                    height: FAB_SIZE + 16,
-                    borderRadius: (FAB_SIZE + 16) / 2,
-                    borderWidth: 2,
-                    borderColor: COLORS.claude.p500,
-                  },
-                  ringBStyle,
-                ]}
-              />
-            </>
-          )}
-
-          {/* Press-ring indicator — fills as user holds */}
+      {/* Listening pulse rings */}
+      {isListening && (
+        <>
           <Animated.View
             pointerEvents="none"
             style={[
               {
                 position: 'absolute',
-                left: fabLeft - 7,
-                top: fabTop - 7,
-                width: FAB_SIZE + 14,
-                height: FAB_SIZE + 14,
-                borderRadius: (FAB_SIZE + 14) / 2,
+                left: fabLeft - 8,
+                top: fabTop - 8,
+                width: FAB_SIZE + 16,
+                height: FAB_SIZE + 16,
+                borderRadius: (FAB_SIZE + 16) / 2,
                 borderWidth: 2,
                 borderColor: COLORS.claude.p500,
               },
-              pressRingStyle,
+              ringAStyle,
             ]}
           />
-
-          {/* Main FAB — Liquid Glass */}
           <Animated.View
+            pointerEvents="none"
             style={[
-              { position: 'absolute', left: fabLeft, top: fabTop },
-              fabContainerStyle,
+              {
+                position: 'absolute',
+                left: fabLeft - 8,
+                top: fabTop - 8,
+                width: FAB_SIZE + 16,
+                height: FAB_SIZE + 16,
+                borderRadius: (FAB_SIZE + 16) / 2,
+                borderWidth: 2,
+                borderColor: COLORS.claude.p500,
+              },
+              ringBStyle,
             ]}
+          />
+        </>
+      )}
+
+      {/* Press-ring indicator — fills as user holds */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          {
+            position: 'absolute',
+            left: fabLeft - 7,
+            top: fabTop - 7,
+            width: FAB_SIZE + 14,
+            height: FAB_SIZE + 14,
+            borderRadius: (FAB_SIZE + 14) / 2,
+            borderWidth: 2,
+            borderColor: COLORS.claude.p500,
+          },
+          pressRingStyle,
+        ]}
+      />
+
+      {/* Main FAB — only this region captures taps */}
+      <GestureDetector gesture={gesture}>
+        <Animated.View
+          style={[
+            { position: 'absolute', left: fabLeft, top: fabTop, width: FAB_SIZE, height: FAB_SIZE },
+            fabContainerStyle,
+          ]}
+        >
+          <LiquidGlass
+            size={FAB_SIZE}
+            shape="circle"
+            material={isListening || isProcessing ? 'water' : 'ghost'}
+            theme={theme}
+            intensity={1}
           >
-            <LiquidGlass
-              size={FAB_SIZE}
-              shape="circle"
-              material={isListening || isProcessing ? 'water' : 'ghost'}
-              theme={theme}
-              intensity={1}
-            >
-              <FabIcon
-                state={isListening ? 'listening' : isProcessing ? 'processing' : 'idle'}
-                color={colors.isDark ? '#F4F4F8' : '#14132A'}
-              />
-            </LiquidGlass>
-          </Animated.View>
-        </View>
+            <FabIcon
+              state={isListening ? 'listening' : isProcessing ? 'processing' : 'idle'}
+              color={colors.isDark ? '#F4F4F8' : '#14132A'}
+            />
+          </LiquidGlass>
+        </Animated.View>
       </GestureDetector>
     </View>
   );

@@ -242,7 +242,8 @@ export function SMSShortcutPresets(): React.ReactElement {
   const handleTest = useCallback(
     async (preset: SmsShortcutPreset): Promise<void> => {
       impactLight();
-      const testUrl = `${SMS_DEEP_LINK_TEMPLATE}${encodeURIComponent(preset.sampleSms)}`;
+      const nonce = Date.now().toString(36);
+      const testUrl = `${SMS_DEEP_LINK_TEMPLATE}${encodeURIComponent(preset.sampleSms)}&force=1&nonce=${nonce}`;
       try {
         await Linking.openURL(testUrl);
         setActiveTestId(preset.id);

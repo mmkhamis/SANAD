@@ -5,7 +5,7 @@
 import type { IgnoredValue } from './types.ts';
 
 const BALANCE_LINE_RE = /(remaining|available|limit|balance|المتبقي|الرصيد|حد الصرف)/i;
-const AMOUNT_HINT_RE = /(amount|مبلغ|بقيمة|قيمة|سداد|payment)/i;
+const AMOUNT_HINT_RE = /(amount|مبلغ|بقيمة|قيمة|سداد|payment|القسط|قسط|حواله)/i;
 
 const REF_NUM_RE = /\b\d{7,}\b/g;
 
@@ -13,7 +13,7 @@ const CURRENCY_TOKEN_RE = /(SAR|ر\.?س|EGP|ج\.?م|AED|د\.?إ|USD|\$)/i;
 
 const AMOUNT_RE = /(?:(SAR|ر\.?س|EGP|ج\.?م|AED|د\.?إ|USD|\$)\s?([0-9][0-9,]*(?:\.[0-9]{1,2})?))|(?:([0-9][0-9,]*(?:\.[0-9]{1,2})?)\s?(SAR|ر\.?س|EGP|ج\.?م|AED|د\.?إ|USD|\$))/gi;
 
-const DEBIT_VERB_RE = /(تم خصم|تم إضافة|شراء|سحب|دفع|تحويل|إيداع|سداد|purchase|withdrawn|deposited|transferred|paid|debited|credited|payment)/i;
+const DEBIT_VERB_RE = /(تم خصم|خصم|تم إضافة|شراء|سحب|دفع|تحويل|حوالة|حواله|إيداع|ايداع|سداد|مدفوعات|مبلغ|قسط|purchase|withdrawn|deposited|transferred|paid|debited|credited|payment|remittance)/i;
 
 export interface AmountResult {
   amount: number | null;
@@ -61,10 +61,16 @@ export function extractAmount(text: string, defaultCurrency = 'SAR'): AmountResu
   const usableCandidates = nonBalanceCandidates.length > 0 ? nonBalanceCandidates : candidates;
 
   if (usableCandidates.length === 0) {
-    // Fallback: largest plain number that's not a reference
-    const plainNums = Array.from(scrubbed.matchAll(/\b(\d{1,6}(?:\.\d{1,2})?)\b/g))
+    // Fallback: largest plain number that's not a reference, date, or time
+    const TIME_RE = /\d{1,2}:\d{2}/g;
+    const DATE_RE = /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/g;
+    let cleaned = scrubbed.replace(TIME_RE, (m) => ' '.repeat(m.length));
+    cleaned = cleaned.replace(DATE_RE, (m) => ' '.repeat(m.length));
+    const plainNums = Array.from(cleaned.matchAll(/\b(\d{1,6}(?:\.\d{1,2})?)\b/g))
       .map((m) => ({ value: parseFloat(m[1]), index: m.index ?? 0 }))
-      .filter((x) => isFinite(x.value) && x.value > 0);
+      .filter((x) => isFinite(x.value) && x.value > 0
+        && !isBalanceContext(scrubbed, x.index)
+        && !isMaskedLast4(scrubbed, x.index));
     if (plainNums.length === 0) {
       return { amount: null, currency: defaultCurrency, ignored, amountConflict: false };
     }
@@ -118,6 +124,13 @@ function isBalanceContext(text: string, index: number): boolean {
   const start = Math.max(0, index - 26);
   const end = Math.min(text.length, index + 26);
   return BALANCE_LINE_RE.test(text.slice(start, end));
+}
+
+function isMaskedLast4(text: string, index: number): boolean {
+  const start = Math.max(0, index - 6);
+  const end = Math.min(text.length, index + 10);
+  const window = text.slice(start, end);
+  return /\*+\s*\d{4}(?!\d)|\d{4}\s*\*+/.test(window);
 }
 
 function normalizeCurrency(raw: string | undefined): string {

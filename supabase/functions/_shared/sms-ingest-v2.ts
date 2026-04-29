@@ -109,13 +109,16 @@ export async function ingestSmsMessage({
     const userCats = (cats ?? []) as CategoryRow[];
 
     // Preliminary rules-based category match (before AI)
+    // Transfers don't need categories — they're internal money movements
     const txType = mapToTxType(parsed.message_class);
-    let matchedCategory = suggestUserCategory(
-      message,
-      parsed.merchant_raw,
-      txType,
-      userCats,
-    );
+    let matchedCategory = txType === 'transfer'
+      ? null
+      : suggestUserCategory(
+          message,
+          parsed.merchant_raw,
+          txType,
+          userCats,
+        );
 
     // 3b) Check merchant→category cache before calling AI
     const merchantKey = parsed.merchant_raw?.toLowerCase().trim() ?? null;
@@ -152,9 +155,11 @@ export async function ingestSmsMessage({
       const allowAI = await canCallAI(sb, userId);
       if (allowAI) {
         const mixedScript = /[A-Za-z]/.test(message) && /[؀-ۿ]/.test(message);
+        const latinOnly = message.replace(/\b(SAR|EGP|AED|USD|EUR|GBP|KWD|QAR|BHD|OMR|JOD|POS|ATM|PIN|OTP|SMS|STC|mada|MADA)\b/gi, '');
+        const trueMixedScript = mixedScript && /[A-Za-z]{3,}/.test(latinOnly);
         const wants = shouldCallAI(parsed, {
           amountConflict: parsed.review_flags.includes('amount_conflict'),
-          mixedScript,
+          mixedScript: trueMixedScript,
           categoryMissing: !matchedCategory,
         });
 
@@ -340,21 +345,20 @@ export async function ingestSmsMessage({
     for (const f of parsed.review_flags) reasons.push(f);
     const reviewReason = reasons.filter(Boolean).join('; ');
 
-    const needsReview = !matchedCategory || (parsed.confidence < 0.70);
+    const needsReview = txType === 'transfer'
+      ? !(fromAccountId || toAccountId)  // transfers only need review if no accounts matched
+      : !matchedCategory || (parsed.confidence < 0.70);
     const isoDate = (parsed.timestamp ?? new Date().toISOString()).slice(0, 10);
 
-    const fromAccountId = parsed.from_last4
-      ? ownedAccounts.find((a) =>
-        a.account_last4 === parsed.from_last4
-        || a.card_last4 === parsed.from_last4
-        || a.iban_last4 === parsed.from_last4)?.id ?? null
-      : null;
-    const toAccountId = parsed.to_last4
-      ? ownedAccounts.find((a) =>
-        a.account_last4 === parsed.to_last4
-        || a.card_last4 === parsed.to_last4
-        || a.iban_last4 === parsed.to_last4)?.id ?? null
-      : null;
+    // Match account by last4 digits (exact or suffix match for NNN*NNN format)
+    const matchAccount = (last4: string) =>
+      ownedAccounts.find((a) =>
+        matchLast4(a.account_last4, last4)
+        || matchLast4(a.card_last4, last4)
+        || matchLast4(a.iban_last4, last4)) ?? null;
+
+    const fromAccountId = parsed.from_last4 ? matchAccount(parsed.from_last4)?.id ?? null : null;
+    const toAccountId = parsed.to_last4 ? matchAccount(parsed.to_last4)?.id ?? null : null;
 
     // For non-transfer transactions, resolve account_id from source_card_last4
     // or source_account_last4 (the user's own card/account that was charged)
@@ -363,22 +367,30 @@ export async function ingestSmsMessage({
       const srcLast4 = parsed.source_card_last4 ?? parsed.source_account_last4 ?? null;
       if (srcLast4) {
         accountId = ownedAccounts.find((a) =>
-          a.account_last4 === srcLast4
-          || a.card_last4 === srcLast4
-          || a.iban_last4 === srcLast4)?.id ?? null;
+          matchLast4(a.account_last4, srcLast4)
+          || matchLast4(a.card_last4, srcLast4)
+          || matchLast4(a.iban_last4, srcLast4))?.id ?? null;
       }
     }
+
+    // Fallback: if no account matched, assign to "Other" account (auto-created)
+    if (!accountId && txType !== 'transfer') {
+      accountId = await getOrCreateOtherAccount(sb, userId);
+    }
+
+    // Transfers don't need categories — they're internal movements
+    const effectiveCategory = txType === 'transfer' ? null : matchedCategory;
 
     const row: Record<string, unknown> = {
       user_id: userId,
       amount: parsed.amount,
       type: txType,
       transaction_type: txType,
-      category_id: matchedCategory?.id ?? null,
-      category_name: matchedCategory?.name ?? null,
-      category_icon: matchedCategory?.icon ?? null,
-      category_color: matchedCategory?.color ?? null,
-      description: parsed.descriptor ?? parsed.merchant_raw ?? message.slice(0, 80),
+      category_id: effectiveCategory?.id ?? null,
+      category_name: effectiveCategory?.name ?? null,
+      category_icon: effectiveCategory?.icon ?? null,
+      category_color: effectiveCategory?.color ?? null,
+      description: buildDescription(parsed, txType, parsed.institution_name, message),
       merchant: parsed.merchant_raw,
       merchant_raw: parsed.merchant_raw,
       merchant_normalized: parsed.merchant_normalized,
@@ -539,6 +551,18 @@ const TAXONOMY_PARENT_MAP: Record<string, string[]> = {
   careem: ['taxi_rideshare', 'transport'],
   parking: ['transport'],
   tolls: ['transport'],
+  traffic_fines: ['fines'],
+  parking_fines: ['fines'],
+  government_fines: ['fines'],
+  late_payment_fines: ['fines'],
+  other_fines: ['fines'],
+  personal_loan: ['debt_obligations'],
+  car_loan: ['debt_obligations'],
+  mortgage_payment: ['debt_obligations'],
+  installments_bnpl: ['debt_obligations'],
+  tabby: ['installments_bnpl', 'debt_obligations'],
+  tamara: ['installments_bnpl', 'debt_obligations'],
+  credit_card_payment: ['debt_obligations'],
   pharmacy: ['health_medical'],
   gym_fitness: ['health_medical'],
 };
@@ -549,6 +573,55 @@ function resolveParentCategory(taxKey: string, sameType: CategoryRow[]): Categor
     if (match) return match;
   }
   return null;
+}
+
+/** Build a human-friendly description for a transaction. */
+function buildDescription(
+  parsed: ParseResult,
+  txType: 'income' | 'expense' | 'transfer',
+  institutionName: string | null,
+  rawMessage: string,
+): string {
+  const counterparty = parsed.counterparty_name;
+  // Extract first name only from full name (e.g., "حسين عبدالرحمن احمد" → "حسين")
+  const firstName = counterparty?.split(/\s+/)[0] ?? null;
+
+  // Card settlement
+  const CARD_SETTLE_RE = /سداد\s*بطاق[هةت]\s*ائتمان/i;
+  if (txType === 'transfer' && CARD_SETTLE_RE.test(rawMessage)) {
+    return 'سداد بطاقة ائتمانية';
+  }
+
+  if (txType === 'transfer') {
+    // Check direction: incoming vs outgoing vs internal
+    const INCOMING_RE = /(وارد|واردة|incoming|received)/i;
+    const isIncoming = INCOMING_RE.test(rawMessage);
+    const isInternal = parsed.from_last4 && parsed.to_last4;
+
+    if (isInternal) {
+      // Internal transfer between own accounts
+      const via = institutionName ? ` · ${institutionName}` : '';
+      return `تحويل داخلي${via}`;
+    }
+
+    if (isIncoming) {
+      const from = firstName ?? institutionName ?? null;
+      return from ? `تحويل من ${from}` : 'تحويل وارد';
+    }
+
+    // Outgoing
+    const to = firstName ?? institutionName ?? null;
+    return to ? `تحويل إلى ${to}` : 'تحويل صادر';
+  }
+
+  if (txType === 'income') {
+    if (firstName) return `تحويل من ${firstName}`;
+    if (parsed.merchant_raw) return parsed.merchant_raw;
+    return parsed.descriptor ?? 'إيداع';
+  }
+
+  // Expense — use merchant or descriptor
+  return parsed.descriptor ?? parsed.merchant_raw ?? rawMessage.slice(0, 80);
 }
 
 function mapToTxType(c: ParseResult['message_class']): 'income' | 'expense' | 'transfer' {
@@ -615,4 +688,51 @@ export async function logParseEvent(
   if (error) {
     console.warn('[sms-ingest-v2] parse_events insert skipped:', error.message);
   }
+}
+
+/** Fuzzy last4 match: exact match, or suffix match (e.g. DB "0079" matches parsed "2079" via last 3 digits).
+ *  Handles the Saudi NNN*NNN format where we extract "2079" but the DB stores "0079". */
+function matchLast4(dbVal: string | null, parsed: string): boolean {
+  if (!dbVal || !parsed) return false;
+  if (dbVal === parsed) return true;
+  // Suffix match: the last 3 digits must match (to avoid false positives)
+  const minLen = Math.min(dbVal.length, parsed.length, 3);
+  return minLen >= 3 && dbVal.slice(-minLen) === parsed.slice(-minLen);
+}
+
+async function getOrCreateOtherAccount(
+  sb: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<string | null> {
+  // Check if "Other" account already exists
+  const { data: existing } = await sb
+    .from('accounts')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('type', 'bank')
+    .eq('name', 'Other')
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id) return existing.id as string;
+
+  // Create it
+  const { data: created, error } = await sb
+    .from('accounts')
+    .insert({
+      user_id: userId,
+      name: 'Other',
+      type: 'bank',
+      opening_balance: 0,
+      current_balance: 0,
+      include_in_total: false,
+    })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('[sms-ingest-v2] failed to create Other account', error);
+    return null;
+  }
+  return (created?.id as string) ?? null;
 }

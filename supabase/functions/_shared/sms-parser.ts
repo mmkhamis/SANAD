@@ -67,15 +67,39 @@ function extractAmount(text: string): number | null {
 
 // ─── Type detection ─────────────────────────────────────────────────
 
-const ARABIC_BANK_TRANSFER = ['تحويل لحظي', 'تحويل بنكي', 'تم تحويل', 'تحويل إلى حساب', 'تحويل من حساب'];
-const ARABIC_BANK_INCOMING = ['تم إضافة', 'تم اضافة', 'تم استلام', 'تم ايداع', 'تم إيداع'];
-const ARABIC_BANK_OUTGOING = ['تم خصم', 'تم إرسال', 'تم ارسال', 'تم الدفع', 'تم السحب', 'تم سحب'];
+const ARABIC_BANK_TRANSFER = [
+  'تحويل لحظي', 'تحويل بنكي', 'تم تحويل', 'تحويل إلى حساب', 'تحويل من حساب',
+  'تحويل صادر', 'حوالة صادرة محلية', 'حوالة واردة محلية', 'حوالة صادرة دولية',
+  'حوالة صادرة', 'حوالة واردة', 'حوالة محلية', 'حوالة دولية', 'حوالة سريعة', 'حوالة',
+  'سداد بطاقة',
+];
+const ARABIC_BANK_INCOMING = [
+  'تم إضافة', 'تم اضافة', 'تم استلام', 'تم ايداع', 'تم إيداع',
+  'ايداع رواتب', 'إيداع رواتب', 'ايداع راتب', 'ايداع نقدي',
+];
+const ARABIC_BANK_OUTGOING = [
+  'تم خصم', 'تم إرسال', 'تم ارسال', 'تم الدفع', 'تم السحب', 'تم سحب',
+  'مدفوعات', 'قسط تمويل', 'خصم قسط', 'سداد فاتورة', 'دفع فاتورة', 'عملية شراء', 'سحب نقدي',
+];
 const ARABIC_INCOMING_CTX = ['لبطاقتكم', 'لبطاقتك', 'لحسابكم', 'لحسابك', 'إلى بطاقتكم', 'الى بطاقتكم', 'إلى حسابكم', 'الى حسابكم'];
 const ARABIC_OUTGOING_CTX = ['من حسابكم', 'من حسابك', 'من بطاقتكم', 'من بطاقتك'];
 const ARABIC_INCOME_VERBS = ['حولي', 'حوّل لي', 'حوّلي', 'بعتلي', 'بعت لي', 'ارسل لي', 'ارسلي', 'وصلي', 'وصل لي', 'جالي', 'جا لي'];
-const TRANSFER_KEYWORDS = ['transfer to', 'transfer from', 'moved to', 'internal transfer', 'transferred to', 'transferred from'];
-const INCOME_KEYWORDS = ['received', 'credited', 'credit', 'deposit', 'salary', 'transfer in', 'incoming', 'refund', 'cash back', 'cashback', 'إيداع', 'تحويل وارد', 'راتب', 'استرداد', 'ائتمان'];
-const EXPENSE_KEYWORDS = ['purchase', 'spent', 'paid', 'payment', 'debit', 'deducted', 'withdrawn', 'withdrawal', 'charged', 'debited', 'pos', 'buy', 'bought', 'sale', 'bill', 'card purchase', 'شراء', 'سحب', 'خصم', 'دفع', 'مشتريات', 'نقطة بيع'];
+const TRANSFER_KEYWORDS = [
+  'transfer to', 'transfer from', 'moved to', 'internal transfer',
+  'transferred to', 'transferred from', 'remittance',
+];
+const INCOME_KEYWORDS = [
+  'received', 'credited', 'deposit', 'deposited', 'salary', 'wage', 'payroll',
+  'pension', 'bonus', 'allowance', 'transfer in', 'incoming', 'refund', 'cash back', 'cashback',
+  'إيداع', 'ايداع', 'تحويل وارد', 'راتب', 'رواتب', 'مرتب', 'مرتبات',
+  'اجر', 'اجور', 'معاش', 'مكافأة', 'بدل', 'استرداد',
+];
+const EXPENSE_KEYWORDS = [
+  'purchase', 'spent', 'paid', 'payment', 'debit', 'deducted', 'withdrawn', 'withdrawal',
+  'charged', 'debited', 'pos', 'buy', 'bought', 'sale', 'bill', 'card purchase',
+  'شراء', 'عملية شراء', 'سحب', 'سحب نقدي', 'خصم', 'دفع', 'مشتريات', 'نقطة بيع',
+  'رسوم', 'عمولة', 'غرامة', 'مخالفة',
+];
 
 function detectType(text: string): ServerTxType {
   const lower = text.toLowerCase();
@@ -299,7 +323,7 @@ const KEYWORD_TO_TAXONOMY: Array<[RegExp, string]> = [
   // Subscriptions (digital services)
   [/(netflix|spotify|apple\s*music|apple\.com\/bill|amazon\s*prime|disney\+|shahid|شاهد|anghami|أنغامي|icloud|youtube\s*premium)/i, 'subscriptions'],
   // Salary
-  [/(salary|payroll|راتب|مرتب)/i, 'salary'],
+  [/(salary|payroll|wage|راتب|رواتب|مرتب|مرتبات|اجر|اجور|معاش|ايداع رواتب|إيداع رواتب)/i, 'salary'],
   // E-commerce / shopping
   [/(noon|نون|amazon\.sa|amazon\.ae|amazon\s*eg|amazon|jarir|جرير|extra\s*stores|إكسترا|اكسترا|shein|شي?\s*إن|namshi|نمشي|aliexpress|علي\s*اكسبرس|6thstreet|سنتر\s*بوينت|centrepoint)/i, 'shopping'],
   // Utilities — only match electricity/water/gas when clearly a bill
@@ -309,6 +333,18 @@ const KEYWORD_TO_TAXONOMY: Array<[RegExp, string]> = [
   [/(recharge|sim\s*card|شحن\s*رصيد|mobile\s*recharge|top[\s-]?up\s*credit)/i, 'mobile'],
   // Refund
   [/(refund|cashback|كاش\s*باك|استرداد)/i, 'refund_rebate'],
+  // Fines & violations
+  [/(مخالف|المخالفات\s*المرورية|مرور|ساهر|saher|traffic\s*fine|traffic\s*violation|speeding)/i, 'traffic_fines'],
+  [/(غرامة|fine|penalty|جزاء)/i, 'other_fines'],
+  [/(مدفوعات\s*وزارة|وزارة\s*الداخلية|ministry\s*of\s*interior|moi\b)/i, 'government_fines'],
+  // Debt & obligations
+  [/(قسط\s*تمويل|تمويل\s*شخصي|قرض\s*شخصي|personal\s*loan|loan\s*installment)/i, 'personal_loan'],
+  [/(قسط\s*سيارة|car\s*loan|vehicle\s*installment)/i, 'car_loan'],
+  [/(قسط\s*عقار|mortgage\s*payment|home\s*installment)/i, 'mortgage_payment'],
+  [/(تقسيط|أقساط|installment|bnpl)/i, 'installments_bnpl'],
+  [/(tabby|تابي)/i, 'tabby'],
+  [/(tamara|تمارا)/i, 'tamara'],
+  [/(سداد\s*بطاقة\s*ائتمان|credit\s*card\s*payment)/i, 'credit_card_payment'],
 ];
 
 export function suggestUserCategory(
@@ -355,6 +391,18 @@ export function suggestUserCategory(
     groceries: ['food_dining'],
     taxi_rideshare: ['transport'],
     fuel: ['transport'],
+    traffic_fines: ['fines'],
+    parking_fines: ['fines'],
+    government_fines: ['fines'],
+    late_payment_fines: ['fines'],
+    other_fines: ['fines'],
+    personal_loan: ['debt_obligations'],
+    car_loan: ['debt_obligations'],
+    mortgage_payment: ['debt_obligations'],
+    installments_bnpl: ['debt_obligations'],
+    tabby: ['installments_bnpl', 'debt_obligations'],
+    tamara: ['installments_bnpl', 'debt_obligations'],
+    credit_card_payment: ['debt_obligations'],
   };
 
   const fallbackKeys = SUBCATEGORY_PARENTS[taxKey] ?? [];

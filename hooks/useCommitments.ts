@@ -25,7 +25,7 @@ export function useCommitments(): {
   const { data, isLoading, isError, error, refetch } = useQuery<Commitment[], Error>({
     queryKey: QUERY_KEYS.commitments,
     queryFn: fetchCommitments,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 30,
   });
 
   return { data, isLoading, isError, error, refetch };
@@ -44,7 +44,7 @@ export function useCommitmentsDue(month?: string, enabled = true): {
   const { data, isLoading, isError, error } = useQuery<CommitmentsDueSummary, Error>({
     queryKey: QUERY_KEYS.commitmentsDue(resolvedMonth),
     queryFn: () => fetchCommitmentsDue(resolvedMonth),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 15,
     placeholderData: keepPreviousData,
     enabled,
   });

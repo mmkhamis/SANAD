@@ -9,9 +9,7 @@ import { useThemeColors } from '../../hooks/useThemeColors';
 import { useWidgetSync } from '../../hooks/useWidgetSync';
 import { useT } from '../../lib/i18n';
 import { COLORS } from '../../constants/colors';
-import { RecordingOverlay } from '../../components/voice/RecordingOverlay';
-import { ProcessingOverlay } from '../../components/voice/ProcessingOverlay';
-import { MinimizedPill } from '../../components/voice/MinimizedPill';
+import { VoiceOverlayHost } from '../../components/voice/VoiceOverlayHost';
 import { LiquidGlassFab } from '../../components/ui/LiquidGlassFab';
 import { useVoiceInputStore } from '../../store/voice-input-store';
 
@@ -219,9 +217,7 @@ export default function TabsLayout(): React.ReactElement {
       <Tabs.Screen name="create-split-event" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="split-event" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
-    <RecordingOverlay />
-    <ProcessingOverlay />
-    <MinimizedPill />
+    <VoiceOverlayHost />
     <LiquidGlassFab
       right={14}
       bottom={fabBottom}

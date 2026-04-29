@@ -76,6 +76,11 @@ async function writeQueue(items: QueueItem[]): Promise<void> {
   }
 }
 
+/** Clear all pending items from the queue. */
+export async function clearQueue(): Promise<void> {
+  await writeQueue([]);
+}
+
 // ─── Public API ──────────────────────────────────────────────────────
 
 /**

@@ -71,8 +71,21 @@ export function ScanWalletSheet({ accounts: initial, onDone }: ScanWalletSheetPr
     let created = 0;
     for (const a of selected) {
       try {
+        // Build a name that always carries the bank identity so findBankPreset
+        // (used by Accounts list, transaction rows, etc.) can resolve the logo.
+        const bank = a.bank_name?.trim() ?? '';
+        const card = a.card_name?.trim() ?? '';
+        const cardHasBank =
+          bank.length > 0 &&
+          card.toLowerCase().includes(bank.toLowerCase());
+        const composedName = !card
+          ? `${bank} Account`
+          : cardHasBank
+            ? card
+            : `${bank} ${card}`;
+
         const input: CreateAccountInput = {
-          name: a.card_name || `${a.bank_name} Account`,
+          name: composedName,
           type: a.type,
           opening_balance: a.balance ?? 0,
           include_in_total: true,

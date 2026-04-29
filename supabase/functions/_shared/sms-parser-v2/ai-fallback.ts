@@ -4,6 +4,7 @@
 
 import type { ParseResult } from './types.ts';
 import { SYSTEM_PROMPT, buildUserMessage, type RulesHint } from './ai-prompt.ts';
+import { redactPII } from './redact-pii.ts';
 
 export interface AICallOptions {
   apiKey: string;
@@ -18,20 +19,23 @@ export function shouldCallAI(rules: ParseResult, flags: { amountConflict: boolea
    || rules.message_class === 'balance_alert'
    || rules.message_class === 'otp') return false;
 
-  // If we have a merchant but rules couldn't categorize it, call AI for taxonomy_key
-  if (flags.categoryMissing && rules.merchant_raw) return true;
+  // Always call AI when category is missing (our biggest value-add)
+  if (flags.categoryMissing) return true;
 
-  // Already confident enough
-  if (rules.confidence >= 0.80) return false;
-  // Too noisy — AI rarely recovers
-  if (rules.confidence < 0.55) return false;
-
+  // Amount conflict — AI can disambiguate
   if (flags.amountConflict) return true;
 
+  // Mixed script with missing merchant — AI reads both languages
   const merchantMissing = rules.review_flags.includes('missing_merchant');
   if (merchantMissing && flags.mixedScript) return true;
 
-  // Default: in the [0.55, 0.80) band → call AI
+  // Unknown class — AI might figure it out
+  if (rules.message_class === 'unknown' && rules.amount !== null) return true;
+
+  // Already confident enough with category
+  if (rules.confidence >= 0.80) return false;
+
+  // In the [0, 0.80) band → call AI
   return true;
 }
 
@@ -58,7 +62,7 @@ export async function callAI(
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: buildUserMessage(rawText, hint) },
+          { role: 'user', content: buildUserMessage(redactPII(rawText), hint) },
         ],
       }),
     });
@@ -84,6 +88,8 @@ export function mergeRulesAndAI(rules: ParseResult, ai: Partial<ParseResult>): P
   // If rules matched a definitive class (not 'unknown'), keep it. AI can
   // only override 'unknown' to a concrete class — never downgrade/change
   // a hard verb match like شراء/تم خصم (purchase) vs deposited (income).
+  // Exception: AI can upgrade 'purchase' to more specific classes like 'transfer'
+  // when it has better context understanding.
   const mergedClass = rules.message_class !== 'unknown'
     ? rules.message_class
     : ai.message_class ?? rules.message_class;
@@ -116,6 +122,7 @@ export function mergeRulesAndAI(rules: ParseResult, ai: Partial<ParseResult>): P
     parse_reason: ai.parse_reason ?? rules.parse_reason,
     review_flags: Array.from(new Set([...rules.review_flags, ...(ai.review_flags ?? [])])),
     parser_source: 'rules_then_ai',
+    // AI WINS on taxonomy — this is the main reason we call AI
     taxonomy_key: ai.taxonomy_key ?? rules.taxonomy_key ?? null,
   };
   return merged;

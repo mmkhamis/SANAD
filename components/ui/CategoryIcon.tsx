@@ -594,6 +594,32 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   'hungerstation': Utensils,
   'elmenus': Utensils,
   'deliveroo': Utensils,
+  'chefz': Utensils,
+  'wssel': Truck,
+  'nana': ShoppingCart,
+
+  // Shipping / Logistics
+  'aramex': Truck,
+  'smsa': Truck,
+  'dhl': Truck,
+  'fedex': Truck,
+  'naqel': Truck,
+
+  // Airlines
+  'saudia': Plane,
+  'flynas': Plane,
+  'flyadeal': Plane,
+  'almosafer': Plane,
+
+  // BNPL / Fintech
+  'stcpay': Wallet,
+  'urpay': Wallet,
+  'mobilypay': Wallet,
+
+  // Fuel
+  'aldrees': Fuel,
+  'petromin': Fuel,
+  'naft': Fuel,
 
   // Pets
   'vet': PawPrint,

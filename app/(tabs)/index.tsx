@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useMemo } from 'react';
-import { View, Text, Pressable, Modal, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, ScrollView, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
 import { FlashList, type ListRenderItemInfo } from '@shopify/flash-list';
@@ -59,7 +59,6 @@ import {
 import { findBankPreset } from '../../constants/bank-presets';
 import { findBrand } from '../../constants/brand-presets';
 import { useAuthStore } from '../../store/auth-store';
-import { TransactionsPageContent } from './transactions';
 
 // ─── Constants ───────────────────────────────────────────────────────
 // TX_BLOCK_WIDTH is computed inside DashboardContent using useWindowDimensions
@@ -219,7 +218,6 @@ function DashboardContent(): React.ReactElement {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [reviewVisible, setReviewVisible] = useState(false);
-  const [showTxnModal, setShowTxnModal] = useState(false);
   const [horizon, setHorizon] = useState<HorizonMonths>(1);
   const [customHorizonMonth, setCustomHorizonMonth] = useState<string | null>(null);
   const [upcomingExpanded, setUpcomingExpanded] = useState(false);
@@ -1000,20 +998,6 @@ function DashboardContent(): React.ReactElement {
           </Text>
         </Pressable>
       ) : null}
-
-      {/* Transactions modal — slides up from "See All" in recent transactions */}
-      <Modal
-        visible={showTxnModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowTxnModal(false)}
-        statusBarTranslucent
-      >
-        <TransactionsPageContent
-          onClose={() => setShowTxnModal(false)}
-          isModal
-        />
-      </Modal>
     </View>
   );
 }

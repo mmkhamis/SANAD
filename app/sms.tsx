@@ -6,14 +6,14 @@ import * as Linking from 'expo-linking';
 import { parseSmsToTransaction } from '../utils/sms-parser';
 import { createSMSTransaction } from '../services/transaction-service';
 import { notifySmsTransaction } from '../services/notification-service';
+import { adjustAccountBalance } from '../services/account-service';
 import { useAuthStore } from '../store/auth-store';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../lib/query-client';
 import { useThemeColors } from '../hooks/useThemeColors';
 import { smsDedup } from '../lib/sms-dedup';
-import { enqueue } from '../services/offline-queue-service';
-import { isNetworkError } from '../utils/offline/network-error';
 import { invokeWithRetry } from '../lib/supabase';
+import { isNetworkError } from '../utils/offline/network-error';
 
 const SMS_PROCESSED_PREFIX = 'sms_processed:';
 
@@ -31,6 +31,7 @@ interface IngestSmsResponse {
     needs_review: boolean;
     parser_source: string;
   };
+  error?: string;
 }
 
 /** Simple string hash for deduplication (not cryptographic). */
@@ -43,9 +44,13 @@ function hashText(text: string): string {
 }
 
 // ─── Silent SMS Processor ────────────────────────────────────────────
-// Receives SMS text via deep link, processes in background, fires a
-// local notification with the result, and redirects to the dashboard.
-// No debug UI is shown — the user only sees the notification.
+//
+// Flow:
+//   ONLINE  → edge function (AI parses, categorizes, saves, adjusts balances)
+//   OFFLINE → local parser (regex) saves to DB without category, needs_review=true
+//
+// Either way: notification fires, transaction shows in Recent/Transactions immediately.
+// Nothing goes to the offline queue — we save directly in both paths.
 
 export default function SMSProcessorScreen(): React.ReactElement {
   const colors = useThemeColors();
@@ -104,38 +109,40 @@ export default function SMSProcessorScreen(): React.ReactElement {
     nonce: string | null;
   } | null>(null);
 
-  useEffect(() => {
-    if (resolvedPayload) return;
-    const parsed = parseQuery(params as unknown as Record<string, unknown>);
-    if (parsed.text) {
-      setResolvedPayload({ text: parsed.text, force: parsed.force, nonce: parsed.nonce });
-    }
-  }, [params, parseQuery, resolvedPayload]);
+  // Accept new payloads — each unique SMS gets a fresh state
+  const updatePayload = React.useCallback((parsed: { text: string | null; force: boolean; nonce: string | null }) => {
+    if (!parsed.text) return;
+    const key = `${parsed.text}::${parsed.force ? '1' : '0'}::${parsed.nonce ?? ''}`;
+    setResolvedPayload((prev) => {
+      const prevKey = prev ? `${prev.text}::${prev.force ? '1' : '0'}::${prev.nonce ?? ''}` : null;
+      if (prevKey === key) return prev;
+      return { text: parsed.text!, force: parsed.force, nonce: parsed.nonce };
+    });
+  }, []);
 
   useEffect(() => {
-    if (resolvedPayload) return;
+    updatePayload(parseQuery(params as unknown as Record<string, unknown>));
+  }, [params, parseQuery, updatePayload]);
+
+  useEffect(() => {
     let cancelled = false;
 
     Linking.getInitialURL()
       .then((url) => {
         if (cancelled || !url) return;
         const parsed = Linking.parse(url);
-        const qp = (parsed.queryParams ?? {}) as Record<string, unknown>;
-        const q = parseQuery(qp);
-        if (q.text) setResolvedPayload({ text: q.text, force: q.force, nonce: q.nonce });
+        updatePayload(parseQuery((parsed.queryParams ?? {}) as Record<string, unknown>));
       })
       .catch(() => {});
 
     const sub = Linking.addEventListener('url', (event) => {
       if (cancelled) return;
       const parsed = Linking.parse(event.url);
-      const qp = (parsed.queryParams ?? {}) as Record<string, unknown>;
-      const q = parseQuery(qp);
-      if (q.text) setResolvedPayload({ text: q.text, force: q.force, nonce: q.nonce });
+      updatePayload(parseQuery((parsed.queryParams ?? {}) as Record<string, unknown>));
     });
 
     return () => { cancelled = true; sub.remove(); };
-  }, [parseQuery, resolvedPayload]);
+  }, [parseQuery, updatePayload]);
 
   // ─── Process + notify + redirect ───────────────────────────────
   useEffect(() => {
@@ -150,6 +157,8 @@ export default function SMSProcessorScreen(): React.ReactElement {
       return;
     }
 
+    // Reset navigation for each new SMS
+    hasNavigated.current = false;
     processedPayload.current = payloadKey;
 
     const run = async (): Promise<void> => {
@@ -167,124 +176,149 @@ export default function SMSProcessorScreen(): React.ReactElement {
         if (!resolvedPayload.force) {
           const isDuplicate = await smsDedup.has(dedupKey);
           if (isDuplicate) {
+            console.log('[sms] duplicate, skipping');
             navigateToTabs();
             return;
           }
         }
 
-        // Do not block app entry while ingestion/network work is still running.
-        // The async pipeline continues in the background and will invalidate
-        // dashboard/transactions queries when done.
+        // Drop OTP messages immediately — no network call, no DB write
+        const OTP_RE = /\b(otp|verification code|one[- ]?time password|pin code)\b|رمز التحقق|رمز التأكيد|كلمة المرور لمرة واحدة|رمز الدخول/i;
+        if (OTP_RE.test(decoded) && /\b\d{4,6}\b/.test(decoded)) {
+          console.log('[sms] OTP detected, dropping');
+          await smsDedup.add(dedupKey);
+          navigateToTabs();
+          return;
+        }
+
+        // Navigate immediately — processing continues in background
         navigateToTabs();
 
+        // ──────────────────────────────────────────────────────────
+        // PATH 1: ONLINE → Edge function (AI) handles everything
+        // ──────────────────────────────────────────────────────────
         try {
           const ingest = await invokeWithRetry<IngestSmsResponse>('ingest-sms', {
             body: { message: decoded },
           });
-          if (!ingest.ok) {
-            throw new Error('ingest-sms failed');
-          }
 
-          // Mark as processed for this local device/session once the server
-          // acknowledges the message (created, duplicate, dropped, offer...).
-          if (!resolvedPayload.force) {
-            await smsDedup.add(dedupKey);
-          }
+          console.log('[sms] AI response:', JSON.stringify({ ok: ingest.ok, status: ingest.status, txId: ingest.transaction?.id, catName: ingest.transaction?.category_name, error: ingest.error }));
 
-          // Only transaction statuses trigger the in-app local notification.
-          if ((ingest.status === 'created' || ingest.status === 'duplicate') && ingest.transaction) {
+          if (ingest.ok && (ingest.status === 'created' || ingest.status === 'duplicate')) {
+            // ✓ Edge function parsed, categorized, saved, and adjusted balances
+            if (!resolvedPayload.force) {
+              await smsDedup.add(dedupKey);
+            }
+
             qc.invalidateQueries({ queryKey: QUERY_KEYS.transactions });
             qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
             qc.invalidateQueries({ queryKey: QUERY_KEYS.unreviewedTransactions });
             qc.invalidateQueries({ queryKey: QUERY_KEYS.accounts });
 
-            await notifySmsTransaction({
-              amount: ingest.transaction.amount,
-              type: ingest.transaction.type,
-              merchant: ingest.transaction.merchant,
-              counterparty: ingest.transaction.counterparty,
-              category: ingest.transaction.category_name,
-            });
+            if (ingest.transaction) {
+              await notifySmsTransaction({
+                amount: ingest.transaction.amount,
+                type: ingest.transaction.type,
+                merchant: ingest.transaction.merchant,
+                counterparty: ingest.transaction.counterparty,
+                category: ingest.transaction.category_name,
+              });
+            }
+
+            console.log('[sms] AI processed:', ingest.status, ingest.transaction?.id);
+            return; // Done — AI handled everything
           }
-        } catch (saveErr) {
-          // Fallback path: keep SMS capture working even if ingest-sms is
-          // unavailable/misaligned (e.g. edge deploy or schema lag).
-          const parsed = parseSmsToTransaction(decoded);
-          if (!parsed) {
-            navigateToTabs();
+
+          if (ingest.ok && (ingest.status === 'dropped' || ingest.status === 'offer' || ingest.status === 'no_amount')) {
+            // Edge function decided this isn't a transaction (OTP, promo, balance alert)
+            if (!resolvedPayload.force) {
+              await smsDedup.add(dedupKey);
+            }
+            console.log('[sms] AI dropped:', ingest.status);
             return;
           }
 
-          if (isNetworkError(saveErr)) {
-            // Offline: enqueue and replay later.
-            const queueId = `sms-${dedupKey}`;
-            await enqueue({
-              id: queueId,
-              type: 'sms_transaction',
-              payload: {
-                amount: parsed.amount,
-                type: parsed.transaction_type,
-                transaction_type: parsed.transaction_type,
-                description: parsed.description,
-                merchant: parsed.merchant,
-                counterparty: parsed.counterparty,
-                date: parsed.date,
-                notes: decoded,
-                parse_confidence: parsed.parse_confidence,
-                review_reason: parsed.review_reason,
-                from_last4: parsed.from_last4 ?? null,
-                to_last4: parsed.to_last4 ?? null,
-              },
-            });
-            if (!resolvedPayload.force) {
-              await smsDedup.add(dedupKey);
-            }
-          } else {
-            // Backend/edge error: fallback to direct DB insert (legacy path).
-            await createSMSTransaction({
-              amount: parsed.amount,
-              type: parsed.transaction_type,
-              transaction_type: parsed.transaction_type,
-              description: parsed.description,
-              merchant: parsed.merchant,
-              counterparty: parsed.counterparty,
-              date: parsed.date,
-              notes: decoded,
-              parse_confidence: parsed.parse_confidence,
-              review_reason: parsed.review_reason,
-              from_last4: parsed.from_last4 ?? null,
-              to_last4: parsed.to_last4 ?? null,
-            });
-            if (!resolvedPayload.force) {
-              await smsDedup.add(dedupKey);
-            }
+          // Edge function returned an error status — fall through to local path
+          console.warn('[sms] AI returned error:', ingest.error ?? ingest.status);
+        } catch (edgeErr) {
+          // Network/timeout or function unavailable — fall through to local path
+          const isOffline = isNetworkError(edgeErr);
+          console.log('[sms] edge function unavailable (offline=%s):', isOffline,
+            edgeErr instanceof Error ? edgeErr.message : edgeErr);
+        }
 
-            qc.invalidateQueries({ queryKey: QUERY_KEYS.transactions });
-            qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
-            qc.invalidateQueries({ queryKey: QUERY_KEYS.unreviewedTransactions });
-            qc.invalidateQueries({ queryKey: QUERY_KEYS.accounts });
+        // ──────────────────────────────────────────────────────────
+        // PATH 2: OFFLINE / EDGE FAILED → Local parse + direct DB save
+        // ──────────────────────────────────────────────────────────
+        const parsed = parseSmsToTransaction(decoded);
+        if (!parsed) {
+          console.log('[sms] local parser could not parse SMS');
+          return;
+        }
 
-            await notifySmsTransaction({
-              amount: parsed.amount,
-              type: parsed.transaction_type,
-              merchant: parsed.merchant,
-              counterparty: parsed.counterparty,
-              category: parsed.suggested_category_label ?? null,
-            });
+        console.log('[sms] local parse:', parsed.amount, parsed.transaction_type, parsed.merchant, parsed.suggested_category_key);
+
+        // Save directly to DB — no queue, no waiting
+        const savedTx = await createSMSTransaction({
+          amount: parsed.amount,
+          type: parsed.transaction_type,
+          transaction_type: parsed.transaction_type,
+          description: parsed.description,
+          merchant: parsed.merchant,
+          counterparty: parsed.counterparty,
+          date: parsed.date,
+          notes: decoded,
+          parse_confidence: parsed.parse_confidence,
+          review_reason: (parsed.review_reason ? parsed.review_reason + '; ' : '') + 'offline_parse',
+          from_last4: parsed.from_last4 ?? null,
+          to_last4: parsed.to_last4 ?? null,
+          suggested_category_key: parsed.suggested_category_key ?? null,
+        });
+
+        if (!resolvedPayload.force) {
+          await smsDedup.add(dedupKey);
+        }
+
+        // Adjust account balance (mirrors what the edge function does online)
+        const txAny = savedTx as unknown as Record<string, unknown>;
+        if (savedTx.amount > 0) {
+          if (savedTx.type === 'transfer') {
+            if (txAny.from_account_id) {
+              await adjustAccountBalance(txAny.from_account_id as string, -savedTx.amount).catch(() => {});
+            }
+            if (txAny.to_account_id) {
+              await adjustAccountBalance(txAny.to_account_id as string, savedTx.amount).catch(() => {});
+            }
+          } else if (savedTx.type === 'expense' && savedTx.account_id) {
+            await adjustAccountBalance(savedTx.account_id, -savedTx.amount).catch(() => {});
+          } else if (savedTx.type === 'income' && savedTx.account_id) {
+            await adjustAccountBalance(savedTx.account_id, savedTx.amount).catch(() => {});
           }
         }
-      } catch {
-        // Silently fail — don't block the user
-      }
 
-      // Always navigate away
-      navigateToTabs();
+        qc.invalidateQueries({ queryKey: QUERY_KEYS.transactions });
+        qc.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
+        qc.invalidateQueries({ queryKey: QUERY_KEYS.unreviewedTransactions });
+        qc.invalidateQueries({ queryKey: QUERY_KEYS.accounts });
+
+        await notifySmsTransaction({
+          amount: parsed.amount,
+          type: parsed.transaction_type,
+          merchant: parsed.merchant,
+          counterparty: parsed.counterparty,
+          category: parsed.suggested_category_label ?? null,
+        });
+
+        console.log('[sms] saved locally (offline fallback):', savedTx.id);
+
+      } catch (err) {
+        console.error('[sms] fatal error:', err instanceof Error ? err.message : err);
+      }
     };
 
     run();
   }, [resolvedPayload, isAuthenticated, isAuthLoading, navigateToTabs]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Minimal loading screen while processing (flashes briefly)
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
       <ActivityIndicator size="small" color={colors.primary} />

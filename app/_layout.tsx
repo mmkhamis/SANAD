@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { I18nManager, LogBox } from 'react-native';
+import { I18nManager, InteractionManager, LogBox } from 'react-native';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -112,15 +112,22 @@ function RootLayoutInner(): React.ReactElement {
   useUncategorizedReminder();
 
   // Initialize notification channel + request permission
+  // Defer ALL non-critical native bridge / notification work until after the
+  // first interaction settles. None of this is required to render the home
+  // tab, and each call adds 50–300ms of bridge work that previously blocked
+  // first paint on cold start.
   useEffect(() => {
-    setupNotificationChannel().catch(() => {});
-    requestNotificationPermission()
-      .then((granted) => {
-        if (granted) registerPushToken().catch(() => {});
-      })
-      .catch(() => {});
-    // Mirror Supabase session into shared Keychain for the iOS App Intent.
-    startNativeSessionBridge();
+    const handle = InteractionManager.runAfterInteractions(() => {
+      setupNotificationChannel().catch(() => {});
+      requestNotificationPermission()
+        .then((granted) => {
+          if (granted) registerPushToken().catch(() => {});
+        })
+        .catch(() => {});
+      // Mirror Supabase session into shared Keychain for the iOS App Intent.
+      startNativeSessionBridge();
+    });
+    return () => handle.cancel?.();
   }, []);
 
   const isLoading = useAuthStore((s) => s.isLoading);

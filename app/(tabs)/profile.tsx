@@ -11,7 +11,6 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { impactLight, impactMedium, notifyWarning, notifySuccess, notifyError } from '../../utils/haptics';
 import { formatAmount } from '../../utils/currency';
-import { SmartInputButton } from '../../components/ui/SmartInputButton';
 import { FeatureGate } from '../../components/ui/FeatureGate';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
 import { Card } from '../../components/ui/Card';
@@ -1326,52 +1325,69 @@ export default function ProfileScreen(): React.ReactElement {
                 const meta = ACCOUNT_TYPE_META[account.type] ?? ACCOUNT_TYPE_META.bank;
                 const preset = findBankPreset(account.name);
                 const isSettling = settleAccountId === account.id;
+                const isOtherAccount = account.name === 'Other';
                 const last4Tokens = [
                   account.account_last4 ? `A • ${account.account_last4}` : null,
                   account.card_last4 ? `Card • ${account.card_last4}` : null,
                   account.iban_last4 ? `IBAN • ${account.iban_last4}` : null,
                 ].filter(Boolean) as string[];
+                const openEditor = (): void => {
+                  impactLight();
+                  if (isSettling) {
+                    clearInlineAccountEditor();
+                  } else {
+                    setSettleAccountId(account.id);
+                    setSettleAmount(String(account.current_balance));
+                    setEditAccountLast4(account.account_last4 ?? '');
+                    setEditCardLast4(account.card_last4 ?? '');
+                    setEditIbanLast4(account.iban_last4 ?? '');
+                  }
+                };
                 return (
                   <View key={account.id} style={{ marginBottom: 6 }}>
-                    <View style={{ flexDirection: rowDir, alignItems: 'center', paddingHorizontal: 12, paddingVertical: 11, borderRadius: 12, backgroundColor: colors.surfaceSecondary }}>
-                      {preset?.logo ? (
-                        <Image source={{ uri: preset.logo }} style={{ width: 28, height: 28, borderRadius: 7, marginEnd: 10 }} contentFit="cover" cachePolicy="memory-disk" />
-                      ) : (
-                        <View style={{ width: 28, height: 28, borderRadius: 7, backgroundColor: preset?.color ?? colors.primary + '18', alignItems: 'center', justifyContent: 'center', marginEnd: 10 }}>
-                          {preset ? (
-                            <Text style={{ fontSize: 14, fontWeight: '800', color: '#FFF' }}>{account.name.slice(0, 1)}</Text>
-                          ) : (
-                            <meta.Icon size={15} color={colors.textSecondary} strokeWidth={1.8} />
-                          )}
-                        </View>
-                      )}
+                    <Pressable onPress={openEditor} style={{ flexDirection: rowDir, alignItems: 'center', paddingHorizontal: 12, paddingVertical: 11, borderRadius: 12, backgroundColor: colors.surfaceSecondary }}>
+                      {/* Bank chip — colored container so favicon white-padding doesn't read as a glow */}
+                      <View
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginEnd: 12,
+                          backgroundColor: preset?.color
+                            ? preset.color + (preset.logo ? '14' : 'FF')
+                            : colors.primary + '18',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {preset?.logo ? (
+                          <Image
+                            source={{ uri: preset.logo }}
+                            style={{ width: 22, height: 22 }}
+                            contentFit="contain"
+                            cachePolicy="memory-disk"
+                          />
+                        ) : preset ? (
+                          <Text style={{ fontSize: 13, fontWeight: '800', color: '#FFF' }}>{account.name.slice(0, 1)}</Text>
+                        ) : (
+                          <meta.Icon size={16} color={colors.textSecondary} strokeWidth={1.8} />
+                        )}
+                      </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary, textAlign }}>{account.name}</Text>
-                        <Text style={{ fontSize: 11, color: colors.textTertiary, textAlign }}>{t(meta.labelKey as any)}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary, textAlign }}>{isOtherAccount ? (language === 'ar' ? 'حساب آخر' : 'Other') : account.name}</Text>
+                        <Text style={{ fontSize: 11, color: colors.textTertiary, textAlign }}>{isOtherAccount ? (language === 'ar' ? 'معاملات بدون حساب محدد' : 'Unmatched SMS transactions') : t(meta.labelKey as any)}</Text>
                         {last4Tokens.length > 0 ? (
                           <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2, textAlign }}>
                             {last4Tokens.join(' · ')}
                           </Text>
                         ) : null}
                       </View>
-                      <Pressable onPress={() => {
-                        impactLight();
-                        if (isSettling) {
-                          clearInlineAccountEditor();
-                        } else {
-                          setSettleAccountId(account.id);
-                          setSettleAmount(String(account.current_balance));
-                          setEditAccountLast4(account.account_last4 ?? '');
-                          setEditCardLast4(account.card_last4 ?? '');
-                          setEditIbanLast4(account.iban_last4 ?? '');
-                        }
-                      }} hitSlop={8} style={{ marginRight: 10 }}>
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: isSettling ? colors.primary : colors.textPrimary }}>{formatAmount(account.current_balance)}</Text>
-                      </Pressable>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: isSettling ? colors.primary : colors.textPrimary, marginRight: 10 }}>{formatAmount(account.current_balance)}</Text>
                       <Pressable onPress={() => onDeleteAccount(account.id)} hitSlop={8}>
                         <Trash2 size={15} color={colors.textTertiary} strokeWidth={1.8} />
                       </Pressable>
-                    </View>
+                    </Pressable>
                     {isSettling ? (
                       <View style={{ marginTop: 6, marginStart: 12, marginEnd: 4, gap: 8 }}>
                         <TextInput
@@ -1670,9 +1686,6 @@ export default function ProfileScreen(): React.ReactElement {
       </SettingsCard>
     </ScrollView>
 
-      <View style={{ position: 'absolute', right: 12, bottom: insets.bottom + 96 }}>
-        <SmartInputButton onPress={() => { impactLight(); router.push('/(tabs)/smart-input'); }} />
-      </View>
     </View>
     </ErrorBoundary>
   );

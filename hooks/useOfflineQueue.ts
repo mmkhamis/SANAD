@@ -13,6 +13,7 @@ import {
   getPendingCount,
   replayQueue,
   isReplayInProgress,
+  clearQueue as clearQueueStorage,
 } from '../services/offline-queue-service';
 
 export interface OfflineQueueState {
@@ -22,6 +23,8 @@ export interface OfflineQueueState {
   isReplaying: boolean;
   /** Manually trigger a replay (safe to call while already replaying) */
   triggerReplay: () => void;
+  /** Clear all pending items from the queue */
+  clearQueue: () => void;
 }
 
 export function useOfflineQueue(): OfflineQueueState {
@@ -73,5 +76,10 @@ export function useOfflineQueue(): OfflineQueueState {
     refreshCount();
   }, [refreshCount, isReplaying]);
 
-  return { pendingCount, isReplaying, triggerReplay };
+  const clearQueue = useCallback(async () => {
+    await clearQueueStorage();
+    setPendingCount(0);
+  }, []);
+
+  return { pendingCount, isReplaying, triggerReplay, clearQueue };
 }

@@ -26,6 +26,7 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Business / Work Expenses': 'مصروفات العمل',
   'Luxury & Status': 'الكماليات', // legacy compat
   'Pets': 'حيوانات أليفة',
+  'Fines & Violations': 'مخالفات',
   'Miscellaneous': 'متفرقات',
   'Transfers': 'التحويلات',
   'Other': 'أخرى',
@@ -221,9 +222,15 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
 
   // ─── Miscellaneous ──────────────────────────────────────
   'Cash Withdrawal': 'سحب نقدي',
-  'Fines & Penalties': 'مخالفات وغرامات',
   'Unexpected Expense': 'مصروف مفاجئ',
   'Fees & Commissions': 'رسوم وعمولات',
+
+  // ─── Fines & Violations ───────────────────────────────────
+  'Traffic Fines': 'مخالفات مرورية',
+  'Parking Fines': 'مخالفات وقوف',
+  'Government Fines': 'مخالفات حكومية',
+  'Late Payment Penalties': 'غرامات تأخير',
+  'Other Fines': 'مخالفات أخرى',
 
   // ─── Transfers ──────────────────────────────────────────
   'Between Accounts': 'تحويل بين الحسابات',
@@ -316,4 +323,5 @@ export const CATEGORY_NAMES_AR: Record<string, string> = {
   'Food expenses': 'مصاريف الطعام',
   'Unspecified expense': 'مصاريف غير محددة',
   'Other expense': 'مصاريف أخرى',
+  'Other Account': 'حساب آخر',
 };
