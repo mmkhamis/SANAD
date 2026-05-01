@@ -128,7 +128,7 @@ export const TransactionRow = React.memo(function TransactionRow({ transaction, 
 
       {/* Amount — inline beside description */}
       {hidden ? (
-        <Text style={{ fontSize: 15, fontWeight: '600', color: amountColor }}>••••</Text>
+        <Text style={{ fontSize: 15, fontWeight: '600', color: amountColor }}>****</Text>
       ) : hasIcon ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
           <Text style={{ fontSize: 15, fontWeight: '600', color: amountColor }}>{sign}</Text>

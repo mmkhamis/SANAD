@@ -179,7 +179,7 @@ function TransactionsTabRow({
 
         <View style={{ alignItems: isRTL ? 'flex-start' : 'flex-end', minWidth: 92 }}>
           {hidden ? (
-            <Text style={{ fontSize: 15, fontWeight: '700', color: amountColor }}>••••</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: amountColor }}>****</Text>
           ) : (
             <Text
               numberOfLines={1}
@@ -202,7 +202,7 @@ function TransactionsTabRow({
               color: colors.textTertiary,
             }}
           >
-            {hidden ? '••••' : amountTypeLabel}
+            {hidden ? '****' : amountTypeLabel}
           </Text>
         </View>
       </View>

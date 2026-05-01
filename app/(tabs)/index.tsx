@@ -122,7 +122,7 @@ const CommitmentRow = React.memo(function CommitmentRow({ commitment }: { commit
         </Text>
       </View>
       {hidden ? (
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>••••</Text>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>****</Text>
       ) : (
         <CurrencyAmount value={commitment.amount} color={colors.expense} fontSize={14} />
       )}
@@ -187,7 +187,7 @@ const UpcomingPaymentRow = React.memo(function UpcomingPaymentRow({ sub }: { sub
         </Text>
       </View>
       {hidden ? (
-        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>••••</Text>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textPrimary }}>****</Text>
       ) : (
         <CurrencyAmount value={sub.amount} color={colors.textPrimary} fontSize={14} />
       )}
@@ -442,7 +442,7 @@ function DashboardContent(): React.ReactElement {
                     </View>
                     <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
                       {hidden ? (
-                        <Text style={{ fontSize: 46, fontWeight: '700', color: colors.isDark ? COLORS.claude.fg : colors.textPrimary, letterSpacing: -1 }}>••••</Text>
+                        <Text style={{ fontSize: 46, fontWeight: '700', color: colors.isDark ? COLORS.claude.fg : colors.textPrimary, letterSpacing: -1 }}>****</Text>
                       ) : (
                         <CurrencyAmount value={totalBalance} color={colors.isDark ? COLORS.claude.fg : colors.textPrimary} fontSize={46} fontWeight="700" />
                       )}
@@ -454,7 +454,7 @@ function DashboardContent(): React.ReactElement {
                     <View style={{ alignItems: isRTL ? 'flex-end' : 'flex-start' }}>
                       <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg4 : colors.textTertiary, marginBottom: 4, fontWeight: '500' }}>{t('INCOME')}</Text>
                       {hidden ? (
-                        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.income }}>••••</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.income }}>****</Text>
                       ) : (
                         <CurrencyAmount value={data.summary.total_income} color={colors.isDark ? COLORS.claude.greenText : colors.income} fontSize={16} />
                       )}
@@ -462,7 +462,7 @@ function DashboardContent(): React.ReactElement {
                     <View style={{ alignItems: 'center' }}>
                       <Text style={{ fontSize: 11.5, color: colors.isDark ? COLORS.claude.fg4 : colors.textTertiary, marginBottom: 4, fontWeight: '500' }}>{t('SPENDING')}</Text>
                       {hidden ? (
-                        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.expense }}>••••</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '600', color: colors.expense }}>****</Text>
                       ) : (
                         <CurrencyAmount value={data.summary.total_expense} color={colors.isDark ? COLORS.claude.redText : colors.expense} fontSize={16} showSign />
                       )}
@@ -679,7 +679,7 @@ function DashboardContent(): React.ReactElement {
                     </Text>
                     {subs.length > 0 ? (
                       hidden ? (
-                        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.expense }}>••••</Text>
+                        <Text style={{ fontSize: 17, fontWeight: '700', color: colors.expense }}>****</Text>
                       ) : (
                         <CurrencyAmount value={upcomingTotal} color={colors.expense} fontSize={17} fontWeight="700" />
                       )
@@ -924,7 +924,7 @@ function DashboardContent(): React.ReactElement {
               <Wallet size={14} color={colors.primaryLight} strokeWidth={2} />
             </View>
             {hidden ? (
-              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary }}>••••</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.textPrimary }}>****</Text>
             ) : (
               <CurrencyAmount value={compactBalance} color={colors.textPrimary} fontSize={18} fontWeight="700" />
             )}
@@ -933,7 +933,7 @@ function DashboardContent(): React.ReactElement {
             <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
               <ArrowDownRight size={11} color={colors.expense} strokeWidth={2.5} />
               {hidden ? (
-                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.expense }}>••••</Text>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.expense }}>****</Text>
               ) : (
                 <CurrencyAmount value={compactExpense} color={colors.expense} fontSize={11} fontWeight="600" />
               )}
@@ -941,7 +941,7 @@ function DashboardContent(): React.ReactElement {
             <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
               <ArrowUpRight size={11} color={colors.income} strokeWidth={2.5} />
               {hidden ? (
-                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.income }}>••••</Text>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.income }}>****</Text>
               ) : (
                 <CurrencyAmount value={compactIncome} color={colors.income} fontSize={11} fontWeight="600" />
               )}

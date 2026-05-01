@@ -148,7 +148,7 @@ export function SpendingAnalysisCard({
           }}
         >
           {hidden ? (
-            <Text style={{ fontSize: 18, fontWeight: '700', color: valueColor }}>••••</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: valueColor }}>****</Text>
           ) : (
             <CurrencyAmount
               value={avgPerDay}

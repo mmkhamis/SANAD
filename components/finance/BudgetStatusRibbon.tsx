@@ -320,7 +320,7 @@ const CategoryDetail = React.memo(function CategoryDetail({ goal, transactions, 
                 </View>
                 {/* Amount */}
                 {hidden ? (
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: amountColor }}>••••</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: amountColor }}>****</Text>
                 ) : (
                   <CurrencyAmount
                     value={Math.abs(tx.amount)}

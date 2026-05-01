@@ -532,7 +532,7 @@ function ComparisonRow({
         </View>
         <View style={{ minWidth: 60, alignItems: 'flex-end' }}>
           {hidden ? (
-            <Text style={{ fontSize: 11, fontWeight: '600', color: secondary }}>••••</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: secondary }}>****</Text>
           ) : (
             <CurrencyAmount value={item.user_spend} color={secondary} fontSize={11} fontWeight="600" />
           )}
@@ -563,7 +563,7 @@ function ComparisonRow({
         </View>
         <View style={{ minWidth: 60, alignItems: 'flex-end' }}>
           {hidden ? (
-            <Text style={{ fontSize: 11, fontWeight: '600', color: tertiary }}>••••</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: tertiary }}>****</Text>
           ) : (
             <CurrencyAmount value={item.benchmark_median} color={tertiary} fontSize={11} fontWeight="600" />
           )}
@@ -637,7 +637,7 @@ const MoneyAnalysisCard = React.memo(function MoneyAnalysisCard({
               </View>
             </View>
             {hidden ? (
-              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.expense }}>••••</Text>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.expense }}>****</Text>
             ) : (
               <CurrencyAmount value={topCat.total} color={colors.expense} fontSize={17} fontWeight="700" />
             )}
@@ -726,7 +726,7 @@ function MoneyAnalysisSheetContent({
           }}
         >
           {hidden ? (
-            <Text style={{ fontSize: 22, fontWeight: '700', color: dashboard.summary.net_balance >= 0 ? colors.income : colors.expense }}>••••</Text>
+            <Text style={{ fontSize: 22, fontWeight: '700', color: dashboard.summary.net_balance >= 0 ? colors.income : colors.expense }}>****</Text>
           ) : (
             <CurrencyAmount
               value={Math.abs(dashboard.summary.net_balance)}
@@ -902,7 +902,7 @@ const SavingTipsCard = React.memo(function SavingTipsCard({
             <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 4 }}>
               <TrendingDown size={14} color={accent} strokeWidth={2.5} />
               {hidden ? (
-                <Text style={{ fontSize: 16, fontWeight: '700', color: accent }}>••••</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: accent }}>****</Text>
               ) : (
                 <CurrencyAmount value={savingAmount} color={accent} fontSize={16} fontWeight="700" />
               )}
@@ -992,7 +992,7 @@ function SavingTipsSheetContent({
                       <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 4, marginTop: 2 }}>
                         <Text style={{ fontSize: 11, color: tertiary }}>{t('FIVE_PCT_CUT')}</Text>
                         {hidden ? (
-                          <Text style={{ fontSize: 11, fontWeight: '600', color: accent }}>••••</Text>
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: accent }}>****</Text>
                         ) : (
                           <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 2 }}>
                             <CurrencyAmount value={saving5pct} color={accent} fontSize={11} fontWeight="600" />
@@ -1002,7 +1002,7 @@ function SavingTipsSheetContent({
                       </View>
                     </View>
                     {hidden ? (
-                      <Text style={{ fontSize: 15, fontWeight: '700', color: colors.expense }}>••••</Text>
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: colors.expense }}>****</Text>
                     ) : (
                       <CurrencyAmount value={cat.total} color={colors.expense} fontSize={15} fontWeight="700" />
                     )}
@@ -1073,7 +1073,7 @@ function SavingTipsSheetContent({
           </View>
           <View style={{ flexDirection: rowDir, alignItems: 'flex-end', gap: 6, marginTop: 8 }}>
             {hidden ? (
-              <Text style={{ fontSize: 26, fontWeight: '700', color: accent }}>••••</Text>
+              <Text style={{ fontSize: 26, fontWeight: '700', color: accent }}>****</Text>
             ) : (
               <CurrencyAmount value={annualSaving} color={accent} fontSize={26} fontWeight="700" />
             )}
@@ -1111,7 +1111,7 @@ function SavingTipsSheetContent({
                     <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
                       <TrendingDown size={12} color={accent} strokeWidth={2.5} />
                       {hidden ? (
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: accent }}>••••</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: accent }}>****</Text>
                       ) : (
                         <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 2 }}>
                           <CurrencyAmount value={potentialSaving} color={accent} fontSize={13} fontWeight="700" />
@@ -1231,7 +1231,7 @@ const SubscriptionsCard = React.memo(function SubscriptionsCard({ subs, hidden, 
           <Text style={{ fontSize: 11, color: colors.textTertiary, marginBottom: 4 }}>{t('THIS_MONTH')}</Text>
           <View style={{ flexDirection: rowDir, alignItems: 'baseline', gap: 3 }}>
             {hidden ? (
-              <Text style={{ fontSize: 24, fontWeight: '700', color: colors.expense }}>••••</Text>
+              <Text style={{ fontSize: 24, fontWeight: '700', color: colors.expense }}>****</Text>
             ) : (
               <CurrencyAmount value={thisMonthTotal} color={colors.expense} fontSize={24} fontWeight="700" />
             )}
@@ -1528,7 +1528,7 @@ function SubscriptionsSheetContent({
         >
           <Text style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 4 }}>{t('THIS_MONTH')}</Text>
           {hidden ? (
-            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.expense }}>••••</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.expense }}>****</Text>
           ) : (
             <CurrencyAmount value={thisMonthTotal} color={colors.expense} fontSize={18} fontWeight="700" />
           )}
@@ -1546,7 +1546,7 @@ function SubscriptionsSheetContent({
         >
           <Text style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 4 }}>{t('PER_YEAR')}</Text>
           {hidden ? (
-            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.expense }}>••••</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.expense }}>****</Text>
           ) : (
             <CurrencyAmount value={yearlyEquiv} color={colors.expense} fontSize={18} fontWeight="700" />
           )}
@@ -1586,7 +1586,7 @@ function SubscriptionsSheetContent({
                 <Text style={{ fontSize: 14, color: colors.textPrimary }}>{t('MONTHLY_LABEL')} ({monthly.length})</Text>
                 <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
                   {hidden ? (
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>••••</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>****</Text>
                   ) : (
                     <CurrencyAmount value={monthly.reduce((s, x) => s + x.amount, 0)} color={colors.expense} fontSize={14} fontWeight="600" />
                   )}
@@ -1608,7 +1608,7 @@ function SubscriptionsSheetContent({
                 <Text style={{ fontSize: 14, color: colors.textPrimary }}>{t('QUARTERLY_LABEL')} ({quarterly.length})</Text>
                 <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
                   {hidden ? (
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>••••</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>****</Text>
                   ) : (
                     <CurrencyAmount value={quarterly.reduce((s, x) => s + x.amount, 0)} color={colors.expense} fontSize={14} fontWeight="600" />
                   )}
@@ -1628,7 +1628,7 @@ function SubscriptionsSheetContent({
                 <Text style={{ fontSize: 14, color: colors.textPrimary }}>{t('YEARLY_LABEL')} ({yearly.length})</Text>
                 <View style={{ flexDirection: rowDir, alignItems: 'center', gap: 3 }}>
                   {hidden ? (
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>••••</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>****</Text>
                   ) : (
                     <CurrencyAmount value={yearly.reduce((s, x) => s + x.amount, 0)} color={colors.expense} fontSize={14} fontWeight="600" />
                   )}
@@ -1689,7 +1689,7 @@ function SubscriptionsSheetContent({
                     </Text>
                   </View>
                   {hidden ? (
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>••••</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.expense }}>****</Text>
                   ) : (
                     <CurrencyAmount value={sub.amount} color={colors.expense} fontSize={14} fontWeight="600" />
                   )}
