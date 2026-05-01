@@ -38,7 +38,7 @@ EXPENSE SIGNALS (NOT transfers):
 2. Strip payment gateway prefixes: "GEIDEA*BOBA HOUSE" → "BOBA HOUSE". Gateways: GEIDEA, FOODICS, SUMUP, MOYASAR, HYPERPAY, TELR, PAYFORT, PAYTABS, TAP, CHECKOUT, NEARPAY, POINT, MYFATOORAH
 3. institution_name = the BANK (Al Rajhi, Al Inma, SNB, etc). merchant_raw = the STORE. They are DIFFERENT.
 4. Ignore "remaining balance/limit/المتبقي/الصرف المتبقي" amounts → push to ignored_values
-5. Last4 from asterisks: "*1234", "**5230", "1234*", or Saudi NNN*NNN format ("402*079" → last4 "2079")
+5. Last4 from asterisks: "*1234", "**5230", "1234*", parenthesized "(*1234)"/"(5230)", or Saudi NNN*NNN wallet format kept as-is ("402*079" → "402*079")
 6. Default currency "SAR", default country "SA"
 7. When uncertain → return null, do NOT guess
 8. For transfers: no taxonomy_key needed (return null)

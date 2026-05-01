@@ -23,7 +23,7 @@ export function matchOwnership(
   }
   const enriched = hits.map((h) => ({
     ...h,
-    ownedAccountId: lookup.get(h.digits) ?? null,
+    ownedAccountId: lookup.get(h.digits) ?? suffixMatch(h.digits, lookup) ?? null,
   }));
   const fromHit = enriched.find((h) => h.role === 'from');
   const toHit   = enriched.find((h) => h.role === 'to');
@@ -31,4 +31,19 @@ export function matchOwnership(
   const toAccountId   = toHit?.ownedAccountId ?? null;
   const isInternalTransfer = !!(fromAccountId && toAccountId);
   return { hits: enriched, fromAccountId, toAccountId, isInternalTransfer };
+}
+
+/** Suffix match for NNN*NNN wallet formats or other non-exact digits.
+ *  Strips non-digit chars, then matches if last 3+ digits are the same. */
+function suffixMatch(digits: string, lookup: Map<string, string>): string | undefined {
+  const clean = digits.replace(/\D/g, '');
+  if (clean.length < 3) return undefined;
+  for (const [key, id] of lookup) {
+    const keyClean = key.replace(/\D/g, '');
+    const minLen = Math.min(keyClean.length, clean.length, 3);
+    if (minLen >= 3 && keyClean.slice(-minLen) === clean.slice(-minLen)) {
+      return id;
+    }
+  }
+  return undefined;
 }

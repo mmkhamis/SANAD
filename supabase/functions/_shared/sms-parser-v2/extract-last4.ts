@@ -3,10 +3,11 @@
 
 import type { Last4Hit } from './types.ts';
 
-// Match: *1234 / **1234 / 1234* / ending 1234 / ينتهي بـ 1234 / 402*079 (Saudi NNN*NNN format).
+// Match: *1234 / **1234 / 1234* / ending 1234 / ينتهي بـ 1234 / 402*079 (Saudi NNN*NNN wallet format)
+// Also matches numbers in parentheses: (*1234) / (1234) / (**5230)
 // No trailing \b — would block matches when the asterisk is followed by
 // a non-word char like \n.
-const MASK_RE = /\*+\s*(\d{4})(?!\d)|(\d{4})\s*\*+|\bending\s+(\d{4})\b|ينتهي\s+ب?ـ?\s*(\d{4})|(?:رقم|no\.?)\s+(\d{4})(?!\d)|\b(\d{3})\*(\d{3})\b/gi;
+const MASK_RE = /\*+\s*(\d{4})(?!\d)|(\d{4})\s*\*+|\bending\s+(\d{4})\b|ينتهي\s+ب?ـ?\s*(\d{4})|(?:رقم|no\.?)\s+(\d{4})(?!\d)|\b(\d{3})\*(\d{3})\b|\(\*{0,2}(\d{4})\)/gi;
 
 const ROLE_PATTERNS: Array<{ re: RegExp; role: Last4Hit['role'] }> = [
   // ORDER MATTERS — most specific first.
@@ -27,13 +28,14 @@ export function extractLast4(text: string): Last4Hit[] {
   MASK_RE.lastIndex = 0;
   while ((m = MASK_RE.exec(text)) !== null) {
     // Groups 1-5: standard 4-digit patterns
-    // Groups 6+7: Saudi NNN*NNN format → combine as "NNNNNN" and take last 4
+    // Groups 6+7: Saudi NNN*NNN wallet format (STC Pay, etc.) → keep raw e.g. "402*079"
+    // Group 8: parenthesized digits e.g. (*1234) or (5230)
     let digits: string;
     if (m[6] && m[7]) {
-      // e.g. 402*079 → "402079" → last4 = "2079"
-      digits = (m[6] + m[7]).slice(-4);
+      // e.g. 402*079 — keep the raw format; wallet accounts use this as their identifier
+      digits = `${m[6]}*${m[7]}`;
     } else {
-      digits = m[1] ?? m[2] ?? m[3] ?? m[4] ?? m[5] ?? '';
+      digits = m[1] ?? m[2] ?? m[3] ?? m[4] ?? m[5] ?? m[8] ?? '';
     }
     if (!digits) continue;
     const role = inferRole(text, m.index);
